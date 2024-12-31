@@ -29,25 +29,5 @@ func main() {
 		}
 		code = string(data)
 	}
-
-	// Creamos entorno
-	env := r2lang.NewEnvironment()
-	// Registrar otras librerías si las tienes:
-	r2lang.RegisterLib(env)
-	r2lang.RegisterStd(env)
-	r2lang.RegisterIO(env)
-	r2lang.RegisterHTTPClient(env)
-	r2lang.RegisterString(env)
-	r2lang.RegisterMath(env)
-	r2lang.RegisterRand(env)
-	r2lang.RegisterTest(env)
-	r2lang.RegisterHTTP(env)
-	r2lang.RegisterPrint(env)
-	r2lang.RegisterOS(env)
-	r2lang.RegisterHack(env)
-	r2lang.RegisterConcurrency(env)
-
-	parser := r2lang.NewParser(code)
-	env.Run(parser)
-
+	r2lang.RunCode(code)
 }
