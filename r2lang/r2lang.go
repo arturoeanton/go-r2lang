@@ -1333,3 +1333,23 @@ func (p *Parser) parseMapLiteral() Node {
 	p.nextToken()
 	return &MapLiteral{Pairs: pairs}
 }
+
+func RunCode(input string) {
+	env := NewEnvironment()
+	// Registrar otras librerías si las tienes:
+	RegisterLib(env)
+	RegisterStd(env)
+	RegisterIO(env)
+	RegisterHTTPClient(env)
+	RegisterString(env)
+	RegisterMath(env)
+	RegisterRand(env)
+	RegisterTest(env)
+	RegisterHTTP(env)
+	RegisterPrint(env)
+	RegisterOS(env)
+	RegisterHack(env)
+	RegisterConcurrency(env)
+	parser := NewParser(input)
+	env.Run(parser)
+}
