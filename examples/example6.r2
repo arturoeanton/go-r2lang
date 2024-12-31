@@ -30,7 +30,7 @@ func main(){
 
                             data = {saludo :   p.saludar(), persona: p};
                             // body = JSON(data);
-                            body = XML("pp",data);
+                            body = XML("persona",data);
                             return HttpResponse(body);
                             //return HttpResponse(200 ,body);
                             //return HttpResponse("application/xml"  ,body);
