@@ -2,7 +2,7 @@
 
 func main() {
     // 1) GET simple
-    let texto = httpGet("https://httpbin.org/get");
+    let texto = clientHttpGet("https://httpbin.org/get");
     print("Texto de GET =>", texto);
 
     // 2) parse JSON
@@ -10,18 +10,18 @@ func main() {
     print("parseJSON =>", jresp);
 
     // 3) GET JSON directo
-    let jauto = httpGetJSON("https://httpbin.org/json");
+    let jauto = clientHttpGetJSON("https://httpbin.org/json");
     print("httpGetJSON =>", jauto);
 
     // 4) POST con body "Hola"
-    let postResp = httpPost("https://httpbin.org/post", "Hola desde R2");
+    let postResp = clientHttpPost("https://httpbin.org/post", "Hola desde R2");
     print("POST resp =>", postResp);
 
     // 5) POST JSON
     let data = {};
     varsSet(data, "nombre", "Alice");
     varsSet(data, "edad", 30);
-    let postJsonResp = httpPostJSON("https://httpbin.org/post", data);
+    let postJsonResp = clientHttpPostJSON("https://httpbin.org/post", data);
     print("httpPostJSON =>", postJsonResp);
 
     // 6) Manejo de XML (didáctico)
