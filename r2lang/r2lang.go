@@ -2,7 +2,9 @@ package r2lang
 
 import (
 	"fmt"
+	"os"
 	"strconv"
+	"sync"
 )
 
 // ============================================================
@@ -15,6 +17,10 @@ const (
 	TOKEN_STRING = "STRING"
 	TOKEN_IDENT  = "IDENT"
 	TOKEN_SYMBOL = "SYMBOL"
+)
+
+var (
+	wg sync.WaitGroup
 )
 
 type Token struct {
@@ -716,6 +722,27 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 		return e.outer.Get(name)
 	}
 	return nil, false
+}
+func (e *Environment) Run(parser *Parser) {
+	defer wg.Wait()
+	wg = sync.WaitGroup{}
+
+	ast := parser.ParseProgram()
+	// Ejecutar
+	ast.Eval(e)
+
+	// Llamar a main() si está
+	mainVal, ok := e.Get("main")
+	if !ok {
+		fmt.Println("Aviso: No existe función main().")
+		os.Exit(0)
+	}
+	mainFn, isFn := mainVal.(*UserFunction)
+	if !isFn {
+		fmt.Println("Error: 'main' no es una función.")
+		os.Exit(1)
+	}
+	mainFn.Call()
 }
 
 // ============================================================
