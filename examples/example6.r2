@@ -5,7 +5,7 @@ func handleUser(pathVars, method, body) {
 
 func main() {
   // GET /users/123 -> handleUser con pathVars = { "id" : "123" }
-  httpAddRoute("GET", "/users/:id", "handleUser");
+  httpGet("/users/:id", "handleUser");
   // Levantamos servidor
   httpServe(":8080");
 }
