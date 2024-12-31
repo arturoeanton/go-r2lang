@@ -3,9 +3,41 @@ func handleUser(pathVars, method, body) {
   return "Hola usuario con id = " + id + " y method " + method;
 }
 
-func main() {
-  // GET /users/123 -> handleUser con pathVars = { "id" : "123" }
-  httpGet("/users/:id", "handleUser");
-  // Levantamos servidor
-  httpServe(":8080");
+obj Persona {
+    let nombre;
+    let edad;
+    let pp;
+    func init(n, e) {
+        self.nombre = n;
+        self.edad = e;
+    }
+    func saludar() {
+        return sprintf("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
+    }
+}
+
+func main(){
+    httpGet("/users/:id", handleUser);
+
+    httpGet("/users", func(){
+                            let p = Persona();
+                            p.init("Carlos", 30);
+
+
+                            let p1 = Persona();
+                            p1.init("Arturo", 44);
+                            p.pp = p1;
+
+                            data = {saludo :   p.saludar(), persona: p};
+                            // body = JSON(data);
+                            body = XML("pp",data);
+                            return HttpResponse(body);
+                            //return HttpResponse(200 ,body);
+                            //return HttpResponse("application/xml"  ,body);
+                            //return HttpResponse(200, "application/xml"  ,body);
+    })
+
+
+      // Levantamos servidor
+      httpServe(":8080");
 }
