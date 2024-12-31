@@ -1,41 +1,55 @@
 // examplePrint.r2
 
 func main() {
-print("=== r2print Demo ===");
+    print("=== r2print Demo ===");
 
-printRepeat("R2 ", 5);
+    // 1. println
+    println("Este es un mensaje con println.")
 
-printBox("Hola, R2!", 15);
+    // 2. printf
+    printf("Este es un mensaje con printf: %d, %s\n", 42, "respuesta")
 
-let arr = [1,2,3];
-debugInspect(arr);
+    // 3. printError, printWarning, printSuccess
+    printError("Este es un mensaje de error.")
+    printWarning("Este es un mensaje de advertencia.")
+    printSuccess("Este es un mensaje de éxito.")
 
-let mapa = {};
-mapa["clave"] = "123";
-debugInspect(mapa);
+    // 4. printJSON
+    let datos = { nombre: "Juan", edad: 30, hobbies: ["leer", "correr"] }
+    printJSON(datos)
 
+    // 5. clearScreen
+    // Descomenta la siguiente línea para limpiar la pantalla
+    // clearScreen()
 
-    // Ejemplo 1: Colores
-    printColor("Hola en rojo", "red");
-    printColor("Hola en verde", "green");
-    printColor("Hola normal", "reset");
+    // 6. printTimestamp
+    printTimestamp()
 
-    // Ejemplo 2: Barra de progreso
-    printProgress("Cargando", 10, 150);
+    // 7. printHeader
+    printHeader("Encabezado Principal")
 
-    // Ejemplo 3: Tabla
-    let rows = [
+    // 8. printSeparator
+    printSeparator(50)
+
+    // Uso de printBox
+    printBox("Caja de Texto", 20)
+
+    // Uso de printAlign
+    printAlign("Texto Izquierda", "left", 30)
+    printAlign("Texto Derecha", "right", 30)
+    printAlign("Texto Centro", "center", 30)
+
+    // Uso de printProgress
+    printProgress("Cargando", 10, 200)
+
+    // Uso de printTable
+    let tabla = [
         ["Nombre", "Edad", "Ciudad"],
-        ["Ana", 30, "Madrid"],
-        ["Bob", 25, "Lima"],
-        ["Carlos", 35, "Buenos Aires"]
-    ];
-    printTable(rows);
-
-    // Ejemplo 4: Alineación
-    printAlign("Texto Left", "left", 20);
-    printAlign("Texto Right", "right", 20);
-    printAlign("Texto Center", "center", 20);
+        ["Ana", 25, "Madrid"],
+        ["Luis", 28, "Barcelona"],
+        ["Marta", 22, "Valencia"]
+    ]
+    printTable(tabla)
 
 print("=== Fin ===");
 }

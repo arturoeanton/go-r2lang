@@ -13,21 +13,7 @@ func RegisterLib(env *Environment) {
 			fmt.Println()
 			return nil
 		},
-		"println": func(args ...interface{}) interface{} {
-			fmt.Println(args...)
-			return nil
-		},
-		"printf": func(args ...interface{}) interface{} {
-			if len(args) < 1 {
-				panic("printf necesita al menos un string de formato")
-			}
-			formatStr, ok := args[0].(string)
-			if !ok {
-				panic("El primer argumento de printf debe ser un string")
-			}
-			fmt.Printf(formatStr, args[1:]...)
-			return nil
-		},
+		
 		"go": func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				panic("go necesita al menos una función como argumento")
