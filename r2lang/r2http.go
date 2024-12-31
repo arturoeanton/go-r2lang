@@ -1,8 +1,11 @@
 package r2lang
 
 import (
+	"bytes"
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -12,31 +15,82 @@ type r2Route struct {
 	method      string
 	pattern     string
 	handlerName string
+	handlerfx   *UserFunction
 	// Podrías también almacenar un compilado de regexp, si quisieras
 }
 
 // Guardamos las rutas en un slice (o array global) para simplificar
 var r2Routes []r2Route
 
+func httpHandler(args []interface{}) interface{} {
+	if len(args) < 3 {
+		panic("httpAddRoute necesita (method, pattern, handlerName)")
+	}
+	method, ok1 := args[0].(string)
+	pattern, ok2 := args[1].(string)
+	handler, ok3 := args[2].(*UserFunction)
+	if !ok1 || !ok2 {
+		panic("httpAddRoute: todos los argumentos deben ser strings")
+	}
+
+	if !ok3 {
+		panic("httpAddRoute: handler debe ser UsesFunction")
+	}
+
+	// Agregamos la ruta a la tabla
+	r2Routes = append(r2Routes, r2Route{
+		method:    strings.ToUpper(method),
+		pattern:   pattern,
+		handlerfx: handler,
+	})
+	return nil
+}
+
 func RegisterHTTP(env *Environment) {
-	// httpAddRoute(method, pattern, handlerName)
-	env.Set("httpAddRoute", BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 3 {
-			panic("httpAddRoute necesita (method, pattern, handlerName)")
-		}
-		method, ok1 := args[0].(string)
-		pattern, ok2 := args[1].(string)
-		handler, ok3 := args[2].(string)
-		if !ok1 || !ok2 || !ok3 {
-			panic("httpAddRoute: todos los argumentos deben ser strings")
-		}
-		// Agregamos la ruta a la tabla
-		r2Routes = append(r2Routes, r2Route{
-			method:      strings.ToUpper(method),
-			pattern:     pattern,
-			handlerName: handler,
-		})
-		return nil
+	// httpHandler(method, pattern, handlerName)
+
+	env.Set("httpHandler", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(args)
+	}))
+
+	env.Set("httpGet", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"GET"}, args...))
+	}))
+
+	env.Set("httpPost", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"POST"}, args...))
+	}))
+
+	env.Set("httpPut", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"PUT"}, args...))
+	}))
+
+	env.Set("httpDelete", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"DELETE"}, args...))
+	}))
+
+	env.Set("httpPatch", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"PATCH"}, args...))
+	}))
+
+	env.Set("httpOptions", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"OPTIONS"}, args...))
+	}))
+
+	env.Set("httpHead", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"HEAD"}, args...))
+	}))
+
+	env.Set("httpTrace", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"TRACE"}, args...))
+	}))
+
+	env.Set("httpConnect", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"CONNECT"}, args...))
+	}))
+
+	env.Set("httpAny", BuiltinFunction(func(args ...interface{}) interface{} {
+		return httpHandler(append([]interface{}{"ANY"}, args...))
 	}))
 
 	// httpServe(addr)
@@ -54,7 +108,7 @@ func RegisterHTTP(env *Environment) {
 			// Leemos body (simple, para requests tipo POST/PUT)
 			var bodyStr string
 			if r.Method == "POST" || r.Method == "PUT" {
-				data, err := ioutil.ReadAll(r.Body)
+				data, err := io.ReadAll(r.Body)
 				if err == nil {
 					bodyStr = string(data)
 				}
@@ -67,19 +121,8 @@ func RegisterHTTP(env *Environment) {
 				fmt.Fprintf(w, "404 Not Found\n")
 				return
 			}
-			// Buscamos la función R2 en el env
-			handlerVal, found := env.Get(route.handlerName)
-			if !found {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "Handler %s no existe en R2\n", route.handlerName)
-				return
-			}
-			r2Handler, isFunc := handlerVal.(*UserFunction)
-			if !isFunc {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "Handler %s no es una función\n", route.handlerName)
-				return
-			}
+
+			r2Handler := route.handlerfx
 
 			// Llamamos la función con [pathVars, method, bodyStr]
 			// pathVars lo podemos pasar como map[string]interface{}
@@ -94,7 +137,33 @@ func RegisterHTTP(env *Environment) {
 			// Si la respuesta es string, la imprimimos, si no, la convertimos
 			respStr, okResp := respVal.(string)
 			if !okResp {
-				respStr = fmt.Sprintf("%v", respVal)
+				respCustom, okResp := respVal.(*ObjectInstance)
+				data := make(map[string]interface{})
+				if okResp {
+					data = respCustom.Env.store
+				} else {
+					data, ok = respVal.(map[string]interface{})
+					if !ok {
+						return
+					}
+				}
+				header, ok := data["header"].(map[string]interface{})
+				if ok {
+					for k, v := range header {
+						w.Header().Set(k, v.(string))
+					}
+				}
+				status, ok := data["status"]
+				if ok {
+					w.WriteHeader(status.(int))
+				}
+				body, ok := data["body"]
+				if ok {
+					fmt.Fprint(w, body.(string))
+					return
+				}
+				fmt.Fprint(w, "%v", respVal)
+				return
 			}
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, respStr)
@@ -128,6 +197,199 @@ func RegisterHTTP(env *Environment) {
 		}
 		return value
 	}))
+
+	env.Set("XML", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) != 2 {
+			panic("JSON necesita al menos 2 argumento")
+		}
+		root, ok := args[0].(string)
+		if !ok {
+			panic("XML: argumento debe ser un string")
+		}
+		objectInstance, ok := args[1].(*ObjectInstance)
+		if !ok {
+			panic("JSON: argumento debe ser un objeto")
+		}
+		instance := objectInstance.Env.store
+		instanceClean := removeBehavior(instance)
+		// Convertimos a JSON
+		data, err := mapToXML(root, instanceClean)
+		if err != nil {
+			panic(fmt.Sprintf("JSON: error en Marshal: %v", err))
+		}
+		return string(data)
+	}))
+
+	env.Set("HttpResponse", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("HttpResponse necesita al menos 1 argumento")
+		}
+		status, ok := args[0].(float64)
+		posArgs := 1
+		if !ok {
+			status = 200
+			posArgs = 0
+		}
+		statusInt := int(status)
+		header := make(map[string]interface{})
+		body := ""
+
+		if len(args) > posArgs {
+			header, ok = args[posArgs].(map[string]interface{})
+			if !ok {
+				value, ok := args[posArgs].(string)
+				if ok {
+					if len(args) == (posArgs + 1) {
+						body = value
+						header = make(map[string]interface{})
+						header["Content-Type"] = DetectContentType(body).String()
+					} else {
+						header = make(map[string]interface{})
+						header["Content-Type"] = value
+					}
+				}
+
+			}
+		}
+		if len(args) == (posArgs + 2) {
+			body, ok = args[posArgs+1].(string)
+			if !ok {
+				panic("HttpResponse: argumento debe ser un string")
+			}
+		}
+		return map[string]interface{}{
+			"status": statusInt,
+			"header": header,
+			"body":   body,
+		}
+	}))
+
+	env.Set("JSON", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("JSON necesita al menos 1 argumento")
+		}
+		objectInstance, ok := args[0].(*ObjectInstance)
+		if !ok {
+			panic("JSON: argumento debe ser un objeto")
+		}
+		instance := objectInstance.Env.store
+		instanceClean := removeBehavior(instance)
+		// Convertimos a JSON
+		data, err := json.Marshal(instanceClean)
+		if err != nil {
+			panic(fmt.Sprintf("JSON: error en Marshal: %v", err))
+		}
+		return string(data)
+	}))
+
+}
+
+// mapToXML convierte un mapa a XML con un elemento raíz dinámico.
+func mapToXML(root string, data map[string]interface{}) ([]byte, error) {
+	// Crear un buffer para almacenar el XML
+	var xmlData []byte
+	// hacer el io writer
+	xmlWriter := bytes.NewBuffer(xmlData)
+	// Crear un encoder XML que escriba en el buffer
+	encoder := xml.NewEncoder(xmlWriter)
+	encoder.Indent("", "    ") // Formatear con indentación
+
+	// Escribir el elemento raíz
+	startElement := xml.StartElement{Name: xml.Name{Local: root}}
+	if err := encoder.EncodeToken(startElement); err != nil {
+		return nil, err
+	}
+
+	// Función recursiva para procesar el mapa
+	err := encodeMap(encoder, data)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cerrar el elemento raíz
+	if err := encoder.EncodeToken(startElement.End()); err != nil {
+		return nil, err
+	}
+
+	// Finalizar el encoder
+	if err := encoder.Flush(); err != nil {
+		return nil, err
+	}
+	xmlData = xmlWriter.Bytes()
+	return xmlData, nil
+}
+
+// encodeMap procesa un mapa y escribe sus elementos como sub-elementos XML.
+func encodeMap(encoder *xml.Encoder, data map[string]interface{}) error {
+	for key, value := range data {
+		// Crear el elemento XML para la clave actual
+		startElement := xml.StartElement{Name: xml.Name{Local: key}}
+
+		switch v := value.(type) {
+		case map[string]interface{}:
+			// Si el valor es otro mapa, anidar elementos
+			if err := encoder.EncodeToken(startElement); err != nil {
+				return err
+			}
+			if err := encodeMap(encoder, v); err != nil {
+				return err
+			}
+			if err := encoder.EncodeToken(startElement.End()); err != nil {
+				return err
+			}
+		case []interface{}:
+			// Si el valor es una lista, iterar sobre ella
+			for _, item := range v {
+				if err := encoder.EncodeToken(startElement); err != nil {
+					return err
+				}
+				// Asumimos que los elementos de la lista son básicos o mapas
+				switch itemVal := item.(type) {
+				case map[string]interface{}:
+					if err := encodeMap(encoder, itemVal); err != nil {
+						return err
+					}
+				default:
+					// Convertir el valor a string
+					if err := encoder.EncodeToken(xml.CharData([]byte(fmt.Sprintf("%v", itemVal)))); err != nil {
+						return err
+					}
+				}
+				if err := encoder.EncodeToken(startElement.End()); err != nil {
+					return err
+				}
+			}
+		default:
+			// Para tipos básicos, escribir el contenido
+			if err := encoder.EncodeElement(v, startElement); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func removeBehavior(instance map[string]interface{}) map[string]interface{} {
+	instanceOut := make(map[string]interface{})
+	for k, v := range instance {
+		if k == "self" {
+			continue
+		}
+		if _, ok := v.(*UserFunction); ok {
+			continue
+		}
+		if _, ok := v.(*BuiltinFunction); ok {
+			continue
+		}
+
+		if subInstance, ok := v.(*ObjectInstance); ok {
+			instanceOut[k] = removeBehavior(subInstance.Env.store)
+			continue
+		}
+		instanceOut[k] = v
+	}
+	return instanceOut
+
 }
 
 // matchRoute busca en r2Routes la primera que coincida con method y path

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -17,22 +18,22 @@ func RegisterHTTPClient(env *Environment) {
 	//========================================
 	// 1) httpGet(url) => string (body)
 	//========================================
-	env.Set("httpGet", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("clientHttpGet", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("httpGet necesita (url)")
+			panic("clientHttpGet necesita (url)")
 		}
 		url, ok := args[0].(string)
 		if !ok {
-			panic("httpGet: url debe ser string")
+			panic("clientHttpGet: url debe ser string")
 		}
 		resp, err := http.Get(url)
 		if err != nil {
-			panic(fmt.Sprintf("httpGet: error en GET '%s': %v", url, err))
+			panic(fmt.Sprintf("clientHttpGet: error en GET '%s': %v", url, err))
 		}
 		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
-			panic(fmt.Sprintf("httpGet: error al leer body: %v", err))
+			panic(fmt.Sprintf("clientHttpGet: error al leer body: %v", err))
 		}
 		return string(data)
 	}))
@@ -40,24 +41,24 @@ func RegisterHTTPClient(env *Environment) {
 	//========================================
 	// 2) httpPost(url, bodyString) => string (respuesta)
 	//========================================
-	env.Set("httpPost", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("clientHttpPost", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("httpPost necesita (url, bodyString)")
+			panic("clientHttpPost necesita (url, bodyString)")
 		}
 		url, ok1 := args[0].(string)
 		bodyStr, ok2 := args[1].(string)
 		if !ok1 || !ok2 {
-			panic("httpPost: (url, bodyString) deben ser strings")
+			panic("clientHttpPost: (url, bodyString) deben ser strings")
 		}
 
 		resp, err := http.Post(url, "text/plain", bytes.NewBufferString(bodyStr))
 		if err != nil {
-			panic(fmt.Sprintf("httpPost: error en POST '%s': %v", url, err))
+			panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
 		}
 		defer resp.Body.Close()
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			panic(fmt.Sprintf("httpPost: error al leer body: %v", err))
+			panic(fmt.Sprintf("clientHttpPost: error al leer body: %v", err))
 		}
 		return string(data)
 	}))
@@ -104,7 +105,7 @@ func RegisterHTTPClient(env *Environment) {
 	// 5) httpGetJSON(url) => map/array R2
 	//    Hace GET y parsea JSON automáticamente
 	//========================================
-	env.Set("httpGetJSON", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("clientHttpGetJSON", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
 			panic("httpGetJSON necesita (url)")
 		}
@@ -132,7 +133,7 @@ func RegisterHTTPClient(env *Environment) {
 	// 6) httpPostJSON(url, value) => map/array R2
 	//    Serializa 'value' a JSON, POST, y parsea la respuesta como JSON
 	//========================================
-	env.Set("httpPostJSON", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("clientHttpPostJSON", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			panic("httpPostJSON necesita (url, value)")
 		}

@@ -1336,6 +1336,10 @@ func (p *Parser) parseMapLiteral() Node {
 
 func RunCode(input string) {
 	env := NewEnvironment()
+	env.Set("true", true)
+	env.Set("false", false)
+	env.Set("nil", nil)
+	env.Set("null", nil)
 	// Registrar otras librerías si las tienes:
 	RegisterLib(env)
 	RegisterStd(env)
