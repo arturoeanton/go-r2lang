@@ -137,7 +137,7 @@ skipWhitespace:
 
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
-		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".",
+		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":",
 	}
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
@@ -582,15 +582,26 @@ type AccessExpression struct {
 
 func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	objVal := ae.Object.Eval(env)
-	instance, ok := objVal.(*ObjectInstance)
-	if !ok {
-		panic("Acceso a propiedad en algo que no es un objeto-instance")
+
+	// Manejar ObjectInstance
+	if instance, ok := objVal.(*ObjectInstance); ok {
+		val, exists := instance.Env.Get(ae.Member)
+		if !exists {
+			panic("El objeto no tiene la propiedad: " + ae.Member)
+		}
+		return val
 	}
-	val, exists := instance.Env.Get(ae.Member)
-	if !exists {
-		panic("El objeto no tiene la propiedad: " + ae.Member)
+
+	// Manejar map[string]interface{}
+	if m, ok := objVal.(map[string]interface{}); ok {
+		val, exists := m[ae.Member]
+		if !exists {
+			panic("El mapa no tiene la clave: " + ae.Member)
+		}
+		return val
 	}
-	return val
+
+	panic("Acceso a propiedad en tipo no soportado: " + fmt.Sprintf("%T", objVal))
 }
 
 type IndexExpression struct {
@@ -1308,17 +1319,24 @@ func (p *Parser) parseMapLiteral() Node {
 		return &MapLiteral{Pairs: pairs}
 	}
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		if p.curTok.Type != TOKEN_STRING {
-			panic("Se esperaba clave string en map-literal")
+		var key string
+		if p.curTok.Type == TOKEN_STRING {
+			key = p.curTok.Value
+			p.nextToken()
+		} else if p.curTok.Type == TOKEN_IDENT {
+			key = p.curTok.Value
+			p.nextToken()
+		} else {
+			panic("Se esperaba clave string o identificador en map-literal")
 		}
-		key := p.curTok.Value
-		p.nextToken()
+
 		if p.curTok.Value != ":" {
 			panic("Se esperaba ':' tras la clave en map-literal")
 		}
 		p.nextToken()
 		valNode := p.parseExpression()
 		pairs[key] = valNode
+
 		if p.curTok.Value == "," {
 			p.nextToken()
 		} else if p.curTok.Value == "}" {

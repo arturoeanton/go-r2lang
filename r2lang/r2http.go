@@ -207,10 +207,16 @@ func RegisterHTTP(env *Environment) {
 			panic("XML: argumento debe ser un string")
 		}
 		objectInstance, ok := args[1].(*ObjectInstance)
+		instance := make(map[string]interface{})
 		if !ok {
-			panic("JSON: argumento debe ser un objeto")
+			instance, ok = args[1].(map[string]interface{})
+			if !ok {
+				panic("JSON: argumento debe ser un objeto o un mapa")
+			}
+		} else {
+			instance = objectInstance.Env.store
 		}
-		instance := objectInstance.Env.store
+
 		instanceClean := removeBehavior(instance)
 		// Convertimos a JSON
 		data, err := mapToXML(root, instanceClean)
@@ -268,11 +274,16 @@ func RegisterHTTP(env *Environment) {
 		if len(args) < 1 {
 			panic("JSON necesita al menos 1 argumento")
 		}
+		instance := make(map[string]interface{})
 		objectInstance, ok := args[0].(*ObjectInstance)
 		if !ok {
-			panic("JSON: argumento debe ser un objeto")
+			instance, ok = args[0].(map[string]interface{})
+			if !ok {
+				panic("JSON: argumento debe ser un objeto o un mapa")
+			}
+		} else {
+			instance = objectInstance.Env.store
 		}
-		instance := objectInstance.Env.store
 		instanceClean := removeBehavior(instance)
 		// Convertimos a JSON
 		data, err := json.Marshal(instanceClean)

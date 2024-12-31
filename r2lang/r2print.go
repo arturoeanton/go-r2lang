@@ -1,7 +1,9 @@
 package r2lang
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	// Podrías importar alguna librería de colores (ej. "github.com/fatih/color") si quieres
@@ -200,6 +202,155 @@ func RegisterPrint(env *Environment) {
 		default:
 			panic("printAlign: align debe ser 'left','right' o 'center'")
 		}
+		return nil
+	}))
+
+	// 8) println(...)
+	env.Set("println", BuiltinFunction(func(args ...interface{}) interface{} {
+		for i, arg := range args {
+			if i > 0 {
+				fmt.Print(" ")
+			}
+			fmt.Print(arg)
+		}
+		fmt.Println()
+		return nil
+	}))
+
+	// 9) printf(format, ...)
+	env.Set("printf", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printf necesita al menos un argumento: el formato")
+		}
+		format, ok := args[0].(string)
+		if !ok {
+			panic("printf: el primer argumento debe ser una cadena de formato")
+		}
+		var formatArgs []interface{}
+		if len(args) > 1 {
+			formatArgs = args[1:]
+		}
+		f, err := strconv.Unquote("\"" + format + "\"")
+		if err != nil {
+			panic("printf: error al parsear formato")
+		}
+		fmt.Printf(f, formatArgs...)
+		return nil
+	}))
+
+	env.Set("sprintf", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printf necesita al menos un argumento: el formato")
+		}
+		format, ok := args[0].(string)
+		if !ok {
+			panic("printf: el primer argumento debe ser una cadena de formato")
+		}
+		var formatArgs []interface{}
+		if len(args) > 1 {
+			formatArgs = args[1:]
+		}
+		f, err := strconv.Unquote("\"" + format + "\"")
+		if err != nil {
+			panic("printf: error al parsear formato")
+		}
+		return fmt.Sprintf(f, formatArgs...)
+	}))
+
+	// 10) printError(str)
+	env.Set("printError", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printError necesita (str)")
+		}
+		str, ok := args[0].(string)
+		if !ok {
+			panic("printError: el argumento debe ser una cadena de texto")
+		}
+		fmt.Println("\033[31m" + str + "\033[0m") // Rojo
+		return nil
+	}))
+
+	// 11) printWarning(str)
+	env.Set("printWarning", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printWarning necesita (str)")
+		}
+		str, ok := args[0].(string)
+		if !ok {
+			panic("printWarning: el argumento debe ser una cadena de texto")
+		}
+		fmt.Println("\033[33m" + str + "\033[0m") // Amarillo
+		return nil
+	}))
+
+	// 12) printSuccess(str)
+	env.Set("printSuccess", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printSuccess necesita (str)")
+		}
+		str, ok := args[0].(string)
+		if !ok {
+			panic("printSuccess: el argumento debe ser una cadena de texto")
+		}
+		fmt.Println("\033[32m" + str + "\033[0m") // Verde
+		return nil
+	}))
+
+	// 13) printJSON(obj)
+	env.Set("printJSON", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printJSON necesita (obj)")
+		}
+		obj := args[0]
+		jsonBytes, err := json.MarshalIndent(obj, "", "  ")
+		if err != nil {
+			panic("printJSON: error al formatear JSON")
+		}
+		fmt.Println(string(jsonBytes))
+		return nil
+	}))
+
+	// 14) clearScreen()
+	env.Set("clearScreen", BuiltinFunction(func(args ...interface{}) interface{} {
+		// Código ANSI para limpiar la pantalla
+		fmt.Print("\033[H\033[2J")
+		return nil
+	}))
+
+	// 15) printTimestamp()
+	env.Set("printTimestamp", BuiltinFunction(func(args ...interface{}) interface{} {
+		currentTime := time.Now().Format(time.RFC1123)
+		fmt.Println(currentTime)
+		return nil
+	}))
+
+	// 16) printHeader(str)
+	env.Set("printHeader", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("printHeader necesita (str)")
+		}
+		str, ok := args[0].(string)
+		if !ok {
+			panic("printHeader: el argumento debe ser una cadena de texto")
+		}
+		separator := strings.Repeat("=", len(str))
+		fmt.Println(separator)
+		fmt.Println(str)
+		fmt.Println(separator)
+		return nil
+	}))
+
+	// 17) printSeparator(width)
+	env.Set("printSeparator", BuiltinFunction(func(args ...interface{}) interface{} {
+		width := 40 // Valor por defecto
+		if len(args) >= 1 {
+			w, ok := args[0].(float64)
+			if !ok {
+				panic("printSeparator: el argumento debe ser un número")
+			}
+			width = int(w)
+		}
+		fmt.Println(strings.Repeat("-", width))
 		return nil
 	}))
 }
