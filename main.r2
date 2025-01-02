@@ -1,28 +1,28 @@
-// main.r2
+obj Tareas {
+    let lista;
 
-// Función que crea un adder (sumador) con un valor fijo
-func makeAdder(x) {
-    func add(y) {
-        return x + y
+    func agregar(tarea) {
+        self.lista["tarea1"] = tarea;
     }
-    return add
+
+    func listar() {
+        println("Listando tareas...");
+        println(self.lista);
+        return self.lista;
+    }
 }
-func main() {
-    // Crear una closure que suma 5
-    let add5 = makeAdder(5)
 
-    // Usar la closure para sumar 10
-    let result = add5(10)
+let tareas = Tareas();
+tareas.lista = {};
+httpGet("/agregar/:tarea", func(pathVars) {
+    tareas.agregar(pathVars["tarea"]);
+    println(tareas.lista);
+    return HttpResponse("Tarea agregada");
+});
 
-    // Imprimir el resultado
-    print(result) // Debería imprimir 15
+httpGet("/listar", func() {
+    tareas.listar();
+    return HttpResponse(JSON(tareas));
+});
 
-    // Crear otra closure que suma 20
-    let add20 = makeAdder(20)
-
-    // Usar la segunda closure para sumar 30
-    let result2 = add20(30)
-
-    // Imprimir el segundo resultado
-    print(result2) // Debería imprimir 50
-}
+httpServe(":8080");
