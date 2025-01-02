@@ -43,15 +43,15 @@ func main (){
         print($k, arr[i], $v);
     }
 
-   let mapa = { saludo: "hola", despedida: "adios" };
+   let mapa = { saludo: "hola", despedida: "adios" , numero: 1, numeros: [1,2,3] , fx: func(){print("hola")}};
 
     print("for in loop map");
     for (let i in mapa){
-        print($k, mapa[i], $v);
+        go (func(a,b,c){
+            print(a,b,c);
+        } , $k, mapa[i], $v);
+
+
     }
-
-
-
-
-
 }
+
