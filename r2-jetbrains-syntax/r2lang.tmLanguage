@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+    <key>name</key>
+    <string>r2lang</string>
+    <key>scopeName</key>
+    <string>source.r2</string>
+    <key>fileTypes</key>
+    <array>
+        <string>r2</string>
+    </array>
+    <key>patterns</key>
+    <array>
+        <!-- Palabras clave -->
+        <dict>
+            <key>match</key>
+            <string>\b(let|func|return|if|else|for|while|obj|import|as)\b</string>
+            <key>name</key>
+            <string>keyword.control.r2lang</string>
+        </dict>
+
+        <!-- Cadenas -->
+        <dict>
+            <key>match</key>
+            <string>"[^"]*"</string>
+            <key>name</key>
+            <string>string.quoted.double.r2lang</string>
+        </dict>
+
+        <!-- Comentarios -->
+        <dict>
+            <key>match</key>
+            <string>//.*$</string>
+            <key>name</key>
+            <string>comment.line.double-slash.r2lang</string>
+        </dict>
+
+        <!-- Números -->
+        <dict>
+            <key>match</key>
+            <string>\b\d+\b</string>
+            <key>name</key>
+            <string>constant.numeric.r2lang</string>
+        </dict>
+
+        <!-- Declaración de funciones -->
+        <dict>
+            <key>begin</key>
+            <string>\bfunc\b\s+([a-zA-Z_][a-zA-Z0-9_]*)</string>
+            <key>beginCaptures</key>
+            <dict>
+                <key>1</key>
+                <dict>
+                    <key>name</key>
+                    <string>entity.name.function.r2lang</string>
+                </dict>
+            </dict>
+            <key>end</key>
+            <string>\{{</string>
+            <key>name</key>
+            <string>meta.function.r2lang</string>
+        </dict>
+
+        <!-- Métodos en objetos -->
+        <dict>
+            <key>begin</key>
+            <string>\bfunc\b\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(.*?\)</string>
+            <key>beginCaptures</key>
+            <dict>
+                <key>1</key>
+                <dict>
+                    <key>name</key>
+                    <string>entity.name.function.method.r2lang</string>
+                </dict>
+            </dict>
+            <key>end</key>
+            <string>\{{</string>
+            <key>name</key>
+            <string>meta.method.r2lang</string>
+        </dict>
+
+        <!-- Variables -->
+        <dict>
+            <key>match</key>
+            <string>\blet\s+([a-zA-Z_][a-zA-Z0-9_]*)</string>
+            <key>captures</key>
+            <dict>
+                <key>1</key>
+                <dict>
+                    <key>name</key>
+                    <string>variable.other.r2lang</string>
+                </dict>
+            </dict>
+        </dict>
+
+        <!-- Llamadas a funciones -->
+        <dict>
+            <key>match</key>
+            <string>\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(</string>
+            <key>captures</key>
+            <dict>
+                <key>1</key>
+                <dict>
+                    <key>name</key>
+                    <string>entity.name.function.call.r2lang</string>
+                </dict>
+            </dict>
+        </dict>
+    </array>
+
+    <!-- UUID único -->
+    <key>uuid</key>
+    <string>2c2e1f70-2c3f-11e9-b210-d663bd873d93</string>
+</dict>
+</plist>
