@@ -1304,10 +1304,9 @@ func (p *Parser) parseForStatement() Node {
 					Op:    "+",
 					Right: &NumberLiteral{Value: 1},
 				}}
-			for p.curTok.Value != ")" {
+			for p.curTok.Value != "{" {
 				p.nextToken()
 			}
-			p.nextToken()
 			body := p.parseBlockStatement()
 			return &ForStatement{Init: init, Condition: condition, Post: post, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
 		}
