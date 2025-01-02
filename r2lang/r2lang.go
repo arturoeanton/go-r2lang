@@ -1496,6 +1496,7 @@ func RunCode(filename string) {
 	RegisterOS(env)
 	RegisterHack(env)
 	RegisterConcurrency(env)
+	RegisterCollections(env)
 	parser := NewParser(code)
 	env.Run(parser)
 }
