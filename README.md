@@ -1,5 +1,5 @@
 
-# Curso Completo de r2lang generado por ia :P
+# Curso Completo de r2lang
 
 ¡Bienvenido al curso completo de **r2lang**! Aprende desde los conceptos básicos hasta proyectos avanzados en este poderoso y simple lenguaje de programación.
 
@@ -18,6 +18,7 @@
    - Pruebas Unitarias
    - Goroutines
    - Semáforos y Monitores
+   - Importaciones
 5. [Proyecto Final: Gestor de Tareas Web](#proyecto-final-gestor-de-tareas-web)
 
 ---
@@ -150,6 +151,27 @@ go(func() {
 });
 ```
 
+### Importaciones
+
+Usa `import` para incluir código de otros archivos:
+
+Archivo `math.r2`:
+
+```r2
+func sumar(a, b) {
+    return a + b;
+}
+```
+
+Archivo principal:
+
+```r2
+import "math.r2" as m;
+
+let resultado = m.sumar(5, 7);
+print("El resultado es:", resultado);
+```
+
 ---
 
 ## Proyecto Final: Gestor de Tareas Web
@@ -202,4 +224,4 @@ httpServe(":8080");
 
 ¡Si tienes ideas o mejoras para este tutorial, no dudes en hacer un fork o enviar un pull request! 🎉
 
-
+---
