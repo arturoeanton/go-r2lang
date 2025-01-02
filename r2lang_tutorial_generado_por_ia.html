@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso Completo de r2lang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        header {
+            background: #007acc;
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+        }
+        main {
+            padding: 1rem 2rem;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .code-box {
+            margin-bottom: 1rem;
+        }
+        section {
+            margin-bottom: 2rem;
+        }
+        h1, h2, h3 {
+            color: #007acc;
+        }
+        nav {
+            margin-bottom: 2rem;
+        }
+        nav a {
+            color: #007acc;
+            text-decoration: none;
+            margin-right: 1rem;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Curso Completo de r2lang</h1>
+        <p>Aprende r2lang desde lo básico hasta proyectos avanzados.</p>
+    </header>
+    <main>
+        <nav>
+            <h2>Índice</h2>
+            <a href="#intro">1. Introducción</a>
+            <a href="#basics">2. Conceptos Básicos</a>
+            <a href="#intermediate">3. Conceptos Intermedios</a>
+            <a href="#advanced">4. Conceptos Avanzados</a>
+            <a href="#project">5. Proyecto Final</a>
+        </nav>
+
+        <section id="intro">
+            <h2>1. Introducción</h2>
+            <p>r2lang es un lenguaje diseñado para ser simple, eficiente y flexible. Este curso cubre desde conceptos básicos como variables y ciclos, hasta temas avanzados como concurrencia y pruebas unitarias.</p>
+        </section>
+
+        <section id="basics">
+            <h2>2. Conceptos Básicos</h2>
+            <h3>2.1 Declaración de Variables</h3>
+            <p>Las variables en r2lang se declaran con la palabra clave <code>let</code>.</p>
+            <div class="code-box">
+                <pre>let x = 10;
+let y = "Hola mundo";
+print(x, y);</pre>
+            </div>
+            <h3>2.2 Condicionales</h3>
+            <p>Usa <code>if</code> y <code>else</code> para manejar condiciones.</p>
+            <div class="code-box">
+                <pre>let x = 15;
+if (x > 10) {
+    print("x es mayor que 10");
+} else {
+    print("x es menor o igual a 10");
+}</pre>
+            </div>
+            <h3>2.3 Ciclos</h3>
+            <p>Usa <code>for</code> y <code>while</code> para iterar.</p>
+            <div class="code-box">
+                <pre>for (let i = 0; i < 5; i = i + 1) {
+    print("Iteración:", i);
+}
+
+let j = 0;
+while (j < 3) {
+    print("Valor de j:", j);
+    j = j + 1;
+}</pre>
+            </div>
+        </section>
+
+        <section id="intermediate">
+            <h2>3. Conceptos Intermedios</h2>
+            <h3>3.1 Objetos</h3>
+            <p>Los objetos encapsulan datos y métodos relacionados.</p>
+            <div class="code-box">
+                <pre>obj Persona {
+    let nombre;
+    let edad;
+
+    func init(n, e) {
+        self.nombre = n;
+        self.edad = e;
+    }
+
+    func saludar() {
+        print("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
+    }
+}
+
+let p = Persona();
+p.init("Carlos", 30);
+p.saludar();</pre>
+            </div>
+            <h3>3.2 Mapas y Arrays</h3>
+            <p>Usa mapas y arrays para almacenar colecciones de datos.</p>
+            <div class="code-box">
+                <pre>let mapa = {clave1: "valor1", clave2: "valor2"};
+print(mapa["clave1"]);
+
+let array = [1, 2, 3, 4];
+print(array[2]);</pre>
+            </div>
+        </section>
+
+        <section id="advanced">
+            <h2>4. Conceptos Avanzados</h2>
+            <h3>4.1 Semáforos</h3>
+            <p>Controla el acceso concurrente con semáforos.</p>
+            <div class="code-box">
+                <pre>let sem = semaphore(1);
+
+go(func() {
+    acquire(sem);
+    print("Acceso exclusivo");
+    release(sem);
+});</pre>
+            </div>
+            <h3>4.2 Pruebas Unitarias</h3>
+            <p>Prueba tu código para garantizar calidad.</p>
+            <div class="code-box">
+                <pre>func testSuma() {
+    let x = 2 + 2;
+    assertEq(x, 4, "2+2 debería ser 4");
+}
+
+testSuma();</pre>
+            </div>
+            <h3>4.3 Goroutines</h3>
+            <p>Ejecuta funciones concurrentemente.</p>
+            <div class="code-box">
+                <pre>go(func() {
+    print("Esta función se ejecuta concurrentemente");
+});</pre>
+            </div>
+        </section>
+
+        <section id="project">
+            <h2>5. Proyecto Final: Gestor de Tareas Web</h2>
+            <p>Un servidor web para gestionar tareas.</p>
+            <div class="code-box">
+                <pre>obj Tareas {
+    let lista = [];
+
+    func agregar(tarea) {
+        self.lista = append(self.lista, tarea);
+    }
+
+    func listar() {
+        return self.lista;
+    }
+}
+
+let tareas = Tareas();
+
+httpGet("/agregar/:tarea", func(pathVars) {
+    tareas.agregar(pathVars["tarea"]);
+    return HttpResponse("Tarea agregada");
+});
+
+httpGet("/listar", func() {
+    return HttpResponse(JSON(tareas.listar()));
+});
+
+httpServe(":8080");</pre>
+            </div>
+            <p>Visita <code>http://localhost:8080</code> para interactuar.</p>
+        </section>
+
+        <footer>
+            <p style="text-align:center; padding:1rem; background:#007acc; color:white;">
+                Hecho con ❤️ para aprender r2lang.
+            </p>
+        </footer>
+    </main>
+</body>
+</html>
