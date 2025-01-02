@@ -3,6 +3,7 @@ package r2lang
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
@@ -17,6 +18,18 @@ const (
 	TOKEN_STRING = "STRING"
 	TOKEN_IDENT  = "IDENT"
 	TOKEN_SYMBOL = "SYMBOL"
+	TOKEN_IMPORT = "IMPORT"
+	TOKEN_AS     = "AS"
+
+	RETURN = "return"
+	LET    = "let"
+	FUNC   = "func"
+	IF     = "if"
+	WHILE  = "while"
+	FOR    = "for"
+	OBJECT = "obj"
+	IMPORT = "import"
+	AS     = "as"
 )
 
 var (
@@ -196,7 +209,16 @@ skipWhitespace:
 		for l.pos < l.length && (isLetter(l.input[l.pos]) || isDigit(l.input[l.pos])) {
 			l.pos++
 		}
-		return Token{Type: TOKEN_IDENT, Value: l.input[start:l.pos]}
+		literal := l.input[start:l.pos]
+		switch literal {
+		case IMPORT:
+			return Token{Type: TOKEN_IMPORT, Value: literal}
+		case AS:
+			return Token{Type: TOKEN_AS, Value: literal}
+		// ... otras palabras clave
+		default:
+			return Token{Type: TOKEN_IDENT, Value: literal}
+		}
 	}
 
 	panic(fmt.Sprintf("Caracter inesperado en lexer: %c", ch))
@@ -326,6 +348,64 @@ func (ifs *IfStatement) Eval(env *Environment) interface{} {
 	} else if ifs.Alternative != nil {
 		return ifs.Alternative.Eval(env)
 	}
+	return nil
+}
+
+// ImportStatement representa una declaración de importación con alias.
+type ImportStatement struct {
+	Path  string
+	Alias string // Alias opcional
+}
+
+func (is *ImportStatement) Eval(env *Environment) interface{} {
+	filePath := is.Path
+
+	// Resolver rutas relativas
+	if !filepath.IsAbs(filePath) {
+		dir := env.dir
+		filePath = filepath.Join(dir, filePath)
+	}
+
+	// Verificar si ya fue importado
+	if env.imported[filePath] {
+		return nil // Ya importado, no hacer nada
+	}
+
+	// Marcar como importado
+	env.imported[filePath] = true
+
+	// Leer el contenido del archivo
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		panic("Error al leer archivo importado: " + filePath)
+	}
+
+	// Crear un nuevo parser con el directorio base actualizado
+	parser := NewParser(string(content))
+
+	// Parsear el programa importado
+	importedProgram := parser.ParseProgram()
+
+	// Crear un nuevo entorno para el módulo importado
+	moduleEnv := NewInnerEnv(env)
+	moduleEnv.Set("currentFile", filePath)
+
+	// Evaluar en el entorno del módulo
+	importedProgram.Eval(moduleEnv)
+
+	// Obtener los símbolos del módulo importado
+	symbols := moduleEnv.store
+
+	// Si hay un alias, asignar los símbolos bajo ese alias
+	if is.Alias != "" {
+		env.Set(is.Alias, symbols)
+	} else {
+		// Si no hay alias, exportar directamente
+		for k, v := range symbols {
+			env.Set(k, v)
+		}
+	}
+
 	return nil
 }
 
@@ -703,14 +783,17 @@ func instantiateObject(env *Environment, blueprint map[string]interface{}) *Obje
 // ============================================================
 
 type Environment struct {
-	store map[string]interface{}
-	outer *Environment
+	store    map[string]interface{}
+	outer    *Environment
+	imported map[string]bool
+	dir      string
 }
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		store: make(map[string]interface{}),
-		outer: nil,
+		store:    make(map[string]interface{}),
+		outer:    nil,
+		imported: make(map[string]bool),
 	}
 }
 
@@ -905,6 +988,32 @@ func NewParser(input string) *Parser {
 	p.nextToken()
 	return p
 }
+func (p *Parser) parseImportStatement() Node {
+	p.nextToken() // Consumir 'import'
+
+	if p.curTok.Type != TOKEN_STRING {
+		panic("Se esperaba una cadena de caracteres después de 'import'")
+	}
+
+	path := p.curTok.Value
+	p.nextToken()
+
+	var alias string
+	if p.curTok.Type == TOKEN_AS {
+		p.nextToken() // Consumir 'as'
+		if p.curTok.Type != TOKEN_IDENT {
+			panic("Se esperaba un identificador tras 'as'")
+		}
+		alias = p.curTok.Value
+		p.nextToken()
+	}
+
+	if p.curTok.Value == ";" {
+		p.nextToken() // Consumir ';'
+	}
+
+	return &ImportStatement{Path: path, Alias: alias}
+}
 
 func (p *Parser) nextToken() {
 	p.curTok = p.peekTok
@@ -921,26 +1030,31 @@ func (p *Parser) ParseProgram() *Program {
 }
 
 func (p *Parser) parseStatement() Node {
-	if p.curTok.Value == "return" {
+
+	if p.curTok.Value == IMPORT {
+		return p.parseImportStatement()
+	}
+
+	if p.curTok.Value == RETURN {
 		return p.parseReturnStatement()
 	}
-	if p.curTok.Value == "let" {
+	if p.curTok.Value == LET {
 		return p.parseLetStatement()
 	}
-	if p.curTok.Value == "func" {
+	if p.curTok.Value == FUNC {
 		// esto parsea "func nombre(...) { ... }" => FunctionDeclaration con nombre
 		return p.parseFunctionDeclaration()
 	}
-	if p.curTok.Value == "if" {
+	if p.curTok.Value == IF {
 		return p.parseIfStatement()
 	}
-	if p.curTok.Value == "while" {
+	if p.curTok.Value == WHILE {
 		return p.parseWhileStatement()
 	}
-	if p.curTok.Value == "for" {
+	if p.curTok.Value == FOR {
 		return p.parseForStatement()
 	}
-	if p.curTok.Value == "obj" {
+	if p.curTok.Value == OBJECT {
 		return p.parseObjectDeclaration()
 	}
 	// sino parseAsignmentOrExpressionStatement
@@ -981,7 +1095,7 @@ func (p *Parser) parseReturnStatement() Node {
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de variable tras 'let'")
+		panic("Se esperaba nombre de variable tras '" + LET + "'")
 	}
 	name := p.curTok.Value
 	p.nextToken()
@@ -990,7 +1104,7 @@ func (p *Parser) parseLetStatement() Node {
 		return &LetStatement{Name: name, Value: nil}
 	}
 	if p.curTok.Value != "=" {
-		panic("Se esperaba '=' tras 'let var'")
+		panic("Se esperaba '=' tras '" + LET + " var'")
 	}
 	p.nextToken()
 	val := p.parseExpression()
@@ -1004,7 +1118,7 @@ func (p *Parser) parseLetStatement() Node {
 func (p *Parser) parseFunctionDeclaration() Node {
 	p.nextToken() // consumir "func"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de función tras 'func'")
+		panic("Se esperaba nombre de función tras '" + FUNC + "'")
 	}
 	funcName := p.curTok.Value
 	p.nextToken()
@@ -1060,7 +1174,7 @@ func (p *Parser) parseForStatement() Node {
 	p.nextToken()
 
 	var init Node
-	if p.curTok.Value == "let" {
+	if p.curTok.Value == LET {
 		init = p.parseLetStatement()
 	} else {
 		if p.curTok.Type != TOKEN_SYMBOL && !(p.curTok.Type == TOKEN_IDENT && p.peekTok.Value == "=") {
@@ -1082,14 +1196,14 @@ func (p *Parser) parseForStatement() Node {
 
 	var post Node
 	if p.curTok.Value != ")" {
-		if p.curTok.Value == "let" {
+		if p.curTok.Value == LET {
 			post = p.parseLetStatement()
 		} else {
 			post = p.parseAssignmentOrExpressionStatement()
 		}
 	}
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' en 'for(...)'")
+		panic("Se esperaba ')' en '" + FOR + "(...)'")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1100,27 +1214,27 @@ func (p *Parser) parseForStatement() Node {
 func (p *Parser) parseObjectDeclaration() Node {
 	p.nextToken() // "obj"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de obj tras 'obj'")
+		panic("Se esperaba nombre de obj tras '" + OBJECT + "'")
 	}
 	objName := p.curTok.Value
 	p.nextToken()
 	if p.curTok.Value != "{" {
-		panic("Se esperaba '{' tras nombre del obj")
+		panic("Se esperaba '{' tras nombre del " + OBJECT)
 	}
 	p.nextToken()
 
 	var members []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		if p.curTok.Value == "let" {
+		if p.curTok.Value == LET {
 			members = append(members, p.parseLetStatement())
-		} else if p.curTok.Value == "func" {
+		} else if p.curTok.Value == FUNC {
 			members = append(members, p.parseFunctionDeclaration())
 		} else {
-			panic("Dentro de obj => 'let' o 'func'")
+			panic("Dentro de obj => '" + LET + "' o '" + FUNC + "'")
 		}
 	}
 	if p.curTok.Value != "}" {
-		panic("Se esperaba '}' al final de obj")
+		panic("Se esperaba '}' al final de " + OBJECT)
 	}
 	p.nextToken()
 	return &ObjectDeclaration{Name: objName, Members: members}
@@ -1176,7 +1290,7 @@ func (p *Parser) parseExpression() Node {
 // parseFactor => parsea literales, ident, arrays, maps, paréntesis, O LA FUNCIÓN ANÓNIMA
 func (p *Parser) parseFactor() Node {
 	// ¿detectamos la anónima "func(x,y){...}"?
-	if p.curTok.Type == TOKEN_IDENT && p.curTok.Value == "func" {
+	if p.curTok.Type == TOKEN_IDENT && p.curTok.Value == FUNC {
 		return p.parseAnonymousFunction()
 	}
 
@@ -1352,12 +1466,22 @@ func (p *Parser) parseMapLiteral() Node {
 	return &MapLiteral{Pairs: pairs}
 }
 
-func RunCode(input string) {
+func RunCode(filename string) {
+
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("Error al leer el archivo %s: %v\n", filename, err)
+		os.Exit(1)
+	}
+	code := string(data)
+
 	env := NewEnvironment()
 	env.Set("true", true)
 	env.Set("false", false)
 	env.Set("nil", nil)
 	env.Set("null", nil)
+	env.dir = filepath.Dir(filename)
+
 	// Registrar otras librerías si las tienes:
 	RegisterLib(env)
 	RegisterStd(env)
@@ -1372,6 +1496,6 @@ func RunCode(input string) {
 	RegisterOS(env)
 	RegisterHack(env)
 	RegisterConcurrency(env)
-	parser := NewParser(input)
+	parser := NewParser(code)
 	env.Run(parser)
 }
