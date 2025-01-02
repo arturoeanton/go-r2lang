@@ -51,8 +51,18 @@ func RegisterCollections(env *Environment) {
 		if len(args) != 1 {
 			panic("len: solo se acepta un argumento")
 		}
+		v, ok := args[0].([]interface{})
+		if ok {
+			return len(v)
+		}
+		v1, ok := args[0].(string)
+		if ok {
+			return len(v1)
+		}
 
-		return len(args[0].([]interface{}))
+		v2 := args[0].(map[string]interface{})
+
+		return len(v2)
 	}))
 
 	// funcions para calcular index
