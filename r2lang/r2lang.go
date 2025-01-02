@@ -27,6 +27,7 @@ const (
 	IF     = "if"
 	WHILE  = "while"
 	FOR    = "for"
+	IN     = "in"
 	OBJECT = "obj"
 	IMPORT = "import"
 	AS     = "as"
@@ -46,9 +47,10 @@ type Token struct {
 // ============================================================
 
 type Lexer struct {
-	input  string
-	pos    int
-	length int
+	input        string
+	pos          int
+	length       int
+	currentToken Token
 }
 
 func NewLexer(input string) *Lexer {
@@ -65,7 +67,8 @@ func isWhitespace(ch byte) bool {
 func isLetter(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') ||
 		(ch >= 'A' && ch <= 'Z') ||
-		ch == '_'
+		ch == '_' ||
+		ch == '$'
 }
 func isDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
@@ -93,7 +96,8 @@ func (l *Lexer) parseNumberOrSign() Token {
 		panic("Número inválido en " + l.input[start:l.pos])
 	}
 	val := l.input[start:l.pos]
-	return Token{Type: TOKEN_NUMBER, Value: val}
+	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val}
+	return l.currentToken
 }
 
 func (l *Lexer) NextToken() Token {
@@ -129,7 +133,8 @@ skipWhitespace:
 	}
 
 	if l.pos >= l.length {
-		return Token{Type: TOKEN_EOF, Value: ""}
+		l.currentToken = Token{Type: TOKEN_EOF, Value: ""}
+		return l.currentToken
 	}
 
 	ch := l.input[l.pos]
@@ -148,6 +153,24 @@ skipWhitespace:
 		}
 	}
 
+	if ch == '+' {
+		nextch := l.input[l.pos+1]
+		if nextch == '+' {
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++"}
+			l.pos += 2
+			return l.currentToken
+		}
+	}
+
+	if ch == '-' {
+		nextch := l.input[l.pos+1]
+		if nextch == '-' {
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++"}
+			l.pos += 2
+			return l.currentToken
+		}
+	}
+
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
 		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":",
@@ -155,17 +178,20 @@ skipWhitespace:
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
 			l.pos++
-			return Token{Type: TOKEN_SYMBOL, Value: s}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s}
+			return l.currentToken
 		}
 	}
 
 	if string(ch) == "=" {
 		if l.pos+1 < l.length && l.input[l.pos+1] == '=' {
 			l.pos += 2
-			return Token{Type: TOKEN_SYMBOL, Value: "=="}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=="}
+			return l.currentToken
 		}
 		l.pos++
-		return Token{Type: TOKEN_SYMBOL, Value: "="}
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "="}
+		return l.currentToken
 	}
 
 	// Operadores relacionales
@@ -175,11 +201,13 @@ skipWhitespace:
 			if nextCh == '=' {
 				op := string(ch) + string(nextCh)
 				l.pos += 2
-				return Token{Type: TOKEN_SYMBOL, Value: op}
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op}
+				return l.currentToken
 			}
 		}
 		l.pos++
-		return Token{Type: TOKEN_SYMBOL, Value: string(ch)}
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch)}
+		return l.currentToken
 	}
 
 	// Cadena
@@ -195,7 +223,8 @@ skipWhitespace:
 		}
 		val := l.input[start+1 : l.pos]
 		l.pos++
-		return Token{Type: TOKEN_STRING, Value: val}
+		l.currentToken = Token{Type: TOKEN_STRING, Value: val}
+		return l.currentToken
 	}
 
 	// Números sin signo
@@ -212,12 +241,15 @@ skipWhitespace:
 		literal := l.input[start:l.pos]
 		switch literal {
 		case IMPORT:
-			return Token{Type: TOKEN_IMPORT, Value: literal}
+			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal}
+			return l.currentToken
 		case AS:
-			return Token{Type: TOKEN_AS, Value: literal}
+			l.currentToken = Token{Type: TOKEN_AS, Value: literal}
+			return l.currentToken
 		// ... otras palabras clave
 		default:
-			return Token{Type: TOKEN_IDENT, Value: literal}
+			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal}
+			return l.currentToken
 		}
 	}
 
@@ -431,18 +463,74 @@ func (ws *WhileStatement) Eval(env *Environment) interface{} {
 }
 
 type ForStatement struct {
-	Init      Node
-	Condition Node
-	Post      Node
-	Body      *BlockStatement
+	Init        Node
+	Condition   Node
+	Post        Node
+	Body        *BlockStatement
+	inFlag      bool
+	inArray     string
+	inMap       string
+	inIndexName string
 }
 
 func (fs *ForStatement) Eval(env *Environment) interface{} {
 	newEnv := NewInnerEnv(env)
+
 	var result interface{}
+
+	var arr []interface{}
+	var mapVal map[string]interface{}
+	var ok bool
+	flagArr := true
+	if fs.inFlag {
+		raw, _ := newEnv.Get(fs.inArray)
+		arr, ok = raw.([]interface{})
+		if !ok {
+			flagArr = false
+			mapVal, ok = raw.(map[string]interface{})
+			if !ok {
+				panic("No es un array ni mapa para for")
+			}
+		}
+
+	}
+	if fs.inFlag {
+		if flagArr {
+			for i, v := range arr {
+				newEnv.Set(fs.inIndexName, float64(i))
+				newEnv.Set("$k", float64(i))
+				newEnv.Set("$v", v)
+				val := fs.Body.Eval(newEnv)
+				if rv, ok := val.(ReturnValue); ok {
+					return rv
+				}
+				result = val
+				if fs.Post != nil {
+					fs.Post.Eval(newEnv)
+				}
+			}
+		} else {
+			for k, v := range mapVal {
+				newEnv.Set(fs.inIndexName, k)
+				newEnv.Set("$k", k)
+				newEnv.Set("$v", v)
+				val := fs.Body.Eval(newEnv)
+				if rv, ok := val.(ReturnValue); ok {
+					return rv
+				}
+				result = val
+				if fs.Post != nil {
+					fs.Post.Eval(newEnv)
+				}
+			}
+		}
+		return result
+	}
+
 	if fs.Init != nil {
 		fs.Init.Eval(newEnv)
 	}
+
 	for {
 		condVal := fs.Condition.Eval(newEnv)
 		if !toBool(condVal) {
@@ -1072,6 +1160,23 @@ func (p *Parser) parseAssignmentOrExpressionStatement() Node {
 		}
 		return &GenericAssignStatement{Left: left, Right: right}
 	}
+
+	if p.curTok.Value == "++" {
+		p.nextToken()
+		if p.curTok.Value == ";" {
+			p.nextToken()
+		}
+		return &GenericAssignStatement{Left: left, Right: &BinaryExpression{Left: left, Op: "+", Right: &NumberLiteral{Value: 1}}}
+	}
+
+	if p.curTok.Value == "--" {
+		p.nextToken()
+		if p.curTok.Value == ";" {
+			p.nextToken()
+		}
+		return &GenericAssignStatement{Left: left, Right: &BinaryExpression{Left: left, Op: "-", Right: &NumberLiteral{Value: 1}}}
+	}
+
 	if p.curTok.Value == ";" {
 		p.nextToken()
 	}
@@ -1103,6 +1208,11 @@ func (p *Parser) parseLetStatement() Node {
 		p.nextToken()
 		return &LetStatement{Name: name, Value: nil}
 	}
+
+	if p.curTok.Value == IN {
+		return &LetStatement{Name: name, Value: nil}
+	}
+
 	if p.curTok.Value != "=" {
 		panic("Se esperaba '=' tras '" + LET + " var'")
 	}
@@ -1176,6 +1286,32 @@ func (p *Parser) parseForStatement() Node {
 	var init Node
 	if p.curTok.Value == LET {
 		init = p.parseLetStatement()
+		init.(*LetStatement).Value = Node(&NumberLiteral{Value: 0})
+		indexName := init.(*LetStatement).Name
+		if p.curTok.Value == IN {
+			collName := p.peekTok.Value
+			condition := &BinaryExpression{
+				Left: &Identifier{Name: indexName},
+				Op:   "<",
+				Right: &CallExpression{
+					Callee: &Identifier{Name: "len"},
+					Args:   []Node{&Identifier{Name: collName}},
+				}}
+			post := &GenericAssignStatement{
+				Left: &Identifier{Name: indexName},
+				Right: &BinaryExpression{
+					Left:  &Identifier{Name: indexName},
+					Op:    "+",
+					Right: &NumberLiteral{Value: 1},
+				}}
+			for p.curTok.Value != ")" {
+				p.nextToken()
+			}
+			p.nextToken()
+			body := p.parseBlockStatement()
+			return &ForStatement{Init: init, Condition: condition, Post: post, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
+		}
+
 	} else {
 		if p.curTok.Type != TOKEN_SYMBOL && !(p.curTok.Type == TOKEN_IDENT && p.peekTok.Value == "=") {
 			// no hay init
@@ -1207,7 +1343,7 @@ func (p *Parser) parseForStatement() Node {
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
-	return &ForStatement{Init: init, Condition: condition, Post: post, Body: body}
+	return &ForStatement{Init: init, Condition: condition, Post: post, Body: body, inFlag: false}
 }
 
 // obj MiObj { ... }
