@@ -4,7 +4,7 @@ func main() {
         print("for i:", i);
     }
 
-    let rr = range(1,4)
+    rr = range(1,4)
     for (let i in rr) {
             print("(range)for i:", i, " value:", $v);
     }
