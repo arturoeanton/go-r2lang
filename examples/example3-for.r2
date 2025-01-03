@@ -4,8 +4,7 @@ func main() {
         print("for i:", i);
     }
 
-    rr = range(1,4)
-    for (let i in rr) {
+    for (let i in range(1,4)) {
             print("(range)for i:", i, " value:", $v);
     }
 
@@ -25,3 +24,12 @@ func main() {
 // for i: 0
 // for i: 1
 // for i: 2
+// (range)for i: 1 value: 1
+// (range)for i: 2 value: 2
+// (range)for i: 3 value: 3
+// for i: 0 value: 1
+// for i: 1 value: 2
+// for i: 2 value: 3
+// forin i: 1 value: 1
+// forin i: 2 value: 2
+// forin i: 3 value: 3

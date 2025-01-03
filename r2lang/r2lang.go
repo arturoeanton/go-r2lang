@@ -1,10 +1,12 @@
 package r2lang
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -13,24 +15,30 @@ import (
 // ============================================================
 
 const (
-	TOKEN_EOF    = "EOF"
-	TOKEN_NUMBER = "NUMBER"
-	TOKEN_STRING = "STRING"
-	TOKEN_IDENT  = "IDENT"
-	TOKEN_SYMBOL = "SYMBOL"
-	TOKEN_IMPORT = "IMPORT"
-	TOKEN_AS     = "AS"
+	TOKEN_EOF     = "EOF"
+	TOKEN_NUMBER  = "NUMBER"
+	TOKEN_STRING  = "STRING"
+	TOKEN_IDENT   = "IDENT"
+	TOKEN_SYMBOL  = "SYMBOL"
+	TOKEN_IMPORT  = "IMPORT"
+	TOKEN_AS      = "AS"
+	TOKEN_TRY     = "TRY"
+	TOKEN_CATCH   = "CATCH"
+	TOKEN_FINALLY = "FINALLY"
 
-	RETURN = "return"
-	LET    = "let"
-	FUNC   = "func"
-	IF     = "if"
-	WHILE  = "while"
-	FOR    = "for"
-	IN     = "in"
-	OBJECT = "obj"
-	IMPORT = "import"
-	AS     = "as"
+	RETURN  = "return"
+	LET     = "let"
+	FUNC    = "func"
+	IF      = "if"
+	WHILE   = "while"
+	FOR     = "for"
+	IN      = "in"
+	OBJECT  = "obj"
+	IMPORT  = "import"
+	AS      = "as"
+	TRY     = "try"
+	CATCH   = "catch"
+	FINALLY = "finally"
 )
 
 var (
@@ -462,6 +470,29 @@ func (ws *WhileStatement) Eval(env *Environment) interface{} {
 	return result
 }
 
+type TryStatement struct {
+	Body         *BlockStatement
+	CatchBlock   *BlockStatement
+	FinallyBlock *BlockStatement
+	ExceptionVar string
+}
+
+func (ts *TryStatement) Eval(env *Environment) interface{} {
+	defer func() {
+		if r := recover(); r != nil {
+			if ts.CatchBlock != nil {
+				newEnv := NewInnerEnv(env)
+				newEnv.Set(ts.ExceptionVar, r)
+				ts.CatchBlock.Eval(newEnv)
+			}
+		}
+		if ts.FinallyBlock != nil {
+			ts.FinallyBlock.Eval(env)
+		}
+	}()
+	return ts.Body.Eval(env)
+}
+
 type ForStatement struct {
 	Init        Node
 	Condition   Node
@@ -483,7 +514,15 @@ func (fs *ForStatement) Eval(env *Environment) interface{} {
 	var ok bool
 	flagArr := true
 	if fs.inFlag {
-		raw, _ := newEnv.Get(fs.inArray)
+		var raw interface{}
+		if _, ok = fs.Init.(*CallExpression); ok {
+			raw = fs.Init.Eval(newEnv)
+			newEnv.Set("$c", raw)
+		} else {
+			raw, _ = newEnv.Get(fs.inArray)
+			newEnv.Set("$c", raw)
+		}
+
 		arr, ok = raw.([]interface{})
 		if !ok {
 			flagArr = false
@@ -905,26 +944,25 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 	}
 	return nil, false
 }
-func (e *Environment) Run(parser *Parser) {
+func (e *Environment) Run(parser *Parser) (result interface{}) {
 	defer wg.Wait()
 	wg = sync.WaitGroup{}
 
 	ast := parser.ParseProgram()
 	// Ejecutar
-	ast.Eval(e)
+	result = ast.Eval(e)
 
 	// Llamar a main() si está
 	mainVal, ok := e.Get("main")
-	if !ok {
-		fmt.Println("Aviso: No existe función main().")
-		os.Exit(0)
+	if ok {
+		mainFn, isFn := mainVal.(*UserFunction)
+		if !isFn {
+			fmt.Println("Error: 'main' no es una función.")
+			os.Exit(1)
+		}
+		result = mainFn.Call()
 	}
-	mainFn, isFn := mainVal.(*UserFunction)
-	if !isFn {
-		fmt.Println("Error: 'main' no es una función.")
-		os.Exit(1)
-	}
-	mainFn.Call()
+	return result
 }
 
 // ============================================================
@@ -1123,6 +1161,10 @@ func (p *Parser) parseStatement() Node {
 		return p.parseImportStatement()
 	}
 
+	if p.curTok.Value == TRY {
+		return p.parseTryStatement()
+	}
+
 	if p.curTok.Value == RETURN {
 		return p.parseReturnStatement()
 	}
@@ -1142,11 +1184,51 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == FOR {
 		return p.parseForStatement()
 	}
+
 	if p.curTok.Value == OBJECT {
 		return p.parseObjectDeclaration()
 	}
 	// sino parseAsignmentOrExpressionStatement
 	return p.parseAssignmentOrExpressionStatement()
+}
+
+func (p *Parser) parseTryStatement() Node {
+	p.nextToken() // consumir "try"
+	body := p.parseBlockStatement()
+	exceptionVar := "$e"
+	var catchBlock *BlockStatement
+	if p.curTok.Value == CATCH {
+		p.nextToken() // consumir "catch"
+
+		if p.curTok.Value == "{" {
+			catchBlock = p.parseBlockStatement()
+		} else {
+
+			if p.curTok.Value != "(" {
+				panic("Se esperaba '(' después de 'catch'")
+			}
+			p.nextToken() // consumir "("
+			if p.curTok.Type != TOKEN_IDENT {
+				panic("Se esperaba nombre de variable de excepción")
+			}
+			exceptionVar = p.curTok.Value
+			p.nextToken()
+			if p.curTok.Value != ")" {
+				panic("Se esperaba ')' después del nombre de variable de excepción")
+			}
+			p.nextToken() // consumir ")"
+			catchBlock = p.parseBlockStatement()
+		}
+	}
+
+	var finallyBlock *BlockStatement
+	if p.curTok.Value == FINALLY {
+		p.nextToken() // consumir "finally"
+		finallyBlock = p.parseBlockStatement()
+	}
+
+	return &TryStatement{Body: body, CatchBlock: catchBlock, ExceptionVar: exceptionVar, FinallyBlock: finallyBlock}
+
 }
 
 // parseAssignmentOrExpressionStatement
@@ -1289,26 +1371,15 @@ func (p *Parser) parseForStatement() Node {
 		init.(*LetStatement).Value = Node(&NumberLiteral{Value: 0})
 		indexName := init.(*LetStatement).Name
 		if p.curTok.Value == IN {
-			collName := p.peekTok.Value
-			condition := &BinaryExpression{
-				Left: &Identifier{Name: indexName},
-				Op:   "<",
-				Right: &CallExpression{
-					Callee: &Identifier{Name: "len"},
-					Args:   []Node{&Identifier{Name: collName}},
-				}}
-			post := &GenericAssignStatement{
-				Left: &Identifier{Name: indexName},
-				Right: &BinaryExpression{
-					Left:  &Identifier{Name: indexName},
-					Op:    "+",
-					Right: &NumberLiteral{Value: 1},
-				}}
+			p.nextToken()
+
+			collName := p.curTok.Value
+			exp := p.parseExpression()
 			for p.curTok.Value != "{" {
 				p.nextToken()
 			}
 			body := p.parseBlockStatement()
-			return &ForStatement{Init: init, Condition: condition, Post: post, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
+			return &ForStatement{Init: exp, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
 		}
 
 	} else {
@@ -1634,4 +1705,54 @@ func RunCode(filename string) {
 	RegisterCollections(env)
 	parser := NewParser(code)
 	env.Run(parser)
+}
+
+func Repl(outputFalg bool) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Welcome to R2Lang REPL")
+	env := NewEnvironment()
+	env.Set("false", false)
+	env.Set("nil", nil)
+	env.Set("null", nil)
+
+	// Registrar otras librerías si las tienes:
+	RegisterLib(env)
+	RegisterStd(env)
+	RegisterIO(env)
+	RegisterHTTPClient(env)
+	RegisterString(env)
+	RegisterMath(env)
+	RegisterRand(env)
+	RegisterTest(env)
+	RegisterHTTP(env)
+	RegisterPrint(env)
+	RegisterOS(env)
+	RegisterHack(env)
+	RegisterConcurrency(env)
+	RegisterCollections(env)
+
+	for {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("Error:", r)
+				}
+			}()
+
+			fmt.Print("> ")
+			command, _ := reader.ReadString('\n')
+			command = strings.TrimSuffix(command, "\n")
+			if command == ".exit" {
+				os.Exit(0)
+			}
+			parser := NewParser(command)
+			out := env.Run(parser)
+			if outputFalg {
+				if out != nil {
+					fmt.Println(out)
+				}
+			}
+		}()
+
+	}
 }
