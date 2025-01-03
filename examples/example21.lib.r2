@@ -4,7 +4,7 @@ func func1() {
 }
 
 func func2() {
-    print("Función 2 ejecutada")
+    print("Función 2 ejecutada pepepepe")
 }
 
 let mensaje = "Este es un mensaje del archivo importado."

@@ -1,7 +1,6 @@
 package r2lang
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,16 +14,13 @@ import (
 // ============================================================
 
 const (
-	TOKEN_EOF     = "EOF"
-	TOKEN_NUMBER  = "NUMBER"
-	TOKEN_STRING  = "STRING"
-	TOKEN_IDENT   = "IDENT"
-	TOKEN_SYMBOL  = "SYMBOL"
-	TOKEN_IMPORT  = "IMPORT"
-	TOKEN_AS      = "AS"
-	TOKEN_TRY     = "TRY"
-	TOKEN_CATCH   = "CATCH"
-	TOKEN_FINALLY = "FINALLY"
+	TOKEN_EOF    = "EOF"
+	TOKEN_NUMBER = "NUMBER"
+	TOKEN_STRING = "STRING"
+	TOKEN_IDENT  = "IDENT"
+	TOKEN_SYMBOL = "SYMBOL"
+	TOKEN_IMPORT = "IMPORT"
+	TOKEN_AS     = "AS"
 
 	RETURN  = "return"
 	LET     = "let"
@@ -39,6 +35,13 @@ const (
 	TRY     = "try"
 	CATCH   = "catch"
 	FINALLY = "finally"
+
+	// Nuevos Tokens para la sintaxis de pruebas
+	TOKEN_TESTCASE = "TESTCASE"
+	TOKEN_GIVEN    = "GIVEN"
+	TOKEN_WHEN     = "WHEN"
+	TOKEN_THEN     = "THEN"
+	TOKEN_AND      = "AND"
 )
 
 var (
@@ -173,7 +176,7 @@ skipWhitespace:
 	if ch == '-' {
 		nextch := l.input[l.pos+1]
 		if nextch == '-' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++"}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--"}
 			l.pos += 2
 			return l.currentToken
 		}
@@ -247,12 +250,27 @@ skipWhitespace:
 			l.pos++
 		}
 		literal := l.input[start:l.pos]
-		switch literal {
-		case IMPORT:
+		switch strings.ToLower(literal) {
+		case strings.ToLower(IMPORT):
 			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal}
 			return l.currentToken
-		case AS:
+		case strings.ToLower(AS):
 			l.currentToken = Token{Type: TOKEN_AS, Value: literal}
+			return l.currentToken
+		case "given":
+			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given"}
+			return l.currentToken
+		case "when":
+			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When"}
+			return l.currentToken
+		case "then":
+			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then"}
+			return l.currentToken
+		case "and":
+			l.currentToken = Token{Type: TOKEN_AND, Value: "And"}
+			return l.currentToken
+		case "testcase":
+			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase"}
 			return l.currentToken
 		// ... otras palabras clave
 		default:
@@ -270,6 +288,74 @@ skipWhitespace:
 
 type Node interface {
 	Eval(env *Environment) interface{}
+}
+
+type NodeTest interface {
+	Eval(env *Environment) interface{}
+	EvalStep(env *Environment) interface{}
+}
+
+// ============================================================
+// 3.1) Nuevos Nodos para TestCase y TestStep
+// ============================================================
+
+// TestCase representa un caso de prueba con un nombre y pasos.
+type TestCase struct {
+	Name  string
+	Steps []TestStep
+}
+
+type TestStep struct {
+	Type    string // "Given", "When", "Then", "And"
+	Command Node
+}
+
+// Eval ejecuta el caso de prueba.
+func (tc *TestCase) Eval(env *Environment) interface{} {
+	fmt.Printf("Ejecutando Caso de Prueba: %s\n", tc.Name)
+	var previousStepType string
+
+	for _, step := range tc.Steps {
+		stepType := step.Type
+		if stepType == "And" {
+			stepType = previousStepType
+		} else {
+			previousStepType = stepType
+		}
+		fmt.Printf("  %s: ", stepType)
+
+		if ce, ok := step.Command.(*CallExpression); ok {
+			calleeVal := ce.Callee.Eval(env)
+			var argVals []interface{}
+			for _, a := range ce.Args {
+				argVals = append(argVals, a.Eval(env))
+			}
+			if currentStep, ok := calleeVal.(*UserFunction); ok {
+				out := currentStep.CallStep(env, argVals...)
+				if out != nil {
+					fmt.Println(out)
+				}
+			}
+			continue
+		}
+
+		if fl, ok := step.Command.(*FunctionLiteral); ok {
+			currentStep := fl.Eval(env).(*UserFunction)
+			out := currentStep.CallStep(env)
+			if out != nil {
+				fmt.Println(out)
+			}
+			continue
+		}
+
+	}
+	fmt.Println("Caso de Prueba Ejecutado Exitosamente.\n")
+	return nil
+}
+
+func (ts *TestStep) Eval(env *Environment) interface{} {
+	// Ejecutar el comando del paso
+	return ts.Command.Eval(env)
 }
 
 // ============================================================
@@ -422,6 +508,7 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 
 	// Crear un nuevo parser con el directorio base actualizado
 	parser := NewParser(string(content))
+	parser.SetBaseDir(filepath.Dir(filePath))
 
 	// Parsear el programa importado
 	importedProgram := parser.ParseProgram()
@@ -429,6 +516,7 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 	// Crear un nuevo entorno para el módulo importado
 	moduleEnv := NewInnerEnv(env)
 	moduleEnv.Set("currentFile", filePath)
+	moduleEnv.dir = filepath.Dir(filePath)
 
 	// Evaluar en el entorno del módulo
 	importedProgram.Eval(moduleEnv)
@@ -531,7 +619,6 @@ func (fs *ForStatement) Eval(env *Environment) interface{} {
 				panic("No es un array ni mapa para for")
 			}
 		}
-
 	}
 	if fs.inFlag {
 		if flagArr {
@@ -778,7 +865,7 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 		// Instanciar un blueprint
 		return instantiateObject(env, cv)
 	default:
-		panic("Intento de llamar algo que no es función ni blueprint")
+		panic("Intento de llamar algo que no es función ni blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
 	}
 }
 
@@ -857,8 +944,11 @@ type UserFunction struct {
 	IsMethod bool
 }
 
-func (uf *UserFunction) Call(args ...interface{}) interface{} {
-	newEnv := NewInnerEnv(uf.Env)
+func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{}) interface{} {
+	newEnv := currentEnv
+	if newEnv == nil {
+		newEnv = NewInnerEnv(uf.Env)
+	}
 	if uf.IsMethod {
 		if selfVal, ok := uf.Env.Get("self"); ok {
 			newEnv.Set("self", selfVal)
@@ -876,6 +966,14 @@ func (uf *UserFunction) Call(args ...interface{}) interface{} {
 		return rv.Value
 	}
 	return val
+}
+
+func (uf *UserFunction) Call(args ...interface{}) interface{} {
+	return uf.NativeCall(nil, args...)
+}
+
+func (uf *UserFunction) CallStep(env *Environment, args ...interface{}) interface{} {
+	return uf.NativeCall(env, args...)
 }
 
 type BuiltinFunction func(args ...interface{}) interface{}
@@ -926,14 +1024,17 @@ func NewEnvironment() *Environment {
 
 func NewInnerEnv(outer *Environment) *Environment {
 	return &Environment{
-		store: make(map[string]interface{}),
-		outer: outer,
+		store:    make(map[string]interface{}),
+		outer:    outer,
+		imported: make(map[string]bool),
+		dir:      outer.dir,
 	}
 }
 
 func (e *Environment) Set(name string, value interface{}) {
 	e.store[name] = value
 }
+
 func (e *Environment) Get(name string) (interface{}, bool) {
 	val, ok := e.store[name]
 	if ok {
@@ -944,6 +1045,7 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 	}
 	return nil, false
 }
+
 func (e *Environment) Run(parser *Parser) (result interface{}) {
 	defer wg.Wait()
 	wg = sync.WaitGroup{}
@@ -951,6 +1053,13 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 	ast := parser.ParseProgram()
 	// Ejecutar
 	result = ast.Eval(e)
+
+	// Ejecutar todos los TestCases
+	for _, stmt := range ast.Statements {
+		if tc, ok := stmt.(*TestCase); ok {
+			tc.Eval(e)
+		}
+	}
 
 	// Llamar a main() si está
 	mainVal, ok := e.Get("main")
@@ -1106,14 +1215,22 @@ type Parser struct {
 	lexer   *Lexer
 	curTok  Token
 	peekTok Token
+	baseDir string // Directorio base para importaciones
 }
 
 func NewParser(input string) *Parser {
 	p := &Parser{lexer: NewLexer(input)}
 	p.nextToken()
 	p.nextToken()
+	p.baseDir = ""
 	return p
 }
+
+// SetBaseDir establece el directorio base para importaciones
+func (p *Parser) SetBaseDir(dir string) {
+	p.baseDir = dir
+}
+
 func (p *Parser) parseImportStatement() Node {
 	p.nextToken() // Consumir 'import'
 
@@ -1141,6 +1258,43 @@ func (p *Parser) parseImportStatement() Node {
 	return &ImportStatement{Path: path, Alias: alias}
 }
 
+func (p *Parser) parseTestCase() Node {
+	p.nextToken() // Consumir 'TestCase'
+
+	if p.curTok.Type != TOKEN_STRING {
+		panic("Se esperaba una cadena de caracteres para el nombre del caso de prueba")
+	}
+	name := p.curTok.Value
+	p.nextToken()
+
+	if p.curTok.Value != "{" {
+		panic("Se esperaba '{' para iniciar el cuerpo del caso de prueba")
+	}
+	p.nextToken()
+
+	var steps []TestStep
+	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		var stepType string
+		switch p.curTok.Type {
+		case TOKEN_GIVEN, TOKEN_WHEN, TOKEN_THEN, TOKEN_AND:
+			stepType = p.curTok.Value
+			p.nextToken()
+		default:
+			panic("Se esperaba 'Given', 'When', 'Then' o 'And' en los pasos del caso de prueba")
+		}
+		command := p.parseExpression()
+		steps = append(steps, TestStep{Type: stepType, Command: command})
+		if p.curTok.Value == ";" {
+			p.nextToken()
+		}
+	}
+	if p.curTok.Value != "}" {
+		panic("Se esperaba '}' al final del caso de prueba")
+	}
+	p.nextToken()
+	return &TestCase{Name: name, Steps: steps}
+}
+
 func (p *Parser) nextToken() {
 	p.curTok = p.peekTok
 	p.peekTok = p.lexer.NextToken()
@@ -1159,6 +1313,10 @@ func (p *Parser) parseStatement() Node {
 
 	if p.curTok.Value == IMPORT {
 		return p.parseImportStatement()
+	}
+
+	if p.curTok.Type == TOKEN_TESTCASE {
+		return p.parseTestCase()
 	}
 
 	if p.curTok.Value == TRY {
@@ -1228,7 +1386,6 @@ func (p *Parser) parseTryStatement() Node {
 	}
 
 	return &TryStatement{Body: body, CatchBlock: catchBlock, ExceptionVar: exceptionVar, FinallyBlock: finallyBlock}
-
 }
 
 // parseAssignmentOrExpressionStatement
@@ -1409,7 +1566,7 @@ func (p *Parser) parseForStatement() Node {
 		}
 	}
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' en '" + FOR + "(...)'")
+		panic("Se esperaba ')' en 'for(...)'")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1496,11 +1653,12 @@ func (p *Parser) parseExpression() Node {
 // parseFactor => parsea literales, ident, arrays, maps, paréntesis, O LA FUNCIÓN ANÓNIMA
 func (p *Parser) parseFactor() Node {
 	// ¿detectamos la anónima "func(x,y){...}"?
-	if p.curTok.Type == TOKEN_IDENT && p.curTok.Value == FUNC {
+	if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == "func" {
 		return p.parseAnonymousFunction()
 	}
 
 	switch p.curTok.Type {
+
 	case TOKEN_NUMBER:
 		val, err := strconv.ParseFloat(p.curTok.Value, 64)
 		if err != nil {
@@ -1705,54 +1863,4 @@ func RunCode(filename string) {
 	RegisterCollections(env)
 	parser := NewParser(code)
 	env.Run(parser)
-}
-
-func Repl(outputFalg bool) {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Welcome to R2Lang REPL")
-	env := NewEnvironment()
-	env.Set("false", false)
-	env.Set("nil", nil)
-	env.Set("null", nil)
-
-	// Registrar otras librerías si las tienes:
-	RegisterLib(env)
-	RegisterStd(env)
-	RegisterIO(env)
-	RegisterHTTPClient(env)
-	RegisterString(env)
-	RegisterMath(env)
-	RegisterRand(env)
-	RegisterTest(env)
-	RegisterHTTP(env)
-	RegisterPrint(env)
-	RegisterOS(env)
-	RegisterHack(env)
-	RegisterConcurrency(env)
-	RegisterCollections(env)
-
-	for {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					fmt.Println("Error:", r)
-				}
-			}()
-
-			fmt.Print("> ")
-			command, _ := reader.ReadString('\n')
-			command = strings.TrimSuffix(command, "\n")
-			if command == ".exit" {
-				os.Exit(0)
-			}
-			parser := NewParser(command)
-			out := env.Run(parser)
-			if outputFalg {
-				if out != nil {
-					fmt.Println(out)
-				}
-			}
-		}()
-
-	}
 }

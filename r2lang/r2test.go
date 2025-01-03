@@ -138,4 +138,24 @@ func RegisterTest(env *Environment) {
 
 		return nil
 	}))
+
+	// Implementación de la librería de pruebas (ya definido arriba)
+	env.Set("printStep", BuiltinFunction(func(args ...interface{}) interface{} {
+		for _, arg := range args {
+			fmt.Print(arg, " ")
+		}
+		fmt.Println()
+		return nil
+	}))
+
+	env.Set("assertEqual", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) != 2 {
+			panic("assertEqual requiere exactamente 2 argumentos")
+		}
+		a, b := args[0], args[1]
+		if !equals(a, b) {
+			panic(fmt.Sprintf("Assertion Failed: %v != %v", a, b))
+		}
+		return nil
+	}))
 }
