@@ -5,6 +5,7 @@ func main() {
     // Goroutine que imprime números con retardos
     r2(func() {
         let i = 1;
+
         while (i <= 5) {
             print("Goroutine:", i);
             i = i + 1;
