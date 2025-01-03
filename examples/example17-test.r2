@@ -17,7 +17,39 @@ func testFalla() {
     assertEq("hola", "mundo", "esto fallará");
 }
 
+// Definir funciones de soporte para pruebas
+func setup() {
+    printStep("Configurando el entorno de prueba")
+}
+
+func teardown() {
+    printStep("Limpiando el entorno de prueba")
+}
+
+
+func testCase1() {
+    TestCase "Verificar Suma de Números" {
+        Given setup()
+        When func(){
+            let resultado = 2
+            let saludo = "Hola, " + "Mundo!"
+            resultado = 2 + 3
+            return "logica de negocio"
+        }
+        Then func(){
+            assertEqual(resultado, 5)
+            return "Validación de resultado"
+        }
+        And func(){
+            assertEqual(saludo, "Hola, Mundo!")
+            return "Validación de saludo"
+        }
+        Then teardown()
+    }
+}
+
 // Llamamos runAllTests() al final
 func main() {
+    //testCase1  ()
     runAllTests();
 }

@@ -1054,13 +1054,6 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 	// Ejecutar
 	result = ast.Eval(e)
 
-	// Ejecutar todos los TestCases
-	for _, stmt := range ast.Statements {
-		if tc, ok := stmt.(*TestCase); ok {
-			tc.Eval(e)
-		}
-	}
-
 	// Llamar a main() si está
 	mainVal, ok := e.Get("main")
 	if ok {

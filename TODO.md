@@ -4,3 +4,7 @@
 (len, substr, split, join)
 * [-] agregar manejo de maps
 (len, delete, keys, values)
+
+
+
+s
