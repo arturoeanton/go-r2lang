@@ -14,7 +14,7 @@
         <!-- Palabras clave -->
         <dict>
             <key>match</key>
-            <string>\b(let|func|return|if|else|for|in|while|obj|import|as)\b</string>
+            <string>\b(let|func|return|if|else|for|in|while|obj|import|as|try|catch|finally)\b</string>
             <key>name</key>
             <string>keyword.control.r2lang</string>
         </dict>

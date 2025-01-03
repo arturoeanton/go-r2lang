@@ -9,7 +9,19 @@ import (
 func main() {
 	filename := ""
 	if len(os.Args) > 1 {
-		filename = os.Args[1]
+		cmd := os.Args[1]
+		if cmd == "-repl" {
+			outputFlag := true
+			if len(os.Args) > 2 {
+				if os.Args[2] == "-no-output" {
+					outputFlag = false
+				}
+			}
+			r2lang.Repl(outputFlag)
+			os.Exit(0)
+		}
+		filename = cmd
+
 	} else {
 		// intentar main.r2
 		if _, err := os.Stat("main.r2"); os.IsNotExist(err) {

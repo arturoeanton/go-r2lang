@@ -162,7 +162,7 @@ func RegisterHTTP(env *Environment) {
 					fmt.Fprint(w, body.(string))
 					return
 				}
-				fmt.Fprint(w, "%v", respVal)
+				fmt.Fprintf(w, "%v", respVal)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
