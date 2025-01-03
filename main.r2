@@ -10,8 +10,7 @@ func teardown() {
 }
 
 
-func main() {
-
+func test1() {
 
     TestCase "Verificar Suma de Números" {
         Given setup()
@@ -32,7 +31,9 @@ func main() {
         }
         Then teardown()
     }
+}
 
-
+func main() {
+    test1()
 }
 

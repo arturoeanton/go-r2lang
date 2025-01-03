@@ -32,6 +32,5 @@ func main() {
         }
         Then teardown()
     }
-
 }
 
