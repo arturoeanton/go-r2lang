@@ -1,9 +1,27 @@
 // 3) Ejemplo con for
- func div() {
+function div() {
 
  }
 
-func main() {
+obj Persona   {
+    let nombre;
+        let edad;
+
+        method constructor(n, e) {
+            self.nombre = n;
+            self.edad = e;
+        }
+
+        method saludar() {
+            println("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
+        }
+}
+
+function main() {
+    print("main");
+    let p = Persona("Carlos", 30);
+    print("p:", p);
+    p.saludar();
     div()
     throw "holclkajncdlk a ";
 

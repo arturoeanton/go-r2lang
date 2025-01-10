@@ -22,9 +22,13 @@ const (
 	TOKEN_IMPORT = "IMPORT"
 	TOKEN_AS     = "AS"
 
-	RETURN  = "return"
-	LET     = "let"
-	FUNC    = "func"
+	RETURN   = "return"
+	LET      = "let"
+	VAR      = "var"
+	FUNC     = "func"
+	FUNCTION = "function"
+	METHOD   = "method"
+
 	IF      = "if"
 	WHILE   = "while"
 	FOR     = "for"
@@ -758,6 +762,7 @@ func (od *ObjectDeclaration) Eval(env *Environment) interface{} {
 			blueprint[node.Name] = fn
 		}
 	}
+
 	env.Set(od.Name, blueprint)
 	return nil
 }
@@ -879,7 +884,7 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 		return cv.Call(argVals...)
 	case map[string]interface{}:
 		// Instanciar un blueprint
-		return instantiateObject(env, cv)
+		return instantiateObject(env, cv, argVals)
 	default:
 		panic("Intento de llamar algo que no es función ni blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
 	}
@@ -1003,7 +1008,7 @@ type ObjectInstance struct {
 	Env *Environment
 }
 
-func instantiateObject(env *Environment, blueprint map[string]interface{}) *ObjectInstance {
+func instantiateObject(env *Environment, blueprint map[string]interface{}, argVals []interface{}) *ObjectInstance {
 	objEnv := NewInnerEnv(env)
 	instance := &ObjectInstance{Env: objEnv}
 	for k, v := range blueprint {
@@ -1021,6 +1026,7 @@ func instantiateObject(env *Environment, blueprint map[string]interface{}) *Obje
 		}
 	}
 	objEnv.Set("self", instance)
+
 	return instance
 }
 
@@ -1365,10 +1371,10 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == RETURN {
 		return p.parseReturnStatement()
 	}
-	if p.curTok.Value == LET {
+	if p.curTok.Value == LET || p.curTok.Value == VAR {
 		return p.parseLetStatement()
 	}
-	if p.curTok.Value == FUNC {
+	if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION {
 		// esto parsea "func nombre(...) { ... }" => FunctionDeclaration con nombre
 		return p.parseFunctionDeclaration()
 	}
@@ -1478,7 +1484,7 @@ func (p *Parser) parseReturnStatement() Node {
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de variable tras '" + LET + "'")
+		panic("Variable name expected after \"let\" or \"var\"")
 	}
 	name := p.curTok.Value
 	p.nextToken()
@@ -1492,7 +1498,7 @@ func (p *Parser) parseLetStatement() Node {
 	}
 
 	if p.curTok.Value != "=" {
-		panic("Se esperaba '=' tras '" + LET + " var'")
+		panic("Variable assignment expected after variable name")
 	}
 	p.nextToken()
 	val := p.parseExpression()
@@ -1506,12 +1512,12 @@ func (p *Parser) parseLetStatement() Node {
 func (p *Parser) parseFunctionDeclaration() Node {
 	p.nextToken() // consumir "func"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de función tras '" + FUNC + "'")
+		panic("Function name expected after \"func\"")
 	}
 	funcName := p.curTok.Value
 	p.nextToken()
 	if p.curTok.Value != "(" {
-		panic("Se esperaba '(' tras el nombre de la función")
+		panic("'(' expected after function name")
 	}
 	args := p.parseFunctionArgs()
 	body := p.parseBlockStatement()
@@ -1521,12 +1527,12 @@ func (p *Parser) parseFunctionDeclaration() Node {
 func (p *Parser) parseIfStatement() Node {
 	p.nextToken() // "if"
 	if p.curTok.Value != "(" {
-		panic("Se esperaba '(' tras 'if'")
+		panic("Expected '(' after 'if'")
 	}
 	p.nextToken()
 	cond := p.parseExpression()
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' tras condición if")
+		panic("')' expected after if condition")
 	}
 	p.nextToken()
 	consequence := p.parseBlockStatement()
@@ -1562,7 +1568,7 @@ func (p *Parser) parseForStatement() Node {
 	p.nextToken()
 
 	var init Node
-	if p.curTok.Value == LET {
+	if p.curTok.Value == LET || p.curTok.Value == VAR {
 		init = p.parseLetStatement()
 		init.(*LetStatement).Value = Node(&NumberLiteral{Value: 0})
 		indexName := init.(*LetStatement).Name
@@ -1598,7 +1604,7 @@ func (p *Parser) parseForStatement() Node {
 
 	var post Node
 	if p.curTok.Value != ")" {
-		if p.curTok.Value == LET {
+		if p.curTok.Value == LET || p.curTok.Value == VAR {
 			post = p.parseLetStatement()
 		} else {
 			post = p.parseAssignmentOrExpressionStatement()
@@ -1627,9 +1633,9 @@ func (p *Parser) parseObjectDeclaration() Node {
 
 	var members []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		if p.curTok.Value == LET {
+		if p.curTok.Value == LET || p.curTok.Value == VAR {
 			members = append(members, p.parseLetStatement())
-		} else if p.curTok.Value == FUNC {
+		} else if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION || p.curTok.Value == METHOD {
 			members = append(members, p.parseFunctionDeclaration())
 		} else {
 			panic("Dentro de obj => '" + LET + "' o '" + FUNC + "'")
