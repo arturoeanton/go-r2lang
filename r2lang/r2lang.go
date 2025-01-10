@@ -35,6 +35,7 @@ const (
 	TRY     = "try"
 	CATCH   = "catch"
 	FINALLY = "finally"
+	THROW   = "throw"
 
 	// Nuevos Tokens para la sintaxis de pruebas
 	TOKEN_TESTCASE = "TESTCASE"
@@ -51,6 +52,8 @@ var (
 type Token struct {
 	Type  string
 	Value string
+	Line  int
+	Pos   int
 }
 
 // ============================================================
@@ -107,7 +110,7 @@ func (l *Lexer) parseNumberOrSign() Token {
 		panic("Número inválido en " + l.input[start:l.pos])
 	}
 	val := l.input[start:l.pos]
-	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val}
+	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val, Line: 0, Pos: l.pos}
 	return l.currentToken
 }
 
@@ -144,7 +147,7 @@ skipWhitespace:
 	}
 
 	if l.pos >= l.length {
-		l.currentToken = Token{Type: TOKEN_EOF, Value: ""}
+		l.currentToken = Token{Type: TOKEN_EOF, Value: "", Line: 0, Pos: l.pos}
 		return l.currentToken
 	}
 
@@ -167,7 +170,7 @@ skipWhitespace:
 	if ch == '+' {
 		nextch := l.input[l.pos+1]
 		if nextch == '+' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++"}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: 0, Pos: l.pos}
 			l.pos += 2
 			return l.currentToken
 		}
@@ -176,7 +179,7 @@ skipWhitespace:
 	if ch == '-' {
 		nextch := l.input[l.pos+1]
 		if nextch == '-' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--"}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: 0, Pos: l.pos}
 			l.pos += 2
 			return l.currentToken
 		}
@@ -189,7 +192,7 @@ skipWhitespace:
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
 			l.pos++
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s, Line: 0, Pos: l.pos}
 			return l.currentToken
 		}
 	}
@@ -197,11 +200,11 @@ skipWhitespace:
 	if string(ch) == "=" {
 		if l.pos+1 < l.length && l.input[l.pos+1] == '=' {
 			l.pos += 2
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=="}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "==", Line: 0, Pos: l.pos}
 			return l.currentToken
 		}
 		l.pos++
-		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "="}
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=", Line: 0, Pos: l.pos}
 		return l.currentToken
 	}
 
@@ -212,12 +215,12 @@ skipWhitespace:
 			if nextCh == '=' {
 				op := string(ch) + string(nextCh)
 				l.pos += 2
-				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op}
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: 0, Pos: l.pos}
 				return l.currentToken
 			}
 		}
 		l.pos++
-		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch)}
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch), Line: 0, Pos: l.pos}
 		return l.currentToken
 	}
 
@@ -234,7 +237,7 @@ skipWhitespace:
 		}
 		val := l.input[start+1 : l.pos]
 		l.pos++
-		l.currentToken = Token{Type: TOKEN_STRING, Value: val}
+		l.currentToken = Token{Type: TOKEN_STRING, Value: val, Line: 0, Pos: l.pos}
 		return l.currentToken
 	}
 
@@ -252,29 +255,29 @@ skipWhitespace:
 		literal := l.input[start:l.pos]
 		switch strings.ToLower(literal) {
 		case strings.ToLower(IMPORT):
-			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal}
+			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal, Line: 0, Pos: l.pos}
 			return l.currentToken
 		case strings.ToLower(AS):
-			l.currentToken = Token{Type: TOKEN_AS, Value: literal}
+			l.currentToken = Token{Type: TOKEN_AS, Value: literal, Line: 0, Pos: l.pos}
 			return l.currentToken
 		case "given":
-			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given"}
+			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given", Line: 0, Pos: l.pos}
 			return l.currentToken
 		case "when":
-			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When"}
+			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When", Line: 0, Pos: l.pos}
 			return l.currentToken
 		case "then":
-			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then"}
+			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then", Line: 0, Pos: l.pos}
 			return l.currentToken
 		case "and":
-			l.currentToken = Token{Type: TOKEN_AND, Value: "And"}
+			l.currentToken = Token{Type: TOKEN_AND, Value: "And", Line: 0, Pos: l.pos}
 			return l.currentToken
 		case "testcase":
-			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase"}
+			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: 0, Pos: l.pos}
 			return l.currentToken
 		// ... otras palabras clave
 		default:
-			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal}
+			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal, Line: 0, Pos: l.pos}
 			return l.currentToken
 		}
 	}
@@ -397,9 +400,11 @@ type Program struct {
 }
 
 func (p *Program) Eval(env *Environment) interface{} {
+
 	var result interface{}
 	for _, stmt := range p.Statements {
 		val := stmt.Eval(env)
+
 		if rv, ok := val.(ReturnValue); ok {
 			return rv.Value
 		}
@@ -433,6 +438,7 @@ type GenericAssignStatement struct {
 }
 
 func (gas *GenericAssignStatement) Eval(env *Environment) interface{} {
+
 	val := gas.Right.Eval(env)
 	switch left := gas.Left.(type) {
 	case *Identifier:
@@ -581,6 +587,15 @@ func (ts *TryStatement) Eval(env *Environment) interface{} {
 	return ts.Body.Eval(env)
 }
 
+type ThrowStatement struct {
+	Message string
+}
+
+func (ts *ThrowStatement) Eval(env *Environment) interface{} {
+	panic(ts.Message)
+	return nil
+}
+
 type ForStatement struct {
 	Init        Node
 	Condition   Node
@@ -715,6 +730,7 @@ func (fd *FunctionDeclaration) Eval(env *Environment) interface{} {
 		Body:     fd.Body,
 		Env:      env,
 		IsMethod: false,
+		code:     fd.Name,
 	}
 	env.Set(fd.Name, fn)
 	return nil
@@ -942,6 +958,7 @@ type UserFunction struct {
 	Body     *BlockStatement
 	Env      *Environment
 	IsMethod bool
+	code     string
 }
 
 func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{}) interface{} {
@@ -969,7 +986,11 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 }
 
 func (uf *UserFunction) Call(args ...interface{}) interface{} {
-	return uf.NativeCall(nil, args...)
+	tmp := uf.Env.CurrenFx
+	uf.Env.CurrenFx = uf.code
+	out := uf.NativeCall(nil, args...)
+	uf.Env.CurrenFx = tmp
+	return out
 }
 
 func (uf *UserFunction) CallStep(env *Environment, args ...interface{}) interface{} {
@@ -1012,6 +1033,7 @@ type Environment struct {
 	outer    *Environment
 	imported map[string]bool
 	dir      string
+	CurrenFx string
 }
 
 func NewEnvironment() *Environment {
@@ -1047,10 +1069,21 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 }
 
 func (e *Environment) Run(parser *Parser) (result interface{}) {
+
 	defer wg.Wait()
 	wg = sync.WaitGroup{}
 
 	ast := parser.ParseProgram()
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Exception:", r)
+			fmt.Println("Current fx -> ", e.CurrenFx)
+		}
+	}()
+
+	e.CurrenFx = "."
+
 	// Ejecutar
 	result = ast.Eval(e)
 
@@ -1302,6 +1335,15 @@ func (p *Parser) ParseProgram() *Program {
 	return prog
 }
 
+func (p *Parser) parseThrowStatement() Node {
+	p.nextToken()
+	if p.curTok.Type != TOKEN_STRING {
+		panic("Se esperaba una cadena de caracteres para el mensaje de excepción")
+	}
+	message := fmt.Sprint(p.curTok.Value)
+	return &ThrowStatement{Message: message}
+}
+
 func (p *Parser) parseStatement() Node {
 
 	if p.curTok.Value == IMPORT {
@@ -1314,6 +1356,10 @@ func (p *Parser) parseStatement() Node {
 
 	if p.curTok.Value == TRY {
 		return p.parseTryStatement()
+	}
+
+	if p.curTok.Value == THROW {
+		return p.parseThrowStatement()
 	}
 
 	if p.curTok.Value == RETURN {
