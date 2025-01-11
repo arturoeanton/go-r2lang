@@ -3,19 +3,18 @@ class Persona {
     let nombre;
     let edad;
 
-    method init(n, e) {
+    constructor(n, e) {
         this.nombre = n;
         this.edad = e;
     }
 
-    method saludar() {
+    saludar() {
         println("Hola, soy", this.nombre, "y tengo", this.edad, "años.");
     }
 }
 
 func main() {
-    let p = Persona();
-    p.init("Carlos", 30);
+    let p = Persona("Carlos", 30);
     p.saludar();
 }
 
