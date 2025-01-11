@@ -1,6 +1,12 @@
 // example.r2
 
 func main() {
+
+ let a = [1,2,3,4,5];
+        println(">>>",a.length); // tiene que ser 1,2,3,4,5
+        a = a.map(func (v){ v*2}).filter(func (v){ v<10}).reduce(func (v,c) {v+c;});
+        print(a);
+
     let add = func(x, y) {
         return x + y;
     };
@@ -43,4 +49,14 @@ func main() {
         print("2 == 2 =>", eq1);
         print("2 == 2.0 =>", eq2);
         print("2.0 == 3.0 =>", eq3);
+
+
+           a = [1,2,3,4,5];
+           println(">>>",a.length); // tiene que ser 1,2,3,4,5
+           a = a.map(func (v){ v*2}).filter(func (v){ v<10}).reduce(func (v,c) {v+c;});
+           print(a); // tiene que ser 20  -> de map 2,4,6,8,10 -> de filter 2,4,6,8 -> de reduce 20
+
+
+
+
 }

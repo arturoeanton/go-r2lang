@@ -13,7 +13,7 @@ class Persona {
     }
 }
 
-func main() {
+function main() {
     let p = Persona("Carlos", 30);
     p.saludar();
 }
