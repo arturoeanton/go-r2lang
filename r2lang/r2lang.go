@@ -942,6 +942,77 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return val
 	}
 
+	if arr, ok := objVal.([]interface{}); ok {
+		if ae.Member == "length" {
+			return float64(len(arr))
+		}
+
+		if ae.Member == "map" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				newArr := make([]interface{}, len(arr))
+				for i, v := range arr {
+					if bf, ok := args[0].(BuiltinFunction); ok {
+						newArr[i] = bf(v)
+					}
+					if uf, ok := args[0].(*UserFunction); ok {
+						newArr[i] = uf.Call(v)
+					}
+					if fl, ok := args[0].(*FunctionLiteral); ok {
+						newArr[i] = fl.Eval(env).(*UserFunction).Call(v)
+					}
+				}
+				return newArr
+			})
+		}
+
+		if ae.Member == "filter" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				newArr := make([]interface{}, 0)
+				for _, v := range arr {
+
+					flag := false
+					if bf, ok := args[0].(BuiltinFunction); ok {
+						flag = bf(v).(bool)
+					}
+					if uf, ok := args[0].(*UserFunction); ok {
+						flag = uf.Call(v).(bool)
+					}
+					if fl, ok := args[0].(*FunctionLiteral); ok {
+						flag = fl.Eval(env).(*UserFunction).Call(v).(bool)
+					}
+
+					if flag == true {
+						newArr = append(newArr, v)
+					}
+				}
+				return newArr
+			})
+		}
+
+		if ae.Member == "reduce" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(arr) == 0 {
+					return nil
+				}
+				var acc interface{}
+				for _, v := range arr {
+					if bf, ok := args[0].(BuiltinFunction); ok {
+						acc = bf(acc, v)
+					}
+					if uf, ok := args[0].(*UserFunction); ok {
+						acc = uf.Call(acc, v)
+					}
+					if fl, ok := args[0].(*FunctionLiteral); ok {
+						acc = fl.Eval(env).(*UserFunction).Call(acc, v)
+					}
+				}
+				return acc
+			})
+		}
+
+		panic("Array no tiene propiedad: " + ae.Member)
+	}
+
 	panic("Acceso a propiedad en tipo no soportado: " + fmt.Sprintf("%T", objVal))
 }
 
@@ -1375,11 +1446,6 @@ func (p *Parser) nextToken() {
 	p.peekTok = p.lexer.NextToken()
 
 }
-func (p *Parser) prevToken() {
-	p.peekTok = p.curTok
-	p.curTok = p.prevTok
-	p.prevTok = p.lexer.NextToken()
-}
 
 func (p *Parser) ParseProgram() *Program {
 	prog := &Program{}
@@ -1757,16 +1823,8 @@ func (p *Parser) parseExpression() Node {
 // parseFactor => parsea literales, ident, arrays, maps, paréntesis, O LA FUNCIÓN ANÓNIMA
 func (p *Parser) parseFactor() Node {
 	// ¿detectamos la anónima "func(x,y){...}"?
-	if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == "func" {
+	if p.curTok.Type == TOKEN_IDENT && (strings.ToLower(p.curTok.Value) == FUNC || strings.ToLower(p.curTok.Value) == FUNCTION) {
 		return p.parseAnonymousFunction()
-	}
-
-	if p.prevTok.Value == "=" && p.curTok.Value == "(" {
-		return p.parseLambdaFunction()
-	}
-
-	if p.prevTok.Value == ":" && p.curTok.Value == "(" {
-		return p.parseLambdaFunction()
 	}
 
 	switch p.curTok.Type {
@@ -1823,22 +1881,6 @@ func (p *Parser) parseAnonymousFunction() Node {
 		p.except("Se esperaba '(' tras 'func' en la función anónima")
 	}
 	args := p.parseFunctionArgs()
-	body := p.parseBlockStatement()
-	return &FunctionLiteral{Args: args, Body: body}
-}
-
-func (p *Parser) parseLambdaFunction() Node {
-	// ahora para parcear (a,b,c ... z) => { .... code .... }
-
-	if p.curTok.Value != "(" {
-		p.except("Se esperaba '(' tras 'func' en la función lambda")
-	}
-	args := p.parseFunctionArgs()
-	if p.curTok.Value != "=>" {
-		p.except("Se esperaba '=>' tras argumentos de función lambda")
-	}
-
-	p.nextToken()
 	body := p.parseBlockStatement()
 	return &FunctionLiteral{Args: args, Body: body}
 }
@@ -1966,7 +2008,7 @@ func (p *Parser) except(msgErr string) {
 	if err != nil {
 		panic(msg)
 	}
-	//os.Exit(1)
+	os.Exit(1)
 	panic(msg)
 
 }
