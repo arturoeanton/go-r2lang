@@ -29,6 +29,7 @@ function main() {
     let fx = function (a,j,c)   { return a+j+c; };
 
 
+    @
 
     println(data.fx(2,3))
 
