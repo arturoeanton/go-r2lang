@@ -1,15 +1,15 @@
 // 5) Ejemplo con obj y self
-obj Persona {
+class Persona {
     let nombre;
     let edad;
 
-    func init(n, e) {
-        self.nombre = n;
-        self.edad = e;
+    method init(n, e) {
+        this.nombre = n;
+        this.edad = e;
     }
 
-    func saludar() {
-        println("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
+    method saludar() {
+        println("Hola, soy", this.nombre, "y tengo", this.edad, "años.");
     }
 }
 

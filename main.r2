@@ -3,32 +3,46 @@ function div() {
 
  }
 
-obj Persona   {
+class Persona   {
     let nombre;
-        let edad;
-
-        method constructor(n, e) {
-            self.nombre = n;
-            self.edad = e;
-        }
-
-        method saludar() {
-            println("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
-        }
+    let edad;
+    constructor(n, e) {
+        this.nombre = n;
+        this.edad = e;
+    }
+    saludar() {
+        println("Hola, soy", this.nombre, "y tengo", this.edad, "años.");
+    }
 }
 
 function main() {
     print("main");
     let p = Persona("Carlos", 30);
-    print("p:", p);
+    let   p2 = Persona("Martin", 32);
+
+    let data = {
+        fx : (j,c) =>  { return data.aa+j+c; },
+        aa : 1,
+        bb : 2
+    }
+
+    let fx = (a,j,c) =>  { return a+j+c; };
+
+
+
+    println(data.fx(2,3))
+
     p.saludar();
+    p2.saludar();
     div()
-    throw "holclkajncdlk a ";
+   //
 
     try{
+
         for (let i in range(1,4)) {
                 print("(range)for i:", i, " value:", $v);
         }
+        throw "holclkajncdlk a ";
     }catch(e){
         print("catch Error:", e);
     }finally {
