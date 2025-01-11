@@ -29,7 +29,7 @@ function main() {
     let fx = function (a,j,c)   { return a+j+c; };
 
 
-    @
+    let a = "aaa"
 
     println(data.fx(2,3))
 
