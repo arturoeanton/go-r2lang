@@ -312,7 +312,10 @@ skipWhitespace:
 		}
 	}
 
-	panic(fmt.Sprintf("Caracter inesperado en lexer: %c", ch))
+	fmt.Fprintf(os.Stderr, "Line: %d,Col: %d\n", l.line, l.col)
+	fmt.Fprintf(os.Stderr, "Caracter inesperado en lexer: %c\n", ch)
+	os.Exit(1)
+	return Token{}
 }
 
 // ============================================================
