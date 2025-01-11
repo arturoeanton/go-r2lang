@@ -18,6 +18,7 @@ const (
 	TOKEN_NUMBER = "NUMBER"
 	TOKEN_STRING = "STRING"
 	TOKEN_IDENT  = "IDENT"
+	TOKEN_ARROW  = "ARROW"
 	TOKEN_SYMBOL = "SYMBOL"
 	TOKEN_IMPORT = "IMPORT"
 	TOKEN_AS     = "AS"
@@ -34,6 +35,7 @@ const (
 	FOR     = "for"
 	IN      = "in"
 	OBJECT  = "obj"
+	CLASS   = "class"
 	IMPORT  = "import"
 	AS      = "as"
 	TRY     = "try"
@@ -58,6 +60,7 @@ type Token struct {
 	Value string
 	Line  int
 	Pos   int
+	Col   int
 }
 
 // ============================================================
@@ -67,6 +70,8 @@ type Token struct {
 type Lexer struct {
 	input        string
 	pos          int
+	col          int
+	line         int
 	length       int
 	currentToken Token
 }
@@ -75,6 +80,7 @@ func NewLexer(input string) *Lexer {
 	return &Lexer{
 		input:  input,
 		pos:    0,
+		line:   1,
 		length: len(input),
 	}
 }
@@ -92,29 +98,39 @@ func isDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
 }
 
+func (l *Lexer) nextch() {
+	if l.input[l.pos] == '\n' {
+		l.line++
+		l.col = 0
+	}
+	l.pos++
+	l.col++
+
+}
+
 // parseNumberOrSign maneja -2.3, +10, etc.
 func (l *Lexer) parseNumberOrSign() Token {
 	start := l.pos
 	if l.input[l.pos] == '-' || l.input[l.pos] == '+' {
-		l.pos++
+		l.nextch()
 	}
 	hasDigits := false
 	for l.pos < l.length && isDigit(l.input[l.pos]) {
 		hasDigits = true
-		l.pos++
+		l.nextch()
 	}
 	if l.pos < l.length && l.input[l.pos] == '.' {
-		l.pos++
+		l.nextch()
 		for l.pos < l.length && isDigit(l.input[l.pos]) {
 			hasDigits = true
-			l.pos++
+			l.nextch()
 		}
 	}
 	if !hasDigits {
 		panic("Número inválido en " + l.input[start:l.pos])
 	}
 	val := l.input[start:l.pos]
-	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val, Line: 0, Pos: l.pos}
+	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val, Line: l.line, Pos: l.pos, Col: l.col}
 	return l.currentToken
 }
 
@@ -123,14 +139,14 @@ skipWhitespace:
 	for l.pos < l.length {
 		ch := l.input[l.pos]
 		if isWhitespace(ch) {
-			l.pos++
+			l.nextch()
 		} else if ch == '/' {
 			// Comentarios
 			if l.pos+1 < l.length && l.input[l.pos+1] == '/' {
 				// comentario de línea
 				l.pos += 2
 				for l.pos < l.length && l.input[l.pos] != '\n' {
-					l.pos++
+					l.nextch()
 				}
 			} else if l.pos+1 < l.length && l.input[l.pos+1] == '*' {
 				// /* ... */
@@ -140,7 +156,7 @@ skipWhitespace:
 						l.pos += 2
 						break
 					}
-					l.pos++
+					l.nextch()
 				}
 			} else {
 				break skipWhitespace
@@ -151,7 +167,7 @@ skipWhitespace:
 	}
 
 	if l.pos >= l.length {
-		l.currentToken = Token{Type: TOKEN_EOF, Value: "", Line: 0, Pos: l.pos}
+		l.currentToken = Token{Type: TOKEN_EOF, Value: "", Line: l.line, Pos: l.pos, Col: l.col}
 		return l.currentToken
 	}
 
@@ -174,8 +190,18 @@ skipWhitespace:
 	if ch == '+' {
 		nextch := l.input[l.pos+1]
 		if nextch == '+' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
+			return l.currentToken
+		}
+	}
+
+	if ch == '=' {
+		nextch := l.input[l.pos+1]
+		if nextch == '>' {
+			l.currentToken = Token{Type: TOKEN_ARROW, Value: "=>", Line: l.line, Pos: l.pos, Col: l.col}
+			l.pos += 2
+
 			return l.currentToken
 		}
 	}
@@ -183,7 +209,7 @@ skipWhitespace:
 	if ch == '-' {
 		nextch := l.input[l.pos+1]
 		if nextch == '-' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
 			return l.currentToken
 		}
@@ -191,12 +217,12 @@ skipWhitespace:
 
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
-		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":",
+		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":", "\n",
 	}
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
-			l.pos++
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s, Line: 0, Pos: l.pos}
+			l.nextch()
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		}
 	}
@@ -204,11 +230,11 @@ skipWhitespace:
 	if string(ch) == "=" {
 		if l.pos+1 < l.length && l.input[l.pos+1] == '=' {
 			l.pos += 2
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "==", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "==", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		}
-		l.pos++
-		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=", Line: 0, Pos: l.pos}
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=", Line: l.line, Pos: l.pos, Col: l.col}
 		return l.currentToken
 	}
 
@@ -219,12 +245,12 @@ skipWhitespace:
 			if nextCh == '=' {
 				op := string(ch) + string(nextCh)
 				l.pos += 2
-				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: 0, Pos: l.pos}
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: l.line, Pos: l.pos, Col: l.col}
 				return l.currentToken
 			}
 		}
-		l.pos++
-		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch), Line: 0, Pos: l.pos}
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch), Line: l.line, Pos: l.pos, Col: l.col}
 		return l.currentToken
 	}
 
@@ -232,16 +258,16 @@ skipWhitespace:
 	if ch == '"' || ch == '\'' {
 		quote := ch
 		start := l.pos
-		l.pos++
+		l.nextch()
 		for l.pos < l.length && l.input[l.pos] != quote {
-			l.pos++
+			l.nextch()
 		}
 		if l.pos >= l.length {
 			panic("Se esperaba comilla de cierre de cadena")
 		}
 		val := l.input[start+1 : l.pos]
-		l.pos++
-		l.currentToken = Token{Type: TOKEN_STRING, Value: val, Line: 0, Pos: l.pos}
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_STRING, Value: val, Line: l.line, Pos: l.pos, Col: l.col}
 		return l.currentToken
 	}
 
@@ -254,34 +280,34 @@ skipWhitespace:
 	if isLetter(ch) {
 		start := l.pos
 		for l.pos < l.length && (isLetter(l.input[l.pos]) || isDigit(l.input[l.pos])) {
-			l.pos++
+			l.nextch()
 		}
 		literal := l.input[start:l.pos]
 		switch strings.ToLower(literal) {
 		case strings.ToLower(IMPORT):
-			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal, Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case strings.ToLower(AS):
-			l.currentToken = Token{Type: TOKEN_AS, Value: literal, Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_AS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case "given":
-			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case "when":
-			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case "then":
-			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case "and":
-			l.currentToken = Token{Type: TOKEN_AND, Value: "And", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_AND, Value: "And", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		case "testcase":
-			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		// ... otras palabras clave
 		default:
-			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal, Line: 0, Pos: l.pos}
+			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken
 		}
 	}
@@ -886,7 +912,7 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 		// Instanciar un blueprint
 		return instantiateObject(env, cv, argVals)
 	default:
-		panic("Intento de llamar algo que no es función ni blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
+		panic("Attempt to call something that is neither a function nor a blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
 	}
 }
 
@@ -902,7 +928,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	if instance, ok := objVal.(*ObjectInstance); ok {
 		val, exists := instance.Env.Get(ae.Member)
 		if !exists {
-			panic("El objeto no tiene la propiedad: " + ae.Member)
+			panic("The object does not have the property: " + ae.Member)
 		}
 		return val
 	}
@@ -911,7 +937,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	if m, ok := objVal.(map[string]interface{}); ok {
 		val, exists := m[ae.Member]
 		if !exists {
-			panic("El mapa no tiene la clave: " + ae.Member)
+			panic("The map does not have the key:" + ae.Member)
 		}
 		return val
 	}
@@ -974,6 +1000,7 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	if uf.IsMethod {
 		if selfVal, ok := uf.Env.Get("self"); ok {
 			newEnv.Set("self", selfVal)
+			newEnv.Set("this", selfVal)
 		}
 	}
 	for i, param := range uf.Args {
@@ -1026,6 +1053,12 @@ func instantiateObject(env *Environment, blueprint map[string]interface{}, argVa
 		}
 	}
 	objEnv.Set("self", instance)
+	objEnv.Set("this", instance)
+	if constructor, ok := objEnv.Get("constructor"); ok {
+		if constructorFn, isFn := constructor.(*UserFunction); isFn {
+			constructorFn.Call(argVals...)
+		}
+	}
 
 	return instance
 }
@@ -1083,8 +1116,15 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Exception:", r)
-			fmt.Println("Current fx -> ", e.CurrenFx)
+			_, err := fmt.Fprintln(os.Stderr, "Exception:", r)
+			if err != nil {
+				panic(err)
+			}
+			_, err = fmt.Fprintln(os.Stderr, "Current fx -> ", e.CurrenFx)
+			if err != nil {
+				panic(err)
+			}
+			os.Exit(1)
 		}
 	}()
 
@@ -1245,6 +1285,8 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 
 type Parser struct {
 	lexer   *Lexer
+	savTok  Token
+	prevTok Token
 	curTok  Token
 	peekTok Token
 	baseDir string // Directorio base para importaciones
@@ -1267,7 +1309,7 @@ func (p *Parser) parseImportStatement() Node {
 	p.nextToken() // Consumir 'import'
 
 	if p.curTok.Type != TOKEN_STRING {
-		panic("Se esperaba una cadena de caracteres después de 'import'")
+		p.except("Se esperaba una cadena de caracteres después de 'import'")
 	}
 
 	path := p.curTok.Value
@@ -1277,7 +1319,7 @@ func (p *Parser) parseImportStatement() Node {
 	if p.curTok.Type == TOKEN_AS {
 		p.nextToken() // Consumir 'as'
 		if p.curTok.Type != TOKEN_IDENT {
-			panic("Se esperaba un identificador tras 'as'")
+			p.except("Se esperaba un identificador tras 'as'")
 		}
 		alias = p.curTok.Value
 		p.nextToken()
@@ -1294,13 +1336,13 @@ func (p *Parser) parseTestCase() Node {
 	p.nextToken() // Consumir 'TestCase'
 
 	if p.curTok.Type != TOKEN_STRING {
-		panic("Se esperaba una cadena de caracteres para el nombre del caso de prueba")
+		p.except("Se esperaba una cadena de caracteres para el nombre del caso de prueba")
 	}
 	name := p.curTok.Value
 	p.nextToken()
 
 	if p.curTok.Value != "{" {
-		panic("Se esperaba '{' para iniciar el cuerpo del caso de prueba")
+		p.except("Se esperaba '{' para iniciar el cuerpo del caso de prueba")
 	}
 	p.nextToken()
 
@@ -1312,7 +1354,7 @@ func (p *Parser) parseTestCase() Node {
 			stepType = p.curTok.Value
 			p.nextToken()
 		default:
-			panic("Se esperaba 'Given', 'When', 'Then' o 'And' en los pasos del caso de prueba")
+			p.except("Se esperaba 'Given', 'When', 'Then' o 'And' en los pasos del caso de prueba")
 		}
 		command := p.parseExpression()
 		steps = append(steps, TestStep{Type: stepType, Command: command})
@@ -1321,15 +1363,22 @@ func (p *Parser) parseTestCase() Node {
 		}
 	}
 	if p.curTok.Value != "}" {
-		panic("Se esperaba '}' al final del caso de prueba")
+		p.except("Se esperaba '}' al final del caso de prueba")
 	}
 	p.nextToken()
 	return &TestCase{Name: name, Steps: steps}
 }
 
 func (p *Parser) nextToken() {
+	p.prevTok = p.curTok
 	p.curTok = p.peekTok
 	p.peekTok = p.lexer.NextToken()
+
+}
+func (p *Parser) prevToken() {
+	p.peekTok = p.curTok
+	p.curTok = p.prevTok
+	p.prevTok = p.lexer.NextToken()
 }
 
 func (p *Parser) ParseProgram() *Program {
@@ -1344,7 +1393,7 @@ func (p *Parser) ParseProgram() *Program {
 func (p *Parser) parseThrowStatement() Node {
 	p.nextToken()
 	if p.curTok.Type != TOKEN_STRING {
-		panic("Se esperaba una cadena de caracteres para el mensaje de excepción")
+		p.except("Se esperaba una cadena de caracteres para el mensaje de excepción")
 	}
 	message := fmt.Sprint(p.curTok.Value)
 	return &ThrowStatement{Message: message}
@@ -1391,6 +1440,10 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == OBJECT {
 		return p.parseObjectDeclaration()
 	}
+
+	if p.curTok.Value == CLASS {
+		return p.parseObjectDeclaration()
+	}
 	// sino parseAsignmentOrExpressionStatement
 	return p.parseAssignmentOrExpressionStatement()
 }
@@ -1408,16 +1461,16 @@ func (p *Parser) parseTryStatement() Node {
 		} else {
 
 			if p.curTok.Value != "(" {
-				panic("Se esperaba '(' después de 'catch'")
+				p.except("Se esperaba '(' después de 'catch'")
 			}
 			p.nextToken() // consumir "("
 			if p.curTok.Type != TOKEN_IDENT {
-				panic("Se esperaba nombre de variable de excepción")
+				p.except("Se esperaba nombre de variable de excepción")
 			}
 			exceptionVar = p.curTok.Value
 			p.nextToken()
 			if p.curTok.Value != ")" {
-				panic("Se esperaba ')' después del nombre de variable de excepción")
+				p.except("Se esperaba ')' después del nombre de variable de excepción")
 			}
 			p.nextToken() // consumir ")"
 			catchBlock = p.parseBlockStatement()
@@ -1484,7 +1537,7 @@ func (p *Parser) parseReturnStatement() Node {
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Variable name expected after \"let\" or \"var\"")
+		p.except("Variable name expected after \"let\" or \"var\"")
 	}
 	name := p.curTok.Value
 	p.nextToken()
@@ -1498,7 +1551,7 @@ func (p *Parser) parseLetStatement() Node {
 	}
 
 	if p.curTok.Value != "=" {
-		panic("Variable assignment expected after variable name")
+		p.except("Variable assignment expected after variable name")
 	}
 	p.nextToken()
 	val := p.parseExpression()
@@ -1511,13 +1564,17 @@ func (p *Parser) parseLetStatement() Node {
 // parseFunctionDeclaration => "func nombre(args) { ... }"
 func (p *Parser) parseFunctionDeclaration() Node {
 	p.nextToken() // consumir "func"
+	return p.parseFunctionDeclaratioWithoutFunc()
+}
+
+func (p *Parser) parseFunctionDeclaratioWithoutFunc() Node {
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Function name expected after \"func\"")
+		p.except("Function name expected after \"func\"")
 	}
 	funcName := p.curTok.Value
 	p.nextToken()
 	if p.curTok.Value != "(" {
-		panic("'(' expected after function name")
+		p.except("'(' expected after function name")
 	}
 	args := p.parseFunctionArgs()
 	body := p.parseBlockStatement()
@@ -1527,12 +1584,12 @@ func (p *Parser) parseFunctionDeclaration() Node {
 func (p *Parser) parseIfStatement() Node {
 	p.nextToken() // "if"
 	if p.curTok.Value != "(" {
-		panic("Expected '(' after 'if'")
+		p.except("Expected '(' after 'if'")
 	}
 	p.nextToken()
 	cond := p.parseExpression()
 	if p.curTok.Value != ")" {
-		panic("')' expected after if condition")
+		p.except("')' expected after if condition")
 	}
 	p.nextToken()
 	consequence := p.parseBlockStatement()
@@ -1548,12 +1605,12 @@ func (p *Parser) parseIfStatement() Node {
 func (p *Parser) parseWhileStatement() Node {
 	p.nextToken() // "while"
 	if p.curTok.Value != "(" {
-		panic("Se esperaba '(' tras 'while'")
+		p.except("Se esperaba '(' tras 'while'")
 	}
 	p.nextToken()
 	cond := p.parseExpression()
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')'")
+		p.except("Se esperaba ')'")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1563,7 +1620,7 @@ func (p *Parser) parseWhileStatement() Node {
 func (p *Parser) parseForStatement() Node {
 	p.nextToken() // "for"
 	if p.curTok.Value != "(" {
-		panic("Se esperaba '(' tras 'for'")
+		p.except("Se esperaba '(' tras 'for'")
 	}
 	p.nextToken()
 
@@ -1611,7 +1668,7 @@ func (p *Parser) parseForStatement() Node {
 		}
 	}
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' en 'for(...)'")
+		p.except("Se esperaba ')' en 'for(...)'")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1622,12 +1679,12 @@ func (p *Parser) parseForStatement() Node {
 func (p *Parser) parseObjectDeclaration() Node {
 	p.nextToken() // "obj"
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba nombre de obj tras '" + OBJECT + "'")
+		p.except("Se esperaba nombre de obj tras '" + OBJECT + "'")
 	}
 	objName := p.curTok.Value
 	p.nextToken()
 	if p.curTok.Value != "{" {
-		panic("Se esperaba '{' tras nombre del " + OBJECT)
+		p.except("Se esperaba '{' tras nombre del " + OBJECT)
 	}
 	p.nextToken()
 
@@ -1637,12 +1694,14 @@ func (p *Parser) parseObjectDeclaration() Node {
 			members = append(members, p.parseLetStatement())
 		} else if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION || p.curTok.Value == METHOD {
 			members = append(members, p.parseFunctionDeclaration())
+		} else if p.curTok.Type == TOKEN_IDENT {
+			members = append(members, p.parseFunctionDeclaratioWithoutFunc())
 		} else {
-			panic("Dentro de obj => '" + LET + "' o '" + FUNC + "'")
+			p.except("Dentro de obj => '" + LET + "' o '" + FUNC + "'")
 		}
 	}
 	if p.curTok.Value != "}" {
-		panic("Se esperaba '}' al final de " + OBJECT)
+		p.except("Se esperaba '}' al final de " + OBJECT)
 	}
 	p.nextToken()
 	return &ObjectDeclaration{Name: objName, Members: members}
@@ -1656,12 +1715,12 @@ func (p *Parser) parseFunctionArgs() []string {
 		if p.curTok.Type == TOKEN_IDENT {
 			args = append(args, p.curTok.Value)
 		} else if p.curTok.Value != "," && p.curTok.Value != ")" {
-			panic("Error parseando args, token: " + p.curTok.Value)
+			p.except("Error parseando args, token: " + p.curTok.Value)
 		}
 		p.nextToken()
 	}
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' tras argumentos de función")
+		p.except("Se esperaba ')' tras argumentos de función")
 	}
 	p.nextToken() // consumir ")"
 	return args
@@ -1669,7 +1728,7 @@ func (p *Parser) parseFunctionArgs() []string {
 
 func (p *Parser) parseBlockStatement() *BlockStatement {
 	if p.curTok.Value != "{" {
-		panic("Se esperaba '{' para iniciar bloque")
+		p.except("Se esperaba '{' para iniciar bloque")
 	}
 	p.nextToken()
 	var stmts []Node
@@ -1677,7 +1736,7 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 		stmts = append(stmts, p.parseStatement())
 	}
 	if p.curTok.Value != "}" {
-		panic("Se esperaba '}' al cerrar bloque")
+		p.except("Se esperaba '}' al cerrar bloque")
 	}
 	p.nextToken()
 	return &BlockStatement{Statements: stmts}
@@ -1702,12 +1761,20 @@ func (p *Parser) parseFactor() Node {
 		return p.parseAnonymousFunction()
 	}
 
+	if p.prevTok.Value == "=" && p.curTok.Value == "(" {
+		return p.parseLambdaFunction()
+	}
+
+	if p.prevTok.Value == ":" && p.curTok.Value == "(" {
+		return p.parseLambdaFunction()
+	}
+
 	switch p.curTok.Type {
 
 	case TOKEN_NUMBER:
 		val, err := strconv.ParseFloat(p.curTok.Value, 64)
 		if err != nil {
-			panic("No se pudo parsear número: " + p.curTok.Value)
+			p.except("No se pudo parsear número: " + p.curTok.Value)
 		}
 		node := &NumberLiteral{Value: val}
 		p.nextToken()
@@ -1731,7 +1798,7 @@ func (p *Parser) parseFactor() Node {
 			p.nextToken()
 			expr := p.parseExpression()
 			if p.curTok.Value != ")" {
-				panic("Se esperaba ')' tras ( expr )")
+				p.except("Se esperaba ')' tras ( expr )")
 			}
 			p.nextToken()
 			return expr
@@ -1742,9 +1809,10 @@ func (p *Parser) parseFactor() Node {
 		if p.curTok.Value == "{" {
 			return p.parseMapLiteral()
 		}
-		panic("Símbolo inesperado en factor: " + p.curTok.Value)
+		p.except("Símbolo inesperado en factor: " + p.curTok.Value)
 	}
-	panic("Token inesperado en factor: " + p.curTok.Value)
+	p.except("Token inesperado en factor: " + p.curTok.Value)
+	return nil
 }
 
 // parseAnonymousFunction => "func(...args){...}"
@@ -1752,9 +1820,25 @@ func (p *Parser) parseAnonymousFunction() Node {
 	// ya vimos p.curTok == "func" (type=ident)
 	p.nextToken() // consumir "func"
 	if p.curTok.Value != "(" {
-		panic("Se esperaba '(' tras 'func' en la función anónima")
+		p.except("Se esperaba '(' tras 'func' en la función anónima")
 	}
 	args := p.parseFunctionArgs()
+	body := p.parseBlockStatement()
+	return &FunctionLiteral{Args: args, Body: body}
+}
+
+func (p *Parser) parseLambdaFunction() Node {
+	// ahora para parcear (a,b,c ... z) => { .... code .... }
+
+	if p.curTok.Value != "(" {
+		p.except("Se esperaba '(' tras 'func' en la función lambda")
+	}
+	args := p.parseFunctionArgs()
+	if p.curTok.Value != "=>" {
+		p.except("Se esperaba '=>' tras argumentos de función lambda")
+	}
+
+	p.nextToken()
 	body := p.parseBlockStatement()
 	return &FunctionLiteral{Args: args, Body: body}
 }
@@ -1784,7 +1868,7 @@ func (p *Parser) parseCallExpression(left Node) Node {
 		}
 	}
 	if p.curTok.Value != ")" {
-		panic("Se esperaba ')' al final de llamada a función")
+		p.except("Se esperaba ')' al final de llamada a función")
 	}
 	p.nextToken() // ")"
 	return &CallExpression{Callee: left, Args: args}
@@ -1793,7 +1877,7 @@ func (p *Parser) parseCallExpression(left Node) Node {
 func (p *Parser) parseAccessExpression(left Node) Node {
 	p.nextToken() // "."
 	if p.curTok.Type != TOKEN_IDENT {
-		panic("Se esperaba identificador tras '.'")
+		p.except("Se esperaba identificador tras '.'")
 	}
 	mem := p.curTok.Value
 	p.nextToken()
@@ -1805,7 +1889,7 @@ func (p *Parser) parseIndexExpression(left Node) Node {
 	p.nextToken() // "["
 	idx := p.parseExpression()
 	if p.curTok.Value != "]" {
-		panic("Se esperaba ']' en index")
+		p.except("Se esperaba ']' en index")
 	}
 	p.nextToken()
 	ie := &IndexExpression{Left: left, Index: idx}
@@ -1824,11 +1908,11 @@ func (p *Parser) parseArrayLiteral() Node {
 		} else if p.curTok.Value == "]" {
 			break
 		} else {
-			panic("Se esperaba ',' o ']' en array literal")
+			p.except("Se esperaba ',' o ']' en array literal")
 		}
 	}
 	if p.curTok.Value != "]" {
-		panic("Se esperaba ']' al final de array literal")
+		p.except("Se esperaba ']' al final de array literal")
 	}
 	p.nextToken()
 	return &ArrayLiteral{Elements: elems}
@@ -1850,11 +1934,11 @@ func (p *Parser) parseMapLiteral() Node {
 			key = p.curTok.Value
 			p.nextToken()
 		} else {
-			panic("Se esperaba clave string o identificador en map-literal")
+			p.except("Se esperaba clave string o identificador en map-literal")
 		}
 
 		if p.curTok.Value != ":" {
-			panic("Se esperaba ':' tras la clave en map-literal")
+			p.except("Se esperaba ':' tras la clave en map-literal")
 		}
 		p.nextToken()
 		valNode := p.parseExpression()
@@ -1865,14 +1949,26 @@ func (p *Parser) parseMapLiteral() Node {
 		} else if p.curTok.Value == "}" {
 			break
 		} else {
-			panic("Se esperaba ',' o '}' en map-literal")
+			p.except("Se esperaba ',' o '}' en map-literal")
 		}
 	}
 	if p.curTok.Value != "}" {
-		panic("Se esperaba '}' al final de map-literal")
+		p.except("Se esperaba '}' al final de map-literal")
 	}
 	p.nextToken()
 	return &MapLiteral{Pairs: pairs}
+}
+
+func (p *Parser) except(msgErr string) {
+
+	msg := fmt.Sprintln("Parser Exception: Line:", p.curTok.Line, ":", p.curTok.Col, "Error:", msgErr)
+	_, err := fmt.Fprintf(os.Stderr, msg)
+	if err != nil {
+		panic(msg)
+	}
+	//os.Exit(1)
+	panic(msg)
+
 }
 
 func RunCode(filename string) {
