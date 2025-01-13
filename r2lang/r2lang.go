@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -989,6 +990,103 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 					}
 				}
 				return newArr
+			})
+		}
+
+		if ae.Member == "reverse" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				newArr := make([]interface{}, len(arr))
+				for i, v := range arr {
+					newArr[len(arr)-1-i] = v
+				}
+				return newArr
+			})
+		}
+
+		if ae.Member == "sort" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				newArr := make([]interface{}, len(arr))
+				copy(newArr, arr)
+				if len(args) == 0 {
+					sort.Slice(newArr, func(i, j int) bool {
+						return toFloat(newArr[i]) < toFloat(newArr[j])
+					})
+					return newArr
+				}
+
+				if uf, ok := args[0].(*UserFunction); ok {
+
+					sort.Slice(newArr, func(i, j int) bool {
+						return uf.Call(newArr[i], newArr[j]).(bool)
+					})
+
+					return newArr
+				}
+
+				return nil
+			})
+		}
+
+		if ae.Member == "find" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(arr) == 0 {
+					panic("find: at least one argument is required and optionally a function find([fx], elem)")
+				}
+
+				if len(args) == 1 {
+					if bf, ok := args[0].(BuiltinFunction); ok {
+						for idx, v := range arr {
+							if bf(v).(bool) {
+								return idx
+							}
+						}
+						return nil
+					}
+
+					if uf, ok := args[0].(*UserFunction); ok {
+						for idx, v := range arr {
+							if uf.Call(v).(bool) {
+								return idx
+							}
+						}
+					}
+
+					if fl, ok := args[0].(*FunctionLiteral); ok {
+						for idx, v := range arr {
+							if fl.Eval(env).(*UserFunction).Call(v).(bool) {
+								return idx
+							}
+						}
+					}
+
+					for idx, v := range arr {
+						if v == args[0] {
+							return idx
+						}
+					}
+				}
+
+				if len(args) == 2 {
+					elem := args[1]
+					for idx, v := range arr {
+						flag := false
+						if bf, ok := args[0].(BuiltinFunction); ok {
+							flag = bf(v, elem).(bool)
+						}
+						if uf, ok := args[0].(*UserFunction); ok {
+							flag = uf.Call(v, elem).(bool)
+						}
+						if fl, ok := args[0].(*FunctionLiteral); ok {
+							flag = fl.Eval(env).(*UserFunction).Call(v, elem).(bool)
+						}
+						if flag == true {
+							return idx
+						}
+					}
+				}
+
+				panic("find: at least one argument is required and optionally a function find([fx], elem)")
+				return nil
 			})
 		}
 
