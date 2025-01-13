@@ -37,6 +37,7 @@ const (
 	IN      = "in"
 	OBJECT  = "obj"
 	CLASS   = "class"
+	EXTENDS = "extends"
 	IMPORT  = "import"
 	AS      = "as"
 	TRY     = "try"
@@ -772,17 +773,43 @@ func (fd *FunctionDeclaration) Eval(env *Environment) interface{} {
 
 // obj MiObj { let..., func... }
 type ObjectDeclaration struct {
-	Name    string
-	Members []Node
+	Name       string
+	ParentName string
+	Members    []Node
 }
 
 func (od *ObjectDeclaration) Eval(env *Environment) interface{} {
 	blueprint := make(map[string]interface{})
+	if od.ParentName != "" {
+		if parent, ok := env.Get(od.ParentName); ok {
+			blueprint["super"] = parent
+		}
+		blueprint["SuperClassName"] = blueprint["ClassName"]
+		raw, _ := env.Get(od.ParentName)
+		if props, ok := raw.(map[string]interface{}); ok {
+
+			for k, v := range props {
+				if k == "ClassName" || k == "SuperClassName" || k == "super" {
+					continue
+				}
+				blueprint[k] = v
+			}
+		}
+
+	}
+
+	blueprint["ClassName"] = od.Name
 	for _, m := range od.Members {
 		switch node := m.(type) {
 		case *LetStatement:
+			if node.Name == "super" || node.Name == "ClassName" || node.Name == "SuperClassName" {
+				panic("Cannot redefine 'super'")
+			}
 			blueprint[node.Name] = nil
 		case *FunctionDeclaration:
+			if node.Name == "super" || node.Name == "ClassName" || node.Name == "SuperClassName" {
+				panic("Cannot redefine 'super'")
+			}
 			fn := &UserFunction{
 				Args:     node.Args,
 				Body:     node.Body,
@@ -792,7 +819,6 @@ func (od *ObjectDeclaration) Eval(env *Environment) interface{} {
 			blueprint[node.Name] = fn
 		}
 	}
-
 	env.Set(od.Name, blueprint)
 	return nil
 }
@@ -902,7 +928,19 @@ type CallExpression struct {
 }
 
 func (ce *CallExpression) Eval(env *Environment) interface{} {
+	flagSuper := false
+	if o := ce.Callee; o != nil {
+		if ae, ok := o.(*AccessExpression); ok {
+			if id, ok := ae.Object.(*Identifier); ok {
+				if id.Name == "super" {
+					flagSuper = true
+				}
+			}
+		}
+	}
+
 	calleeVal := ce.Callee.Eval(env)
+
 	var argVals []interface{}
 	for _, a := range ce.Args {
 		argVals = append(argVals, a.Eval(env))
@@ -911,6 +949,9 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 	case BuiltinFunction:
 		return cv(argVals...)
 	case *UserFunction:
+		if flagSuper {
+			return cv.SuperCall(env, argVals...)
+		}
 		return cv.Call(argVals...)
 	case map[string]interface{}:
 		// Instanciar un blueprint
@@ -1286,12 +1327,27 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	newEnv := currentEnv
 	if newEnv == nil {
 		newEnv = NewInnerEnv(uf.Env)
+	} else {
+		newEnv = currentEnv
 	}
 	if uf.IsMethod {
-		if selfVal, ok := uf.Env.Get("self"); ok {
-			newEnv.Set("self", selfVal)
-			newEnv.Set("this", selfVal)
+		if uf.Env != nil {
+			if selfVal, ok := uf.Env.Get("self"); ok {
+				newEnv.Set("self", selfVal)
+				newEnv.Set("this", selfVal)
+			}
+		} else {
+			if selfVal, ok := currentEnv.Get("self"); ok {
+				newEnv.Set("self", selfVal)
+				newEnv.Set("this", selfVal)
+				if s, ok := newEnv.Get("super"); ok {
+					if smap, ok := s.(map[string]interface{}); ok {
+						newEnv.Set("super", smap["super"])
+					}
+				}
+			}
 		}
+
 	}
 	for i, param := range uf.Args {
 		if i < len(args) {
@@ -1315,8 +1371,20 @@ func (uf *UserFunction) Call(args ...interface{}) interface{} {
 	return out
 }
 
+func (uf *UserFunction) SuperCall(env *Environment, args ...interface{}) interface{} {
+	tmp := env.CurrenFx
+	env.CurrenFx = uf.code
+	out := uf.NativeCall(env, args...)
+	env.CurrenFx = tmp
+	return out
+}
+
 func (uf *UserFunction) CallStep(env *Environment, args ...interface{}) interface{} {
-	return uf.NativeCall(env, args...)
+	tmp := env.CurrenFx
+	env.CurrenFx = uf.code
+	out := uf.NativeCall(env, args...)
+	env.CurrenFx = tmp
+	return out
 }
 
 type BuiltinFunction func(args ...interface{}) interface{}
@@ -1342,6 +1410,7 @@ func instantiateObject(env *Environment, blueprint map[string]interface{}, argVa
 			objEnv.Set(k, vv)
 		}
 	}
+
 	objEnv.Set("self", instance)
 	objEnv.Set("this", instance)
 	if constructor, ok := objEnv.Get("constructor"); ok {
@@ -1404,19 +1473,20 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 
 	ast := parser.ParseProgram()
 
-	defer func() {
-		if r := recover(); r != nil {
-			_, err := fmt.Fprintln(os.Stderr, "Exception:", r)
-			if err != nil {
-				panic(err)
+	/*
+		defer func() {
+			if r := recover(); r != nil {
+				_, err := fmt.Fprintln(os.Stderr, "Exception:", r)
+				if err != nil {
+					panic(err)
+				}
+				_, err = fmt.Fprintln(os.Stderr, "Current fx -> ", e.CurrenFx)
+				if err != nil {
+					panic(err)
+				}
+				os.Exit(1)
 			}
-			_, err = fmt.Fprintln(os.Stderr, "Current fx -> ", e.CurrenFx)
-			if err != nil {
-				panic(err)
-			}
-			os.Exit(1)
-		}
-	}()
+		}()//*/
 
 	e.CurrenFx = "."
 
@@ -1984,11 +2054,22 @@ func (p *Parser) parseObjectDeclaration() Node {
 	}
 	objName := p.curTok.Value
 	p.nextToken()
-	if p.curTok.Value != "{" {
-		p.except("‘{’ was expected after the name of " + OBJECT)
+	if p.curTok.Value != "{" && p.curTok.Value != EXTENDS {
+		p.except("Expected ‘{’ or ‘extends’ after object name")
+	}
+	parentName := ""
+	if p.curTok.Value == EXTENDS {
+		p.nextToken()
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Expected object name after ‘extends’")
+		}
+		parentName = p.curTok.Value
+		p.nextToken()
+		if p.curTok.Value != "{" {
+			p.except("Expected ‘{’ after object name")
+		}
 	}
 	p.nextToken()
-
 	var members []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
 		if p.curTok.Value == LET || p.curTok.Value == VAR {
@@ -2005,7 +2086,7 @@ func (p *Parser) parseObjectDeclaration() Node {
 		p.except("Expected ‘}’ at the end of " + OBJECT)
 	}
 	p.nextToken()
-	return &ObjectDeclaration{Name: objName, Members: members}
+	return &ObjectDeclaration{Name: objName, Members: members, ParentName: parentName}
 }
 
 // parseFunctionArgs => lee identificadores separados por coma hasta ")"
