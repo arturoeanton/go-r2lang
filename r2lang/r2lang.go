@@ -947,8 +947,41 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	}
 
 	if arr, ok := objVal.([]interface{}); ok {
-		if ae.Member == "length" {
-			return float64(len(arr))
+		if ae.Member == "len" || ae.Member == "length" || ae.Member == "size" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) != 0 {
+					panic("len: only one argument is accepted")
+				}
+				return float64(len(arr))
+			})
+		}
+
+		if ae.Member == "delete" || ae.Member == "remove" || ae.Member == "pop" || ae.Member == "del" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) != 1 {
+					panic("delete: only one argument is accepted")
+				}
+				index := int(toFloat(args[0]))
+				if index < 0 || index >= len(arr) {
+					panic("Index out of range")
+				}
+				newArr := make([]interface{}, 0)
+				for i, v := range arr {
+					if i != index {
+						newArr = append(newArr, v)
+					}
+				}
+				return newArr
+			})
+		}
+
+		if ae.Member == "push" || ae.Member == "append" || ae.Member == "add" || ae.Member == "insert" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				newArr := make([]interface{}, len(arr))
+				copy(newArr, arr)
+				newArr = append(newArr, args...)
+				return newArr
+			})
 		}
 
 		if ae.Member == "map" {
