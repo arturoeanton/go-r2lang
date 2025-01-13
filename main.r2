@@ -9,6 +9,11 @@ function main(){
     println("a = a.sort()  // es lo mismo que a.sort(func (a,b){ a < b})")
     println("a",a)// tiene que ser 1,2,3,4,5
 
+    a = a.add(6);
+    println("a.add(6) >>>",a);
+    a = a.del(a.length()-1);
+    println("a.del(a.length()-1) >>>",a);
+
     println("a.find(3)  >>>",a.find(3));
     println("a.find(func(v){ v==3 }) >>>",a.find(func(v){ v==3 }));
     println("a.find(func(v,p){ v==p },3) >>>",a.find(func(v,p){ v==p },3));
