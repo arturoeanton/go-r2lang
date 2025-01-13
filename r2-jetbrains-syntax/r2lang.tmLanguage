@@ -27,6 +27,13 @@
             <string>string.quoted.double.r2lang</string>
         </dict>
 
+        <dict>
+            <key>match</key>
+            <string>'[^']*'</string>
+            <key>name</key>
+            <string>string.quoted.double.r2lang</string>
+        </dict>
+
         <!-- Comentarios -->
         <dict>
             <key>match</key>
