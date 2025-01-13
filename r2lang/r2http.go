@@ -343,7 +343,7 @@ func encodeMap(encoder *xml.Encoder, data map[string]interface{}) error {
 func removeBehavior(instance map[string]interface{}) map[string]interface{} {
 	instanceOut := make(map[string]interface{})
 	for k, v := range instance {
-		if k == "self" {
+		if k == "self" || k == "this" {
 			continue
 		}
 		if _, ok := v.(*UserFunction); ok {

@@ -257,6 +257,13 @@ func RegisterPrint(env *Environment) {
 		return fmt.Sprintf(f, formatArgs...)
 	}))
 
+	env.Set("sprint", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("sprint needs at least one argument")
+		}
+		return fmt.Sprint(args...)
+	}))
+
 	// 10) printError(str)
 	env.Set("printError", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {

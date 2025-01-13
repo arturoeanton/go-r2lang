@@ -958,17 +958,20 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 
 		if ae.Member == "delete" || ae.Member == "remove" || ae.Member == "pop" || ae.Member == "del" {
 			return BuiltinFunction(func(args ...interface{}) interface{} {
-				if len(args) != 1 {
-					panic("delete: only one argument is accepted")
-				}
-				index := int(toFloat(args[0]))
-				if index < 0 || index >= len(arr) {
-					panic("Index out of range")
+				if len(args) < 1 {
+					panic("delete: at least one argument is required")
 				}
 				newArr := make([]interface{}, 0)
 				for i, v := range arr {
-					if i != index {
-						newArr = append(newArr, v)
+					flag := false
+					for _, arg := range args {
+						if v == arg {
+							flag = true
+							break
+						}
+					}
+					if flag {
+						newArr = append(newArr, arr[i])
 					}
 				}
 				return newArr
@@ -980,6 +983,26 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 				newArr := make([]interface{}, len(arr))
 				copy(newArr, arr)
 				newArr = append(newArr, args...)
+				return newArr
+			})
+		}
+
+		if ae.Member == "insert_at" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) < 2 {
+					panic("insert_in: at least two arguments are required")
+				}
+				index := int(toFloat(args[0]))
+				if index < 0 || index >= len(arr) {
+					panic("insert_in: index out of range")
+				}
+				newArr := make([]interface{}, 0)
+				for i, v := range arr {
+					if i == index {
+						newArr = append(newArr, args[1:]...)
+					}
+					newArr = append(newArr, v)
+				}
 				return newArr
 			})
 		}
@@ -1060,43 +1083,76 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 			})
 		}
 
-		if ae.Member == "find" || ae.Member == "index" {
+		if ae.Member == "find" || ae.Member == "index" || ae.Member == "find_all" || ae.Member == "indexes" {
+
 			return BuiltinFunction(func(args ...interface{}) interface{} {
+				flagAll := ae.Member == "find_all" || ae.Member == "indexes"
+				out := make([]interface{}, 0)
 				if len(arr) == 0 {
 					panic("find: at least one argument is required and optionally a function find([fx], elem)")
 				}
 
 				if len(args) == 1 {
+					isFx := false
 					if bf, ok := args[0].(BuiltinFunction); ok {
+						isFx = true
 						for idx, v := range arr {
 							if bf(v).(bool) {
+								if flagAll {
+									out = append(out, idx)
+									continue
+								}
 								return idx
 							}
 						}
-						return nil
 					}
 
 					if uf, ok := args[0].(*UserFunction); ok {
+						isFx = true
 						for idx, v := range arr {
 							if uf.Call(v).(bool) {
+								if flagAll {
+									out = append(out, idx)
+									continue
+								}
 								return idx
 							}
 						}
 					}
 
 					if fl, ok := args[0].(*FunctionLiteral); ok {
+						isFx = true
 						for idx, v := range arr {
 							if fl.Eval(env).(*UserFunction).Call(v).(bool) {
+								if flagAll {
+									out = append(out, idx)
+									continue
+								}
 								return idx
 							}
 						}
 					}
 
+					if isFx {
+						if flagAll {
+							return out
+						}
+						return nil
+					}
+
 					for idx, v := range arr {
 						if v == args[0] {
+							if flagAll {
+								out = append(out, idx)
+								continue
+							}
 							return idx
 						}
 					}
+					if flagAll {
+						return out
+					}
+					return nil
 				}
 
 				if len(args) == 2 {
@@ -1113,9 +1169,17 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 							flag = fl.Eval(env).(*UserFunction).Call(v, elem).(bool)
 						}
 						if flag == true {
+							if flagAll {
+								out = append(out, idx)
+								continue
+							}
 							return idx
 						}
 					}
+					if flagAll {
+						return out
+					}
+					return nil
 				}
 
 				panic("find: at least one argument is required and optionally a function find([fx], elem)")

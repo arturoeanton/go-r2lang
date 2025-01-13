@@ -1,31 +1,30 @@
 func handleUser(pathVars, method, body) {
-  let id = pathVars["id"];
-  return "Hola usuario con id = " + id + " y method " + method;
+    let id = pathVars["id"];
+    let p1 = Persona("Arturo", 44);
+    return "Hola usuario con id = " + id + " y method " + method + " y p1.name " + p1.nombre;
 }
 
-obj Persona {
+class Persona {
     let nombre;
     let edad;
     let pp;
-    func init(n, e) {
+    constructor(n, e) {
         self.nombre = n;
         self.edad = e;
     }
-    func saludar() {
-        return sprintf("Hola, soy", self.nombre, "y tengo", self.edad, "años.");
+    saludar() {
+        return sprint("Hola, soy ", self.nombre, " y tengo ", self.edad, " años.");
     }
 }
 
 func main(){
-    httpGet("/users/:id", handleUser);
+    handler("GET","/users/:id", handleUser);
 
-    httpGet("/users", func(){
-                            let p = Persona();
-                            p.init("Carlos", 30);
+    handler("GET","/users", func(){
+                            let p = Persona("Carlos", 30);
 
 
-                            let p1 = Persona();
-                            p1.init("Arturo", 44);
+                            let p1 = Persona("Arturo", 44);
                             p.pp = p1;
 
                             data = {saludo :   p.saludar(), persona: p};
@@ -39,5 +38,5 @@ func main(){
 
 
       // Levantamos servidor
-      httpServe(":8080");
+      serve(":8080");
 }

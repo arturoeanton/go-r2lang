@@ -9,7 +9,7 @@ func main() {
     }
 
     let arr = [1, 2, 3];
-    for (let i=0; i<len(arr); i=i+1) {
+    for (let i=0; i<arr.len(); i=i+1) {
            print("for i:", i, " value:",  arr[i]);
     }
 
