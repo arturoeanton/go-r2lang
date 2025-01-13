@@ -25,7 +25,7 @@ func RegisterRand(env *Environment) {
 	// randInt(min, max) => random int en [min, max]
 	env.Set("randInt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("randInt necesita (min, max)")
+			panic("randInt needs (min, max)")
 		}
 		min := int(toFloat(args[0]))
 		max := int(toFloat(args[1]))
@@ -43,14 +43,14 @@ func RegisterRand(env *Environment) {
 	// randChoice(array) => elige un elemento al azar
 	env.Set("randChoice", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("randChoice necesita (array)")
+			panic("randChoice needs (array)")
 		}
 		arr, ok := args[0].([]interface{})
 		if !ok {
-			panic("randChoice: primer argumento debe ser un array nativo []interface{}")
+			panic("randChoice: first arg should be native []array")
 		}
 		if len(arr) == 0 {
-			panic("randChoice: array vacío, no se puede elegir")
+			panic("randChoice: array empty. No elements to choose from")
 		}
 		idx := rand.Intn(len(arr))
 		return arr[idx]
@@ -59,11 +59,11 @@ func RegisterRand(env *Environment) {
 	// shuffle(array) => baraja el array in-place
 	env.Set("shuffle", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("shuffle necesita (array)")
+			panic("shuffle needs (array)")
 		}
 		arr, ok := args[0].([]interface{})
 		if !ok {
-			panic("shuffle: primer argumento debe ser un array nativo []interface{}")
+			panic("shuffle: first arg should be native []array")
 		}
 		n := len(arr)
 		for i := n - 1; i > 0; i-- {
@@ -76,19 +76,19 @@ func RegisterRand(env *Environment) {
 	// sample(array, n) => devuelve un nuevo array con n elementos aleatorios sin reemplazo
 	env.Set("sample", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("sample necesita (array, n)")
+			panic("sample needs (array, n)")
 		}
 		arr, ok := args[0].([]interface{})
 		if !ok {
-			panic("sample: primer arg debe ser array nativo")
+			panic("sample: first arg should be native []array")
 		}
 		n := int(toFloat(args[1]))
 		if n < 0 {
-			panic("sample: n negativo")
+			panic("sample: n < 0")
 		}
 		if n > len(arr) {
 			// podría pánico, o ajustarlo
-			panic("sample: n > length del array")
+			panic("sample: n > length of array")
 		}
 		// clonamos arr para no modificar el original
 		cloned := make([]interface{}, len(arr))

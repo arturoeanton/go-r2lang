@@ -23,6 +23,19 @@ func (rp *R2Process) Eval(env *Environment) interface{} {
 }
 
 func RegisterOS(env *Environment) {
+
+	env.Set("exit", BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			os.Exit(0)
+		}
+		code, ok := args[0].(int)
+		if !ok {
+			panic("exit: arg should be int")
+		}
+		os.Exit(code)
+		return nil
+	}))
+
 	// osName() => Devuelve una string con GOOS o variable OS
 	env.Set("osName", BuiltinFunction(func(args ...interface{}) interface{} {
 		// Ejemplo: en Windows a veces "Windows_NT", en Linux no siempre está OS
@@ -113,7 +126,7 @@ func RegisterOS(env *Environment) {
 		}
 		path, ok := args[0].(string)
 		if !ok {
-			panic("listDir: arg debe ser string")
+			panic("listDir: arg should be string")
 		}
 		f, err := os.Open(path)
 		if err != nil {
@@ -122,7 +135,7 @@ func RegisterOS(env *Environment) {
 		defer f.Close()
 		names, err := f.Readdirnames(-1)
 		if err != nil {
-			panic(fmt.Sprintf("listDir: error al leer '%s': %v", path, err))
+			panic(fmt.Sprintf("listDir: error reading ‘%s’: %v", path, err))
 		}
 		arr := make([]interface{}, len(names))
 		for i, nm := range names {
@@ -134,11 +147,11 @@ func RegisterOS(env *Environment) {
 	// absPath(path) => string abs
 	env.Set("absPath", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("absPath necesita (path)")
+			panic("absPath needs (path)")
 		}
 		path, ok := args[0].(string)
 		if !ok {
-			panic("absPath: arg debe ser string")
+			panic("absPath: arg should be string")
 		}
 		abs, err := filepath.Abs(path)
 		if err != nil {
@@ -155,7 +168,7 @@ func RegisterOS(env *Environment) {
 		}
 		cmdLine, ok := args[0].(string)
 		if !ok {
-			panic("execCmd: arg debe ser string")
+			panic("execCmd: arg should be string")
 		}
 		out, err := exec.Command("sh", "-c", cmdLine).CombinedOutput()
 		if err != nil {
@@ -191,20 +204,20 @@ func RegisterOS(env *Environment) {
 	// Con exec.Command("sh", "-c", ...) sin capturar std, no tendremos "output".
 	env.Set("waitProcess", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("waitProcess necesita (r2proc)")
+			panic("waitProcess needs (r2proc)")
 		}
 		rp, ok := args[0].(*R2Process)
 		if !ok {
-			panic("waitProcess: arg no es un R2Process")
+			panic("waitProcess: arg is not an R2Process")
 		}
 		if rp.killed {
-			return "El proceso ya fue kill()ed."
+			return "error:The process was already kill()ed.."
 		}
 		err := rp.cmd.Wait()
 		if err != nil {
-			return fmt.Sprintf("Proceso finalizó con error: %v", err)
+			return fmt.Sprintf("error:Process ended with an error: %v", err)
 		}
-		return "Ok, finalizó sin error."
+		return "success"
 	}))
 
 	// killProcess(r2proc) => nil
@@ -215,14 +228,14 @@ func RegisterOS(env *Environment) {
 		}
 		rp, ok := args[0].(*R2Process)
 		if !ok {
-			panic("killProcess: arg no es R2Process")
+			panic("killProcess: arg is not an R2Process")
 		}
 		if rp.killed {
 			return nil // ya kill
 		}
 		err := rp.cmd.Process.Kill()
 		if err != nil {
-			return fmt.Sprintf("Error al kill => %v", err)
+			return fmt.Sprintf("Error kill => %v", err)
 		}
 		rp.killed = true
 		return nil

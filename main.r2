@@ -16,6 +16,18 @@ class Persona   {
 }
 
 function main() {
+    let aa = ["a", "b", "c"];
+    let bb = [1, 2, 3];
+    println("aa:", aa[1-4]);
+    let cc = aa + bb
+    print("cc:", "hola" + cc );
+    let mm = { "nombre": "Carlos", "edad": 30 };
+    mm["pp"] = "hola";
+    print("mm:", mm.nombre, mm.edad, mm.pp);
+    println("-----------------");
+    exit()
+
+
     print("main");
     let p = Persona("Carlos", 30);
     let   p2 = Persona("Martin", 32);

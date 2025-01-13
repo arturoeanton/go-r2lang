@@ -10,7 +10,7 @@ func RegisterMath(env *Environment) {
 	// sin(x) => float64
 	env.Set("sin", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("sin necesita (number)")
+			panic("sin needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Sin(x)
@@ -19,7 +19,7 @@ func RegisterMath(env *Environment) {
 	// cos(x)
 	env.Set("cos", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("cos necesita (number)")
+			panic("cos  needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Cos(x)
@@ -28,7 +28,7 @@ func RegisterMath(env *Environment) {
 	// tan(x)
 	env.Set("tan", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("tan necesita (number)")
+			panic("tan needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Tan(x)
@@ -37,11 +37,11 @@ func RegisterMath(env *Environment) {
 	// sqrt(x)
 	env.Set("sqrt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("sqrt necesita (number)")
+			panic("sqrt needs (number)")
 		}
 		x := toFloat(args[0])
 		if x < 0 {
-			panic("sqrt: no se puede raíz de número negativo (sin complejos)")
+			panic("sqrt: could not calculate square root of negative number")
 		}
 		return math.Sqrt(x)
 	}))
@@ -49,7 +49,7 @@ func RegisterMath(env *Environment) {
 	// pow(base, exp)
 	env.Set("pow", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("pow necesita (base, exp)")
+			panic("pow needs (base, exp)")
 		}
 		base := toFloat(args[0])
 		exp := toFloat(args[1])
@@ -59,11 +59,11 @@ func RegisterMath(env *Environment) {
 	// log(x) => log natural (base e)
 	env.Set("log", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("log necesita (number)")
+			panic("log needs (number)")
 		}
 		x := toFloat(args[0])
 		if x <= 0 {
-			panic("log: no se puede log de cero o negativo")
+			panic("log: could not calculate log of zero or negative number")
 		}
 		return math.Log(x)
 	}))
@@ -71,11 +71,11 @@ func RegisterMath(env *Environment) {
 	// log10(x) => log base 10
 	env.Set("log10", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("log10 necesita (number)")
+			panic("log10 needs (number)")
 		}
 		x := toFloat(args[0])
 		if x <= 0 {
-			panic("log10: no se puede log10 de cero o negativo")
+			panic("log10: could not calculate log of zero or negative number")
 		}
 		return math.Log10(x)
 	}))
@@ -83,7 +83,7 @@ func RegisterMath(env *Environment) {
 	// exp(x) => e^x
 	env.Set("exp", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("exp necesita (number)")
+			panic("exp needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Exp(x)
@@ -92,7 +92,7 @@ func RegisterMath(env *Environment) {
 	// abs(x) => valor absoluto
 	env.Set("abs", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("abs necesita (number)")
+			panic("abs needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Abs(x)
@@ -101,7 +101,7 @@ func RegisterMath(env *Environment) {
 	// floor(x) => float64
 	env.Set("floor", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("floor necesita (number)")
+			panic("floor needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Floor(x)
@@ -110,7 +110,7 @@ func RegisterMath(env *Environment) {
 	// ceil(x) => float64
 	env.Set("ceil", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("ceil necesita (number)")
+			panic("ceil needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Ceil(x)
@@ -119,7 +119,7 @@ func RegisterMath(env *Environment) {
 	// round(x) => float64
 	env.Set("round", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("round necesita (number)")
+			panic("round needs (number)")
 		}
 		x := toFloat(args[0])
 		return math.Round(x)
@@ -128,7 +128,7 @@ func RegisterMath(env *Environment) {
 	// max(a, b) => float64
 	env.Set("max", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("max necesita (a, b)")
+			panic("max needs (a, b)")
 		}
 		a := toFloat(args[0])
 		b := toFloat(args[1])
@@ -138,7 +138,7 @@ func RegisterMath(env *Environment) {
 	// min(a, b) => float64
 	env.Set("min", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("min necesita (a, b)")
+			panic("min needs (a, b)")
 		}
 		a := toFloat(args[0])
 		b := toFloat(args[1])
@@ -155,10 +155,11 @@ func RegisterMath(env *Environment) {
 	// Ejemplo: hypot(x, y) => sqrt(x^2 + y^2)
 	env.Set("hypot", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("hypot necesita (x, y)")
+			panic("hypot needs (x, y)")
 		}
 		x := toFloat(args[0])
 		y := toFloat(args[1])
 		return math.Hypot(x, y)
 	}))
+
 }
