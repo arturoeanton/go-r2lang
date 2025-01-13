@@ -27,6 +27,7 @@ var reservedKeywords = []string{
 	"for", "while", "break", "continue",
 	"switch", "case", "default", "import", "export", "var", "const", "true",
 	"false", "nil", "null", "testcase", "give", "when", "then", "and", "or",
+	"throw", "try", "catch", "finally", "this",
 }
 
 // Compilar una expresión regular para palabras reservadas
