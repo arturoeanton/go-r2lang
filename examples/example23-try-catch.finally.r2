@@ -4,14 +4,21 @@ func main() {
 
 
     try{
-        for (let i in range(1,4)) {
-                print("(range)for i:", i, " value:", $v);
-        }
-        throw "Exception"
-
+        let a = 1/0;
     }catch(e){
         print("Error:", e);
     }finally {
         print("Finally");
     }
+
+    try{
+        throw "Example of exception";
+    }catch(e){
+        print("Error2:", e);
+    }finally {
+        print("Finally2");
+    }
+
+
+
 }
