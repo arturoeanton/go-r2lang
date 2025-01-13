@@ -1,12 +1,65 @@
 
+class Persona{
+    let nombre;
+    let edad;
+
+    constructor(nombre, edad){
+        print("Constructor de Persona");
+
+        this.nombre = nombre;
+        this.edad = edad;
+    }
+
+    velocidad(){
+        v = 200 - (this.edad / 2);
+        print("Velocidad de Persona ", v);
+        return v
+    }
+}
+
+class Empleado extends Persona{
+    let salario;
+
+    constructor(nombre, edad, salario){
+        print("Constructor de Empleado");
+        super.constructor(nombre, edad);
+        this.salario = salario;
+    }
+
+    velocidad(){
+        v = 200 - (this.edad / 2);
+        print("Velocidad de Empleado ", v);
+        return v
+    }
+
+
+}
+
+class Velocista extends Empleado {
+    constructor(nombre, edad, salario, speed){
+        print("Constructor de Velocista");
+        super.constructor(nombre, edad, salario);
+        this.speed = speed;
+    }
+
+    velocidad(){
+        super.velocidad();
+        print("Velocidad de Velocista", this.speed);
+        return this.speed;
+    }
+
+    superVelocidad(){
+        print("Super Velocidad de Velocista", this.speed * 2);
+        return this.speed * 2;
+    }
+}
+
 
 func main(){
-    let arr = [1, 2, 3];
-    arr = arr.add( 5, 4);
-    arr = arr.sort(func (a,b){ b < a});
-    print("arr = arr.sort(func (a,b){ b < a});", arr); // [5, 4, 3, 2, 1]
-    arr = arr.insert_at( 2, 4); // [5, 4, 4, 3, 2, 1]
-    arr = arr.insert_at( 2, 0); // [5, 4, 0, 4, 3, 2, 1]
-    print("arr = arr.insert_at( 2, 0); >>", arr); // [5, 4, 0, 4, 3, 2, 1]
-    print("arr.indexes(func (v){v==4}).len() >>", arr.indexes(func (v){v==4}).len()); // 2
+    e =  Velocista("Juan", 30, 1000, 100);
+    print(e.nombre);
+    print(e.edad);
+    print(e.salario);
+    e.velocidad();
+    e.superVelocidad();
 }

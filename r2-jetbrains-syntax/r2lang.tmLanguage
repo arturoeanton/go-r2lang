@@ -31,7 +31,7 @@
             <key>match</key>
             <string>'[^']*'</string>
             <key>name</key>
-            <string>string.quoted.double.r2lang</string>
+            <string>string.quoted.simple.r2lang</string>
         </dict>
 
         <!-- Comentarios -->
