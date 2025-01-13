@@ -8,6 +8,7 @@ function main(){
     a = a.sort() // es lo mismo que a.sort(func (a,b){ a < b})
     println("a = a.sort()  // es lo mismo que a.sort(func (a,b){ a < b})")
     println("a",a)// tiene que ser 1,2,3,4,5
+    println("a.join(\"f\") >>>",a.join(",")); // tiene que ser 1,2,3,4,5
 
 
     a = a.add(6);
