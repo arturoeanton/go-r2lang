@@ -27,11 +27,11 @@ func RegisterHack(env *Environment) {
 	// 1) hashMD5(str) => string (hex)
 	env.Set("hashMD5", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("hashMD5 necesita (str)")
+			panic("hashMD5 needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("hashMD5: arg debe ser string")
+			panic("hashMD5: arg must be string")
 		}
 		sum := md5.Sum([]byte(s))
 		return fmt.Sprintf("%x", sum)
@@ -40,11 +40,11 @@ func RegisterHack(env *Environment) {
 	// 2) hashSHA1(str) => string (hex)
 	env.Set("hashSHA1", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("hashSHA1 necesita (str)")
+			panic("hashSHA1 needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("hashSHA1: arg debe ser string")
+			panic("hashSHA1: arg must be string")
 		}
 		sum := sha1.Sum([]byte(s))
 		return fmt.Sprintf("%x", sum)
@@ -53,11 +53,11 @@ func RegisterHack(env *Environment) {
 	// 3) hashSHA256(str) => string (hex)
 	env.Set("hashSHA256", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("hashSHA256 necesita (str)")
+			panic("hashSHA256 needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("hashSHA256: arg debe ser string")
+			panic("hashSHA256: arg must be string")
 		}
 		sum := sha256.Sum256([]byte(s))
 		return fmt.Sprintf("%x", sum)
@@ -66,11 +66,11 @@ func RegisterHack(env *Environment) {
 	// 4) base64Encode(str) => string
 	env.Set("base64Encode", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("base64Encode necesita (str)")
+			panic("base64Encode needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("base64Encode: arg debe ser string")
+			panic("base64Encode: arg must be string")
 		}
 		return base64.StdEncoding.EncodeToString([]byte(s))
 	}))
@@ -78,11 +78,11 @@ func RegisterHack(env *Environment) {
 	// 5) base64Decode(str) => string
 	env.Set("base64Decode", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("base64Decode necesita (str)")
+			panic("base64Decode needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("base64Decode: arg debe ser string")
+			panic("base64Decode: arg must be string")
 		}
 		decoded, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {
@@ -95,7 +95,7 @@ func RegisterHack(env *Environment) {
 	// *Muy* simplificado, hace un connect con timeout
 	env.Set("portScan", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 3 {
-			panic("portScan necesita (host, startPort, endPort)")
+			panic("portScan needs (host, startPort, endPort)")
 		}
 		host, ok1 := args[0].(string)
 		startP := int(toFloat(args[1]))
@@ -104,7 +104,7 @@ func RegisterHack(env *Environment) {
 			panic("portScan: host debe ser string")
 		}
 		if startP < 1 || endP > 65535 || endP < startP {
-			panic("portScan: rango de puertos inválido")
+			panic("portScan: invalid port range")
 		}
 		var openPorts []interface{}
 		for port := startP; port <= endP; port++ {
@@ -123,17 +123,17 @@ func RegisterHack(env *Environment) {
 	// Esto NO es un whois real con servidores especializados, sino un "whois <domain>" shell.
 	env.Set("whois", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("whois necesita (domain)")
+			panic("whois needs (domain)")
 		}
 		domain, ok := args[0].(string)
 		if !ok {
-			panic("whois: arg debe ser string")
+			panic("whois: arg must be string")
 		}
 		// Podrías llamar un "execCmd" si tienes uno, o un net.Dial("tcp", "whois.server.com:43")
 		// Simplificado => net.Dial con whois.verisign-grs.com:43
 		conn, err := net.Dial("tcp", "whois.verisign-grs.com:43")
 		if err != nil {
-			return fmt.Sprintf("Error al conectar whois: %v", err)
+			return fmt.Sprintf("Error connecting to whois: %v", err)
 		}
 		defer conn.Close()
 		// Enviar dominio + \r\n
@@ -156,11 +156,11 @@ func RegisterHack(env *Environment) {
 	// 8) hexdump(str) => string con un volcado hex
 	env.Set("hexdump", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("hexdump necesita (str)")
+			panic("hexdump needs (str)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("hexdump: arg debe ser string (o binario en base64), simplificado")
+			panic("hexdump: arg must be a string (or base64 binary)")
 		}
 		data := []byte(s)
 		// Generar volcado
@@ -200,12 +200,12 @@ func RegisterHack(env *Environment) {
 	// 1) hmacSHA256(key, message) => string (hex)
 	env.Set("hmacSHA256", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("hmacSHA256(key, message)")
+			panic("hmacSHA256 needs (key, message)")
 		}
 		k, ok1 := args[0].(string)
 		m, ok2 := args[1].(string)
 		if !(ok1 && ok2) {
-			panic("hmacSHA256: (string, string)")
+			panic("hmacSHA256: args must be strings")
 		}
 		mac := hmac.New(sha256.New, []byte(k))
 		mac.Write([]byte(m))
@@ -217,12 +217,12 @@ func RegisterHack(env *Environment) {
 	//   - generamos iv random
 	env.Set("aesEncrypt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("aesEncrypt(key, plaintext)")
+			panic("aesEncrypt needs (key, plaintext)")
 		}
 		key, ok1 := args[0].(string)
 		pt, ok2 := args[1].(string)
 		if !(ok1 && ok2) {
-			panic("aesEncrypt: (key, plaintext) deben ser strings")
+			panic("aesEncrypt: args must be strings")
 		}
 		// crear block AES
 		block, err := aes.NewCipher([]byte(key))
@@ -232,7 +232,7 @@ func RegisterHack(env *Environment) {
 		// generar IV
 		iv := make([]byte, aes.BlockSize)
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-			return fmt.Sprintf("aesEncrypt: error generando IV => %v", err)
+			return fmt.Sprintf("aesEncrypt: error generating IV => %v", err)
 		}
 		// modo CFB (simplificado), hay muchos modos
 		stream := cipher.NewCFBEncrypter(block, iv)
@@ -246,19 +246,19 @@ func RegisterHack(env *Environment) {
 	// 3) aesDecrypt(key, hexCombined) => plaintext
 	env.Set("aesDecrypt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("aesDecrypt(key, hexCipher)")
+			panic("aesDecrypt needs (key, hexCipher)")
 		}
 		key, ok1 := args[0].(string)
 		hexCiph, ok2 := args[1].(string)
 		if !(ok1 && ok2) {
-			panic("aesDecrypt: (key, hexCipher)")
+			panic("aesDecrypt: args must be strings")
 		}
 		data, err := hex.DecodeString(hexCiph)
 		if err != nil {
 			return fmt.Sprintf("aesDecrypt: error decode hex => %v", err)
 		}
 		if len(data) < aes.BlockSize {
-			return "aesDecrypt: data demasiado corto"
+			return "aesDecrypt: data too short"
 		}
 		iv := data[:aes.BlockSize]
 		ciph := data[aes.BlockSize:]
@@ -275,11 +275,11 @@ func RegisterHack(env *Environment) {
 	// 4) dnsLookup(host) => array de IPs en string
 	env.Set("dnsLookup", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("dnsLookup necesita (host)")
+			panic("dnsLookup needs (host)")
 		}
 		host, ok := args[0].(string)
 		if !ok {
-			panic("dnsLookup: arg debe ser string")
+			panic("dnsLookup: arg must be string")
 		}
 		ips, err := net.LookupIP(host)
 		if err != nil {
@@ -295,11 +295,11 @@ func RegisterHack(env *Environment) {
 	// 5) dnsLookupAddr(ip) => array de hosts
 	env.Set("dnsLookupAddr", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("dnsLookupAddr(ip)")
+			panic("dnsLookupAddr needs (ip)")
 		}
 		ip, ok := args[0].(string)
 		if !ok {
-			panic("dnsLookupAddr: arg debe ser string")
+			panic("dnsLookupAddr: arg must be string")
 		}
 		names, err := net.LookupAddr(ip)
 		if err != nil {
@@ -316,11 +316,11 @@ func RegisterHack(env *Environment) {
 	//   - Con DialTimeout TCP en puerto 80 (no es ICMP real, sino un trick)
 	env.Set("simplePing", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("simplePing(host)")
+			panic("simplePing needs (host)")
 		}
 		host, ok := args[0].(string)
 		if !ok {
-			panic("simplePing: arg debe ser string")
+			panic("simplePing: arg must be string")
 		}
 		address := fmt.Sprintf("%s:80", host)
 		conn, err := net.DialTimeout("tcp", address, 1*time.Second)
@@ -358,7 +358,7 @@ func RegisterHack(env *Environment) {
 	//   (demasiado simplificado, parsear pub.N, pub.E)
 	env.Set("rsaEncrypt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("rsaEncrypt(pubString, plaintext)")
+			panic("rsaEncrypt needs (pubStr, plaintext)")
 		}
 		pubString, ok1 := args[0].(string)
 		msg, ok2 := args[1].(string)
@@ -398,7 +398,7 @@ func RegisterHack(env *Environment) {
 		// parse => "RSA-PRIV (N=..., E=..., D=...)"
 		nVal, eVal, dVal := parseRsaPrivString(privString)
 		if nVal == nil || dVal == nil {
-			return "rsaDecrypt: parseRsaPrivString falló"
+			return "rsaDecrypt: error parse privKey"
 		}
 
 		// Construir PrivateKey "incompleto"

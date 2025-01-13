@@ -16,12 +16,12 @@ func RegisterLib(env *Environment) {
 
 		"r2": func(args ...interface{}) interface{} {
 			if len(args) < 1 {
-				panic("go necesita al menos una función como argumento")
+				panic("r2 need at least one function as argument")
 			}
 			// Verificar que el primer argumento sea una función
 			fn, ok := args[0].(*UserFunction)
 			if !ok {
-				panic("El argumento de go debe ser una función")
+				panic("r2 first argument must be a function")
 			}
 			wg.Add(1)
 			// Ejecutar la función en una goroutine
@@ -39,12 +39,12 @@ func RegisterLib(env *Environment) {
 
 		"go": func(args ...interface{}) interface{} {
 			if len(args) < 1 {
-				panic("go necesita al menos una función como argumento")
+				panic("go need at least one function as argument")
 			}
 			// Verificar que el primer argumento sea una función
 			fn, ok := args[0].(*UserFunction)
 			if !ok {
-				panic("El argumento de go debe ser una función")
+				panic("go first argument must be a function")
 			}
 			// Ejecutar la función en una goroutine
 			go func() {

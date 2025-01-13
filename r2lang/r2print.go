@@ -15,12 +15,12 @@ func RegisterPrint(env *Environment) {
 	// 1) printRepeat(str, count)
 	env.Set("printRepeat", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("printRepeat necesita (str, count)")
+			panic("printRepeat needs (str, count)")
 		}
 		s, ok1 := args[0].(string)
 		count := int(toFloat(args[1]))
 		if !ok1 {
-			panic("printRepeat: primer arg debe ser string")
+			panic("printRepeat: primer arg should be string")
 		}
 		for i := 0; i < count; i++ {
 			fmt.Print(s)
@@ -33,12 +33,12 @@ func RegisterPrint(env *Environment) {
 	//   Crea una "caja" ASCII rodeando el texto
 	env.Set("printBox", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("printBox necesita (str, width)")
+			panic("printBox needs (str, width)")
 		}
 		text, ok1 := args[0].(string)
 		width := int(toFloat(args[1]))
 		if !ok1 {
-			panic("printBox: primer arg debe ser string")
+			panic("printBox: first arg should be string")
 		}
 		if width < len(text)+2 {
 			width = len(text) + 2
@@ -59,10 +59,10 @@ func RegisterPrint(env *Environment) {
 	//    Imprime detalles sobre un valor (Go).
 	env.Set("debugInspect", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("debugInspect necesita (value)")
+			panic("debugInspect needs (value)")
 		}
 		val := args[0]
-		fmt.Printf("[debugInspect] Valor = %v (tipo=%T)\n", val, val)
+		fmt.Printf("[debugInspect] Value = %v (type=%T)\n", val, val)
 		return nil
 	}))
 

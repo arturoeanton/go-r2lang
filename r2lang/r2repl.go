@@ -23,9 +23,10 @@ var (
 
 // Definir las palabras reservadas de R2Lang
 var reservedKeywords = []string{
-	"let", "func", "if", "else", "return", "for", "while", "break", "continue",
+	"let", "var", "func", "function", "class", "method", "if", "else", "return",
+	"for", "while", "break", "continue",
 	"switch", "case", "default", "import", "export", "var", "const", "true",
-	"false", "nil", "null",
+	"false", "nil", "null", "testcase", "give", "when", "then", "and", "or",
 }
 
 // Compilar una expresión regular para palabras reservadas
@@ -56,7 +57,7 @@ func Repl(outputFlag bool) {
 		}
 	}()
 
-	fmt.Println(infoColor("Bienvenido al REPL de R2Lang"))
+	fmt.Println(infoColor("Welcome to R2Lang REPL!"))
 
 	env := NewEnvironment()
 	env.Set("false", false)
@@ -97,11 +98,11 @@ func Repl(outputFlag bool) {
 				fmt.Println("^C")
 				continue
 			} else {
-				fmt.Println(successColor("Saliendo del REPL. ¡Hasta luego!"))
+				fmt.Println(successColor("Exiting REPL. See you later!"))
 				break
 			}
 		} else if err != nil {
-			fmt.Println(errorColor("Error leyendo entrada:"), err)
+			fmt.Println(errorColor("Error reading input:"), err)
 			continue
 		}
 
@@ -109,15 +110,15 @@ func Repl(outputFlag bool) {
 		line.AppendHistory(input)
 
 		if input == ".exit" {
-			fmt.Println(successColor("Saliendo del REPL. ¡Hasta luego!"))
+			fmt.Println(successColor("Exiting REPL. See you later!"))
 			break
 		}
 
 		if input == ".showcode" {
 			if len(commandHistory) == 0 {
-				fmt.Println(warningColor("No hay código cargado para mostrar."))
+				fmt.Println(warningColor("There is no code loaded."))
 			} else {
-				fmt.Println(infoColor("Código cargado:"))
+				fmt.Println(infoColor("Code:"))
 				for _, cmd := range commandHistory {
 					fmt.Println(highlightSyntax(cmd))
 				}

@@ -24,17 +24,17 @@ var r2Routes []r2Route
 
 func httpHandler(args []interface{}) interface{} {
 	if len(args) < 3 {
-		panic("httpAddRoute necesita (method, pattern, handlerName)")
+		panic("handler necesita 3 argumentos: (method, pattern, fx)")
 	}
 	method, ok1 := args[0].(string)
 	pattern, ok2 := args[1].(string)
 	handler, ok3 := args[2].(*UserFunction)
 	if !ok1 || !ok2 {
-		panic("httpAddRoute: todos los argumentos deben ser strings")
+		panic("handler: should be (method, pattern, fx)")
 	}
 
 	if !ok3 {
-		panic("httpAddRoute: handler debe ser UsesFunction")
+		panic("handler: fx should be a function")
 	}
 
 	// Agregamos la ruta a la tabla
@@ -49,58 +49,18 @@ func httpHandler(args []interface{}) interface{} {
 func RegisterHTTP(env *Environment) {
 	// httpHandler(method, pattern, handlerName)
 
-	env.Set("httpHandler", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("handler", BuiltinFunction(func(args ...interface{}) interface{} {
 		return httpHandler(args)
 	}))
 
-	env.Set("httpGet", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"GET"}, args...))
-	}))
-
-	env.Set("httpPost", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"POST"}, args...))
-	}))
-
-	env.Set("httpPut", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"PUT"}, args...))
-	}))
-
-	env.Set("httpDelete", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"DELETE"}, args...))
-	}))
-
-	env.Set("httpPatch", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"PATCH"}, args...))
-	}))
-
-	env.Set("httpOptions", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"OPTIONS"}, args...))
-	}))
-
-	env.Set("httpHead", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"HEAD"}, args...))
-	}))
-
-	env.Set("httpTrace", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"TRACE"}, args...))
-	}))
-
-	env.Set("httpConnect", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"CONNECT"}, args...))
-	}))
-
-	env.Set("httpAny", BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(append([]interface{}{"ANY"}, args...))
-	}))
-
 	// httpServe(addr)
-	env.Set("httpServe", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("serve", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("httpServe necesita 1 argumento: (addr)")
+			panic("serve needs 1 argument: (addr)")
 		}
 		addr, ok := args[0].(string)
 		if !ok {
-			panic("httpServe: addr debe ser string")
+			panic("serve: argument should be a string")
 		}
 
 		// Definimos un único handler en Go para todas las rutas
@@ -170,10 +130,10 @@ func RegisterHTTP(env *Environment) {
 		})
 
 		// Arrancamos el servidor (bloqueante)
-		fmt.Println("Escuchando en", addr)
+		fmt.Println("Listening on ", addr)
 		err := http.ListenAndServe(addr, nil)
 		if err != nil {
-			panic(fmt.Sprintf("httpServe: error en ListenAndServe: %v", err))
+			panic(fmt.Sprintf("serve: error in ListenAndServe: %v", err))
 		}
 		return nil
 	}))
@@ -200,18 +160,18 @@ func RegisterHTTP(env *Environment) {
 
 	env.Set("XML", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) != 2 {
-			panic("JSON necesita al menos 2 argumento")
+			panic("XML needs at least 2 arguments")
 		}
 		root, ok := args[0].(string)
 		if !ok {
-			panic("XML: argumento debe ser un string")
+			panic("XML: argument must be a string")
 		}
 		objectInstance, ok := args[1].(*ObjectInstance)
 		instance := make(map[string]interface{})
 		if !ok {
 			instance, ok = args[1].(map[string]interface{})
 			if !ok {
-				panic("JSON: argumento debe ser un objeto o un mapa")
+				panic("XML: argument must be an object or a map")
 			}
 		} else {
 			instance = objectInstance.Env.store
@@ -221,14 +181,14 @@ func RegisterHTTP(env *Environment) {
 		// Convertimos a JSON
 		data, err := mapToXML(root, instanceClean)
 		if err != nil {
-			panic(fmt.Sprintf("JSON: error en Marshal: %v", err))
+			panic(fmt.Sprintf("XML: error in Marshal: %v", err))
 		}
 		return string(data)
 	}))
 
 	env.Set("HttpResponse", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("HttpResponse necesita al menos 1 argumento")
+			panic("HttpResponse needs at least 1 argument")
 		}
 		status, ok := args[0].(float64)
 		posArgs := 1
@@ -260,7 +220,7 @@ func RegisterHTTP(env *Environment) {
 		if len(args) == (posArgs + 2) {
 			body, ok = args[posArgs+1].(string)
 			if !ok {
-				panic("HttpResponse: argumento debe ser un string")
+				panic("HttpResponse: should be (status, header, body)")
 			}
 		}
 		return map[string]interface{}{
@@ -272,14 +232,14 @@ func RegisterHTTP(env *Environment) {
 
 	env.Set("JSON", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("JSON necesita al menos 1 argumento")
+			panic("JSON needs at least 1 argument")
 		}
 		instance := make(map[string]interface{})
 		objectInstance, ok := args[0].(*ObjectInstance)
 		if !ok {
 			instance, ok = args[0].(map[string]interface{})
 			if !ok {
-				panic("JSON: argumento debe ser un objeto o un mapa")
+				panic("JSON: argument must be an object or a map")
 			}
 		} else {
 			instance = objectInstance.Env.store
@@ -288,7 +248,7 @@ func RegisterHTTP(env *Environment) {
 		// Convertimos a JSON
 		data, err := json.Marshal(instanceClean)
 		if err != nil {
-			panic(fmt.Sprintf("JSON: error en Marshal: %v", err))
+			panic(fmt.Sprintf("JSON: error in Marshal: %v", err))
 		}
 		return string(data)
 	}))

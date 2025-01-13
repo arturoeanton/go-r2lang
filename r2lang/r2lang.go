@@ -127,7 +127,7 @@ func (l *Lexer) parseNumberOrSign() Token {
 		}
 	}
 	if !hasDigits {
-		panic("Número inválido en " + l.input[start:l.pos])
+		panic("Invalid number in " + l.input[start:l.pos])
 	}
 	val := l.input[start:l.pos]
 	l.currentToken = Token{Type: TOKEN_NUMBER, Value: val, Line: l.line, Pos: l.pos, Col: l.col}
@@ -263,7 +263,7 @@ skipWhitespace:
 			l.nextch()
 		}
 		if l.pos >= l.length {
-			panic("Se esperaba comilla de cierre de cadena")
+			panic("Closing quote of string expected")
 		}
 		val := l.input[start+1 : l.pos]
 		l.nextch()
@@ -313,7 +313,7 @@ skipWhitespace:
 	}
 
 	fmt.Fprintf(os.Stderr, "Line: %d,Col: %d\n", l.line, l.col)
-	fmt.Fprintf(os.Stderr, "Caracter inesperado en lexer: %c\n", ch)
+	fmt.Fprintf(os.Stderr, "Unexpected character in lexer: %c\n", ch)
 	os.Exit(1)
 	return Token{}
 }
@@ -348,7 +348,7 @@ type TestStep struct {
 
 // Eval ejecuta el caso de prueba.
 func (tc *TestCase) Eval(env *Environment) interface{} {
-	fmt.Printf("Ejecutando Caso de Prueba: %s\n", tc.Name)
+	fmt.Printf("Executing Test Case: %s\n", tc.Name)
 	var previousStepType string
 
 	for _, step := range tc.Steps {
@@ -385,7 +385,7 @@ func (tc *TestCase) Eval(env *Environment) interface{} {
 		}
 
 	}
-	fmt.Println("Caso de Prueba Ejecutado Exitosamente.\n")
+	fmt.Println("Test Case Executed Successfully.")
 	return nil
 }
 
@@ -481,14 +481,14 @@ func (gas *GenericAssignStatement) Eval(env *Environment) interface{} {
 		objVal := left.Object.Eval(env)
 		instance, ok := objVal.(*ObjectInstance)
 		if !ok {
-			panic("No es un objeto-instance para asignar .prop")
+			panic("Closing quote of string expected")
 		}
 		instance.Env.Set(left.Member, val)
 		return val
 	case *IndexExpression:
 		return assignIndexExpression(left, val, env)
 	default:
-		panic("No se puede asignar a esta expresión")
+		panic("Cannot assign to this expression")
 	}
 }
 
@@ -542,7 +542,7 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 	// Leer el contenido del archivo
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		panic("Error al leer archivo importado: " + filePath)
+		panic("Error reading imported file:" + filePath)
 	}
 
 	// Crear un nuevo parser con el directorio base actualizado
@@ -664,7 +664,7 @@ func (fs *ForStatement) Eval(env *Environment) interface{} {
 			flagArr = false
 			mapVal, ok = raw.(map[string]interface{})
 			if !ok {
-				panic("No es un array ni mapa para for")
+				panic("Not an array or map for ‘for’")
 			}
 		}
 	}
@@ -805,7 +805,7 @@ type Identifier struct {
 func (id *Identifier) Eval(env *Environment) interface{} {
 	val, ok := env.Get(id.Name)
 	if !ok {
-		panic("Variable no declarada: " + id.Name)
+		panic("Undeclared variable: " + id.Name)
 	}
 	return val
 }
@@ -890,7 +890,7 @@ func (be *BinaryExpression) Eval(env *Environment) interface{} {
 	case "!=":
 		return !equals(lv, rv)
 	default:
-		panic("Operador binario no soportado: " + be.Op)
+		panic("Unsupported binary operator: " + be.Op)
 	}
 }
 
@@ -1013,10 +1013,10 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 			})
 		}
 
-		panic("Array no tiene propiedad: " + ae.Member)
+		panic("Array does not have property: " + ae.Member)
 	}
 
-	panic("Acceso a propiedad en tipo no soportado: " + fmt.Sprintf("%T", objVal))
+	panic("ccess to property in unsupported type: " + fmt.Sprintf("%T", objVal))
 }
 
 type IndexExpression struct {
@@ -1032,7 +1032,7 @@ func (ie *IndexExpression) Eval(env *Environment) interface{} {
 	case map[string]interface{}:
 		strKey, ok := indexVal.(string)
 		if !ok {
-			panic("índice debe ser string para map")
+			panic("index must be a string for map")
 		}
 		vv, found := container[strKey]
 		if !found {
@@ -1042,15 +1042,19 @@ func (ie *IndexExpression) Eval(env *Environment) interface{} {
 	case []interface{}:
 		fIndex, ok := indexVal.(float64)
 		if !ok {
-			panic("índice debe ser numérico para array")
+			panic("index must be numeric for array")
 		}
 		idx := int(fIndex)
+		if idx < 0 {
+
+			idx = (len(container) + idx)
+		}
 		if idx < 0 || idx >= len(container) {
-			return nil
+			panic(fmt.Sprintf("index out of range: %d len of array %d", idx, len(container)))
 		}
 		return container[idx]
 	default:
-		panic("índice sobre algo que no es map ni array")
+		panic("index on something that is neither map nor array")
 	}
 }
 
@@ -1212,7 +1216,7 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 	if ok {
 		mainFn, isFn := mainVal.(*UserFunction)
 		if !isFn {
-			fmt.Println("Error: 'main' no es una función.")
+			fmt.Println("Error: ‘main’ is not a function.")
 			os.Exit(1)
 		}
 		result = mainFn.Call()
@@ -1240,11 +1244,11 @@ func toFloat(val interface{}) float64 {
 	case string:
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			panic("No se puede convertir string a número: " + v)
+			panic("Cannot convert string to number:" + v)
 		}
 		return f
 	}
-	panic("No se puede convertir valor a número")
+	panic("Cannot convert value to number")
 }
 func toBool(val interface{}) bool {
 	if val == nil {
@@ -1295,6 +1299,22 @@ func equals(a, b interface{}) bool {
 }
 
 func addValues(a, b interface{}) interface{} {
+
+	if isNumeric(a) && isNumeric(b) {
+		return toFloat(a) + toFloat(b)
+	}
+
+	if aa, ok := a.([]interface{}); ok {
+		if bb, ok := b.([]interface{}); ok {
+			return append(aa, bb...)
+		}
+		return append(aa, b)
+	}
+
+	if ab, ok := b.([]interface{}); ok {
+		return append([]interface{}{a}, ab...)
+	}
+
 	// Si uno es string => concatenar
 	if sa, ok := a.(string); ok {
 		return sa + fmt.Sprint(b)
@@ -1313,7 +1333,7 @@ func mulValues(a, b interface{}) interface{} {
 func divValues(a, b interface{}) interface{} {
 	den := toFloat(b)
 	if den == 0 {
-		panic("División por cero")
+		panic("Division by zero")
 	}
 	return toFloat(a) / den
 }
@@ -1327,18 +1347,18 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 	case map[string]interface{}:
 		key, ok := indexVal.(string)
 		if !ok {
-			panic("assignIndexExpression: índice para map debe ser string")
+			panic("assignIndexExpression: index for map must be a string")
 		}
 		container[key] = newVal
 		return newVal
 	case []interface{}:
 		idxF, ok := indexVal.(float64)
 		if !ok {
-			panic("assignIndexExpression: índice array debe ser número")
+			panic("assignIndexExpression: array index must be a number")
 		}
 		idx := int(idxF)
 		if idx < 0 {
-			panic("Índice negativo en array")
+			idx = len(container) + idx
 		}
 		// auto-extender
 		if idx >= len(container) {
@@ -1349,7 +1369,7 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 		container[idx] = newVal
 		return newVal
 	default:
-		panic("No es un map ni array para asignar indice")
+		panic("Not a map or array to assign index")
 	}
 }
 
@@ -1383,7 +1403,7 @@ func (p *Parser) parseImportStatement() Node {
 	p.nextToken() // Consumir 'import'
 
 	if p.curTok.Type != TOKEN_STRING {
-		p.except("Se esperaba una cadena de caracteres después de 'import'")
+		p.except("A string was expected after ‘import’")
 	}
 
 	path := p.curTok.Value
@@ -1393,7 +1413,7 @@ func (p *Parser) parseImportStatement() Node {
 	if p.curTok.Type == TOKEN_AS {
 		p.nextToken() // Consumir 'as'
 		if p.curTok.Type != TOKEN_IDENT {
-			p.except("Se esperaba un identificador tras 'as'")
+			p.except("An identifier was expected after ‘as’")
 		}
 		alias = p.curTok.Value
 		p.nextToken()
@@ -1410,13 +1430,13 @@ func (p *Parser) parseTestCase() Node {
 	p.nextToken() // Consumir 'TestCase'
 
 	if p.curTok.Type != TOKEN_STRING {
-		p.except("Se esperaba una cadena de caracteres para el nombre del caso de prueba")
+		p.except("A string was expected for the test case name")
 	}
 	name := p.curTok.Value
 	p.nextToken()
 
 	if p.curTok.Value != "{" {
-		p.except("Se esperaba '{' para iniciar el cuerpo del caso de prueba")
+		p.except("‘{’ was expected to start the test case body")
 	}
 	p.nextToken()
 
@@ -1428,7 +1448,7 @@ func (p *Parser) parseTestCase() Node {
 			stepType = p.curTok.Value
 			p.nextToken()
 		default:
-			p.except("Se esperaba 'Given', 'When', 'Then' o 'And' en los pasos del caso de prueba")
+			p.except("‘Given’, ‘When’, ‘Then’, or ‘And’ was expected in the test case steps")
 		}
 		command := p.parseExpression()
 		steps = append(steps, TestStep{Type: stepType, Command: command})
@@ -1437,7 +1457,7 @@ func (p *Parser) parseTestCase() Node {
 		}
 	}
 	if p.curTok.Value != "}" {
-		p.except("Se esperaba '}' al final del caso de prueba")
+		p.except("‘}’ was expected at the end of the test case")
 	}
 	p.nextToken()
 	return &TestCase{Name: name, Steps: steps}
@@ -1462,7 +1482,7 @@ func (p *Parser) ParseProgram() *Program {
 func (p *Parser) parseThrowStatement() Node {
 	p.nextToken()
 	if p.curTok.Type != TOKEN_STRING {
-		p.except("Se esperaba una cadena de caracteres para el mensaje de excepción")
+		p.except("A string was expected after ‘throw’")
 	}
 	message := fmt.Sprint(p.curTok.Value)
 	return &ThrowStatement{Message: message}
@@ -1530,16 +1550,16 @@ func (p *Parser) parseTryStatement() Node {
 		} else {
 
 			if p.curTok.Value != "(" {
-				p.except("Se esperaba '(' después de 'catch'")
+				p.except("‘(’ was expected after ‘catch’")
 			}
 			p.nextToken() // consumir "("
 			if p.curTok.Type != TOKEN_IDENT {
-				p.except("Se esperaba nombre de variable de excepción")
+				p.except("Variable name expected after ‘catch’")
 			}
 			exceptionVar = p.curTok.Value
 			p.nextToken()
 			if p.curTok.Value != ")" {
-				p.except("Se esperaba ')' después del nombre de variable de excepción")
+				p.except("‘)’ was expected after the exception variable")
 			}
 			p.nextToken() // consumir ")"
 			catchBlock = p.parseBlockStatement()
@@ -1606,7 +1626,7 @@ func (p *Parser) parseReturnStatement() Node {
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
 	if p.curTok.Type != TOKEN_IDENT {
-		p.except("Variable name expected after \"let\" or \"var\"")
+		p.except("Variable name expected after 'let'/'var'")
 	}
 	name := p.curTok.Value
 	p.nextToken()
@@ -1638,7 +1658,7 @@ func (p *Parser) parseFunctionDeclaration() Node {
 
 func (p *Parser) parseFunctionDeclaratioWithoutFunc() Node {
 	if p.curTok.Type != TOKEN_IDENT {
-		p.except("Function name expected after \"func\"")
+		p.except("Function name expected after 'func'/'function'")
 	}
 	funcName := p.curTok.Value
 	p.nextToken()
@@ -1674,12 +1694,12 @@ func (p *Parser) parseIfStatement() Node {
 func (p *Parser) parseWhileStatement() Node {
 	p.nextToken() // "while"
 	if p.curTok.Value != "(" {
-		p.except("Se esperaba '(' tras 'while'")
+		p.except("‘(’ was expected after ‘while’")
 	}
 	p.nextToken()
 	cond := p.parseExpression()
 	if p.curTok.Value != ")" {
-		p.except("Se esperaba ')'")
+		p.except("‘)’ was expected after the condition in ‘while’")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1689,7 +1709,7 @@ func (p *Parser) parseWhileStatement() Node {
 func (p *Parser) parseForStatement() Node {
 	p.nextToken() // "for"
 	if p.curTok.Value != "(" {
-		p.except("Se esperaba '(' tras 'for'")
+		p.except("‘(’ was expected after ‘for’")
 	}
 	p.nextToken()
 
@@ -1737,7 +1757,7 @@ func (p *Parser) parseForStatement() Node {
 		}
 	}
 	if p.curTok.Value != ")" {
-		p.except("Se esperaba ')' en 'for(...)'")
+		p.except("‘)’ was expected after the post statement in ‘for’")
 	}
 	p.nextToken()
 	body := p.parseBlockStatement()
@@ -1748,12 +1768,12 @@ func (p *Parser) parseForStatement() Node {
 func (p *Parser) parseObjectDeclaration() Node {
 	p.nextToken() // "obj"
 	if p.curTok.Type != TOKEN_IDENT {
-		p.except("Se esperaba nombre de obj tras '" + OBJECT + "'")
+		p.except("Object name was expected after '" + OBJECT + "'")
 	}
 	objName := p.curTok.Value
 	p.nextToken()
 	if p.curTok.Value != "{" {
-		p.except("Se esperaba '{' tras nombre del " + OBJECT)
+		p.except("‘{’ was expected after the name of " + OBJECT)
 	}
 	p.nextToken()
 
@@ -1766,11 +1786,11 @@ func (p *Parser) parseObjectDeclaration() Node {
 		} else if p.curTok.Type == TOKEN_IDENT {
 			members = append(members, p.parseFunctionDeclaratioWithoutFunc())
 		} else {
-			p.except("Dentro de obj => '" + LET + "' o '" + FUNC + "'")
+			p.except("Inside " + OBJECT + " only 'let', 'var', 'func', 'function' or 'method' are allowed")
 		}
 	}
 	if p.curTok.Value != "}" {
-		p.except("Se esperaba '}' al final de " + OBJECT)
+		p.except("Expected ‘}’ at the end of " + OBJECT)
 	}
 	p.nextToken()
 	return &ObjectDeclaration{Name: objName, Members: members}
@@ -1784,12 +1804,12 @@ func (p *Parser) parseFunctionArgs() []string {
 		if p.curTok.Type == TOKEN_IDENT {
 			args = append(args, p.curTok.Value)
 		} else if p.curTok.Value != "," && p.curTok.Value != ")" {
-			p.except("Error parseando args, token: " + p.curTok.Value)
+			p.except("Error parsing args, token:  " + p.curTok.Value)
 		}
 		p.nextToken()
 	}
 	if p.curTok.Value != ")" {
-		p.except("Se esperaba ')' tras argumentos de función")
+		p.except("Expected ‘)’ after function arguments")
 	}
 	p.nextToken() // consumir ")"
 	return args
@@ -1797,7 +1817,7 @@ func (p *Parser) parseFunctionArgs() []string {
 
 func (p *Parser) parseBlockStatement() *BlockStatement {
 	if p.curTok.Value != "{" {
-		p.except("Se esperaba '{' para iniciar bloque")
+		p.except("Expected ‘{’ to start block")
 	}
 	p.nextToken()
 	var stmts []Node
@@ -1805,7 +1825,7 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 		stmts = append(stmts, p.parseStatement())
 	}
 	if p.curTok.Value != "}" {
-		p.except("Se esperaba '}' al cerrar bloque")
+		p.except("Expected ‘}’ to end block")
 	}
 	p.nextToken()
 	return &BlockStatement{Statements: stmts}
@@ -1835,7 +1855,7 @@ func (p *Parser) parseFactor() Node {
 	case TOKEN_NUMBER:
 		val, err := strconv.ParseFloat(p.curTok.Value, 64)
 		if err != nil {
-			p.except("No se pudo parsear número: " + p.curTok.Value)
+			p.except("Could not parse number: " + p.curTok.Value)
 		}
 		node := &NumberLiteral{Value: val}
 		p.nextToken()
@@ -1859,7 +1879,7 @@ func (p *Parser) parseFactor() Node {
 			p.nextToken()
 			expr := p.parseExpression()
 			if p.curTok.Value != ")" {
-				p.except("Se esperaba ')' tras ( expr )")
+				p.except("Expected ‘)’ after ( expr )")
 			}
 			p.nextToken()
 			return expr
@@ -1870,9 +1890,9 @@ func (p *Parser) parseFactor() Node {
 		if p.curTok.Value == "{" {
 			return p.parseMapLiteral()
 		}
-		p.except("Símbolo inesperado en factor: " + p.curTok.Value)
+		p.except("Unexpected symbol in factor: " + p.curTok.Value)
 	}
-	p.except("Token inesperado en factor: " + p.curTok.Value)
+	p.except("Unexpected token in factor: " + p.curTok.Value)
 	return nil
 }
 
@@ -1881,7 +1901,7 @@ func (p *Parser) parseAnonymousFunction() Node {
 	// ya vimos p.curTok == "func" (type=ident)
 	p.nextToken() // consumir "func"
 	if p.curTok.Value != "(" {
-		p.except("Se esperaba '(' tras 'func' en la función anónima")
+		p.except("Expected ‘(’ after ‘func’ in the anonymous function")
 	}
 	args := p.parseFunctionArgs()
 	body := p.parseBlockStatement()
@@ -1913,7 +1933,7 @@ func (p *Parser) parseCallExpression(left Node) Node {
 		}
 	}
 	if p.curTok.Value != ")" {
-		p.except("Se esperaba ')' al final de llamada a función")
+		p.except("Expected ‘)’ at the end of function call")
 	}
 	p.nextToken() // ")"
 	return &CallExpression{Callee: left, Args: args}
@@ -1922,7 +1942,7 @@ func (p *Parser) parseCallExpression(left Node) Node {
 func (p *Parser) parseAccessExpression(left Node) Node {
 	p.nextToken() // "."
 	if p.curTok.Type != TOKEN_IDENT {
-		p.except("Se esperaba identificador tras '.'")
+		p.except("Expected identifier after ‘.’")
 	}
 	mem := p.curTok.Value
 	p.nextToken()
@@ -1934,7 +1954,7 @@ func (p *Parser) parseIndexExpression(left Node) Node {
 	p.nextToken() // "["
 	idx := p.parseExpression()
 	if p.curTok.Value != "]" {
-		p.except("Se esperaba ']' en index")
+		p.except("Expected ‘]’ at the end of index expression")
 	}
 	p.nextToken()
 	ie := &IndexExpression{Left: left, Index: idx}
@@ -1953,11 +1973,11 @@ func (p *Parser) parseArrayLiteral() Node {
 		} else if p.curTok.Value == "]" {
 			break
 		} else {
-			p.except("Se esperaba ',' o ']' en array literal")
+			p.except("Expected ',' or ']' in array literal")
 		}
 	}
 	if p.curTok.Value != "]" {
-		p.except("Se esperaba ']' al final de array literal")
+		p.except("Expected ']' at the end of array literal")
 	}
 	p.nextToken()
 	return &ArrayLiteral{Elements: elems}
@@ -1979,11 +1999,11 @@ func (p *Parser) parseMapLiteral() Node {
 			key = p.curTok.Value
 			p.nextToken()
 		} else {
-			p.except("Se esperaba clave string o identificador en map-literal")
+			p.except("Expected string or identifier as key in map-literal")
 		}
 
 		if p.curTok.Value != ":" {
-			p.except("Se esperaba ':' tras la clave en map-literal")
+			p.except("Expected ':' after key in map-literal")
 		}
 		p.nextToken()
 		valNode := p.parseExpression()
@@ -1994,11 +2014,11 @@ func (p *Parser) parseMapLiteral() Node {
 		} else if p.curTok.Value == "}" {
 			break
 		} else {
-			p.except("Se esperaba ',' o '}' en map-literal")
+			p.except("Expected ',' or '}' in map-literal")
 		}
 	}
 	if p.curTok.Value != "}" {
-		p.except("Se esperaba '}' al final de map-literal")
+		p.except("Expected '}' at the end of map-literal")
 	}
 	p.nextToken()
 	return &MapLiteral{Pairs: pairs}
@@ -2020,7 +2040,7 @@ func RunCode(filename string) {
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Printf("Error al leer el archivo %s: %v\n", filename, err)
+		fmt.Printf("Error reading the file %s: %v\n", filename, err)
 		os.Exit(1)
 	}
 	code := string(data)

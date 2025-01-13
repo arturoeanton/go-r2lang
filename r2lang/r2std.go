@@ -11,20 +11,17 @@ import (
 
 func RegisterStd(env *Environment) {
 
-	// 1) typeOf(value): retorna un string con el tipo Go subyacente
 	env.Set("typeOf", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
 			return "nil"
 		}
 		val := args[0]
-		// Por simplicidad, retornamos reflect.TypeOf(val).String() o similar
 		return fmt.Sprintf("%T", val)
 	}))
 
-	// 2) len(value): si es string => largo de la cadena; si es slice nativo => largo
 	env.Set("len", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("len necesita 1 argumento")
+			panic("len needs 1 argument")
 		}
 		switch v := args[0].(type) {
 		case string:
@@ -32,51 +29,48 @@ func RegisterStd(env *Environment) {
 		case []interface{}:
 			return float64(len(v))
 		default:
-			panic("len: se esperaba string o array nativa")
+			panic("len: Expected string or []interface{}")
 		}
 	}))
 
-	// 3) sleep(segundos): duerme la ejecución `segundos`
 	env.Set("sleep", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("sleep necesita 1 argumento (segundos)")
+			panic("sleep needs 1 argument (seconds)")
 		}
 		secs, ok := args[0].(float64)
 		if !ok {
-			panic("sleep: argumento debe ser un número (segundos)")
+			panic("sleep: arg should be a number")
 		}
 		time.Sleep(time.Duration(secs) * time.Second)
 		return nil
 	}))
 
-	// 4) parseInt(str): convierte un string a int => float64 (en R2)
 	env.Set("parseInt", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("parseInt necesita 1 argumento (string)")
+			panic("parseInt needs 1 argument (string)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("parseInt: argumento debe ser string")
+			panic("parseInt: arg should be string")
 		}
 		i, err := strconv.Atoi(s)
 		if err != nil {
-			panic("parseInt: no pudo convertir '" + s + "' a int")
+			panic("parseInt: could not convert '" + s + "' to int")
 		}
 		return float64(i)
 	}))
 
-	// 5) parseFloat(str): convierte un string a float64
 	env.Set("parseFloat", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("parseFloat necesita 1 argumento (string)")
+			panic("parseFloat needs 1 argument (string)")
 		}
 		s, ok := args[0].(string)
 		if !ok {
-			panic("parseFloat: argumento debe ser string")
+			panic("parseFloat: arg should be string")
 		}
 		f, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			panic("parseFloat: no pudo convertir '" + s + "' a float")
+			panic("parseFloat: could not convert '" + s + "' to float")
 		}
 		return f
 	}))
@@ -84,52 +78,19 @@ func RegisterStd(env *Environment) {
 	// 6) toString(value): convierte un valor a string
 	env.Set("toString", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
-			panic("toString necesita 1 argumento")
+			panic("toString needs 1 argument")
 		}
 		return fmt.Sprint(args[0])
 	}))
 
-	// 7) vars(map, key): obtiene map[key] (o nil si no existe)
-	env.Set("vars", BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 2 {
-			panic("vars necesita 2 argumentos: (map, key)")
-		}
-		theMap, ok1 := args[0].(map[string]interface{})
-		theKey, ok2 := args[1].(string)
-		if !ok1 || !ok2 {
-			panic("vars: primer argumento debe ser un map<string, interface{}>, segundo un string")
-		}
-		val, found := theMap[theKey]
-		if !found {
-			return nil
-		}
-		return val
-	}))
-
-	// 8) varsSet(map, key, value): asigna map[key] = value
-	env.Set("varsSet", BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 3 {
-			panic("varsSet necesita 3 argumentos: (map, key, value)")
-		}
-		theMap, ok1 := args[0].(map[string]interface{})
-		theKey, ok2 := args[1].(string)
-		if !ok1 || !ok2 {
-			panic("varsSet: primer arg debe ser map, segundo un string")
-		}
-		theMap[theKey] = args[2]
-		return nil
-	}))
-
-	// 9) range(start, end): retorna un array nativo de floats [start, start+1, ..., end-1]
-	// (Muy simplificado, sin step)
 	env.Set("range", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("range necesita 2 argumentos: (start, end)")
+			panic("range needs 2 arguments: (start, end)")
 		}
 		start, ok1 := args[0].(float64)
 		end, ok2 := args[1].(float64)
 		if !ok1 || !ok2 {
-			panic("range: argumentos deben ser numéricos")
+			panic("range: arg should be number, number")
 		}
 		arr := []interface{}{}
 		for i := int(start); float64(i) < end; i++ {
@@ -138,20 +99,28 @@ func RegisterStd(env *Environment) {
 		return arr
 	}))
 
-	// 10) now(): retorna la fecha/hora actual como string
 	env.Set("now", BuiltinFunction(func(args ...interface{}) interface{} {
-		return time.Now().Format("2006-01-02 15:04:05")
+		if len(args) == 0 {
+			return time.Now().Format("2006-01-02 15:04:05")
+		}
+		if len(args) == 1 {
+			format, ok := args[0].(string)
+			if !ok {
+				panic("now: arg should be string")
+			}
+			return time.Now().Format(format)
+		}
+		panic("now: too many arguments")
 	}))
 
-	// 11) join(array, separator): une un array de strings con el separador
 	env.Set("join", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("join necesita 2 argumentos: (array, separator)")
+			panic("join needs 2 arguments: (array, separator)")
 		}
 		arr, ok := args[0].([]interface{})
 		sep, ok2 := args[1].(string)
 		if !ok || !ok2 {
-			panic("join: (array, separator) con array = []interface{} y separator = string")
+			panic("join: args should be Array, string")
 		}
 		// Convertir cada elemento a string
 		strArr := make([]string, len(arr))
@@ -161,15 +130,14 @@ func RegisterStd(env *Environment) {
 		return strings.Join(strArr, sep)
 	}))
 
-	// 12) split(str, separator): retorna un array nativo de strings
 	env.Set("split", BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
-			panic("split necesita 2 argumentos: (str, separator)")
+			panic("split needs 2 arguments: (str, separator)")
 		}
 		s, ok1 := args[0].(string)
 		sep, ok2 := args[1].(string)
 		if !ok1 || !ok2 {
-			panic("split: argumentos deben ser string, string")
+			panic("split: args should be string, string")
 		}
 		parts := strings.Split(s, sep)
 		arr := make([]interface{}, len(parts))
@@ -179,5 +147,4 @@ func RegisterStd(env *Environment) {
 		return arr
 	}))
 
-	// Listo. Puedes agregar más funciones según necesites
 }
