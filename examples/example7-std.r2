@@ -49,10 +49,7 @@ func main() {
     let fecha = now();
     print("Hora actual =>", fecha);
 
-    // 9) join / split
-    let arr = ["Hola", "Mundo", "R2"];
-    let joined = join(arr, "-");
-    print("join(...,'-') =>", joined); // "Hola-Mundo-R2"
+
 
     let splitted = split("uno|dos|tres", "|");
     print("split('uno|dos|tres','|') =>", splitted); // ["uno","dos","tres"]
