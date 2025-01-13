@@ -984,7 +984,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 			})
 		}
 
-		if ae.Member == "map" {
+		if ae.Member == "map" || ae.Member == "each" {
 			return BuiltinFunction(func(args ...interface{}) interface{} {
 				newArr := make([]interface{}, len(arr))
 				for i, v := range arr {
@@ -1026,7 +1026,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 			})
 		}
 
-		if ae.Member == "reverse" {
+		if ae.Member == "reverse" || ae.Member == "rev" {
 			return BuiltinFunction(func(args ...interface{}) interface{} {
 				newArr := make([]interface{}, len(arr))
 				for i, v := range arr {
@@ -1060,7 +1060,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 			})
 		}
 
-		if ae.Member == "find" {
+		if ae.Member == "find" || ae.Member == "index" {
 			return BuiltinFunction(func(args ...interface{}) interface{} {
 				if len(arr) == 0 {
 					panic("find: at least one argument is required and optionally a function find([fx], elem)")
@@ -1141,6 +1141,23 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 					}
 				}
 				return acc
+			})
+		}
+
+		if ae.Member == "join" {
+			return BuiltinFunction(func(args ...interface{}) interface{} {
+				sep := ""
+				if len(args) == 1 {
+					sep = args[0].(string)
+				}
+				var out string
+				for i, v := range arr {
+					if i > 0 {
+						out += sep
+					}
+					out += fmt.Sprintf("%v", v)
+				}
+				return out
 			})
 		}
 
