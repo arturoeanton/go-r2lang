@@ -10,6 +10,7 @@
 
 <div align="center">
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/arturoeanton/go-r2lang)](https://goreportcard.com/report/github.com/arturoeanton/go-r2lang)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/arturoeanton/go-r2lang.svg?style=social&label=Star)](https://github.com/arturoeanton/go-r2lang)
 [![GitHub forks](https://img.shields.io/github/forks/arturoeanton/go-r2lang.svg?style=social&label=Fork)](https://github.com/arturoeanton/go-r2lang)
