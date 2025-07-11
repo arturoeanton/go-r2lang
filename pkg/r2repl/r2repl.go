@@ -44,66 +44,32 @@ func Repl(outputFlag bool) {
 	defer line.Close()
 
 	line.SetCtrlCAborts(true)
-
-	// Cargar historial si existe
-	historyFile := ".r2lang_history"
-	if f, err := os.Open(historyFile); err == nil {
-		line.ReadHistory(f)
-		f.Close()
-	}
-
-	// Registrar comandos de historial al salir
-	defer func() {
-		if f, err := os.Create(historyFile); err == nil {
-			line.WriteHistory(f)
-			f.Close()
-		}
-	}()
+	setupHistory(line);
 
 	fmt.Println(infoColor("Welcome to R2Lang REPL!"))
 
-	env := r2core.NewEnvironment()
-	env.Set("false", false)
-	env.Set("nil", nil)
-	env.Set("null", nil)
-
-	// Registrar otras librerías si las tienes:
-	r2libs.RegisterLib(env)
-	r2libs.RegisterStd(env)
-	r2libs.RegisterIO(env)
-	r2libs.RegisterHTTPClient(env)
-	r2libs.RegisterString(env)
-	r2libs.RegisterMath(env)
-	r2libs.RegisterRand(env)
-	r2libs.RegisterTest(env)
-	r2libs.RegisterHTTP(env)
-	r2libs.RegisterPrint(env)
-	r2libs.RegisterOS(env)
-	r2libs.RegisterHack(env)
-	r2libs.RegisterConcurrency(env)
-	r2libs.RegisterCollections(env)
+	env := createR2Environment()
 
 	var buffer strings.Builder
 	var commandHistory []string
+
+	commands := getCommands(&commandHistory)
+
 	for {
-		// Determinar el prompt basado en si estamos en una entrada multilínea
 		prompt := "> "
 		if buffer.Len() > 0 {
 			prompt = "... "
 		}
 
-		// Obtener la entrada del usuario sin colores en el prompt
 		input, err := line.Prompt(prompt)
 		if err == liner.ErrPromptAborted {
-			// Ctrl+C
 			if buffer.Len() > 0 {
 				buffer.Reset()
 				fmt.Println("^C")
 				continue
-			} else {
-				fmt.Println(successColor("Exiting REPL. See you later!"))
-				break
 			}
+			fmt.Println(successColor("Exiting REPL. See you later!"))
+			break
 		} else if err != nil {
 			fmt.Println(errorColor("Error reading input:"), err)
 			continue
@@ -112,51 +78,76 @@ func Repl(outputFlag bool) {
 		input = strings.TrimSpace(input)
 		line.AppendHistory(input)
 
-		if input == ".exit" {
-			fmt.Println(successColor("Exiting REPL. See you later!"))
-			break
-		}
-
-		if input == ".showcode" {
-			if len(commandHistory) == 0 {
-				fmt.Println(warningColor("There is no code loaded."))
-			} else {
-				fmt.Println(infoColor("Code:"))
-				for _, cmd := range commandHistory {
-					fmt.Println(highlightSyntax(cmd))
-				}
-			}
+		if command, ok := commands[input]; ok {
+			command()
 			continue
 		}
 
-		// Manejar entrada multilínea
 		buffer.WriteString(input)
 		buffer.WriteString("\n")
 
 		if !isIncomplete(buffer.String()) {
 			command := buffer.String()
 			buffer.Reset()
-
-			// Añadir al historial
 			commandHistory = append(commandHistory, command)
-
-			// Ejecutar el comando
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						fmt.Println(errorColor("Error:"), r)
-					}
-				}()
-
-				parser := r2core.NewParser(command)
-				out := env.Run(parser)
-				if outputFlag {
-					if out != nil {
-						fmt.Println(successColor(out))
-					}
-				}
-			}()
+			executeCode(env, command, outputFlag)
 		}
+	}
+}
+
+func setupHistory(line *liner.State) {
+	historyFile := ".r2lang_history"
+	if f, err := os.Open(historyFile); err == nil {
+		line.ReadHistory(f)
+		f.Close()
+	}
+	defer func() {
+		if f, err := os.Create(historyFile); err == nil {
+			line.WriteHistory(f)
+			f.Close()
+		}
+	}()
+}
+
+func createR2Environment() *r2core.Environment {
+	env := r2core.NewEnvironment()
+	env.Set("false", false)
+	env.Set("nil", nil)
+	env.Set("null", nil)
+	r2libs.RegisterLib(env)
+	return env
+}
+
+func getCommands(commandHistory *[]string) map[string]func() {
+	return map[string]func(){
+		".exit": func() {
+			fmt.Println(successColor("Exiting REPL. See you later!"))
+			os.Exit(0)
+		},
+		".showcode": func() {
+			if len(*commandHistory) == 0 {
+				fmt.Println(warningColor("There is no code loaded."))
+			} else {
+				fmt.Println(infoColor("Code:"))
+				for _, cmd := range *commandHistory {
+					fmt.Println(highlightSyntax(cmd))
+				}
+			}
+		},
+	}
+}
+
+func executeCode(env *r2core.Environment, command string, outputFlag bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(errorColor("Error:"), r)
+		}
+	}()
+
+	parser := r2core.NewParser(command)
+	out := env.Run(parser)
+	if outputFlag && out != nil {
+		fmt.Println(successColor(out))
 	}
 }
 
