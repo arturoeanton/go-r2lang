@@ -126,7 +126,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 						flag = fl.Eval(env).(*UserFunction).Call(v).(bool)
 					}
 
-					if flag == true {
+					if flag {
 						newArr = append(newArr, v)
 					}
 				}
@@ -253,7 +253,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 						if fl, ok := args[0].(*FunctionLiteral); ok {
 							flag = fl.Eval(env).(*UserFunction).Call(v, elem).(bool)
 						}
-						if flag == true {
+						if flag {
 							if flagAll {
 								out = append(out, idx)
 								continue

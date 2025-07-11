@@ -563,17 +563,17 @@ func (p *Parser) parseAnonymousFunction() Node {
 
 func (p *Parser) parsePostfix(left Node) Node {
 	for {
-		if p.curTok.Value == "(" {
+		switch p.curTok.Value {
+		case "(":
 			left = p.parseCallExpression(left)
-		} else if p.curTok.Value == "." {
+		case ".":
 			left = p.parseAccessExpression(left)
-		} else if p.curTok.Value == "[" {
+		case "[":
 			left = p.parseIndexExpression(left)
-		} else {
-			break
+		default:
+			return left
 		}
 	}
-	return left
 }
 
 func (p *Parser) parseCallExpression(left Node) Node {
@@ -645,13 +645,12 @@ func (p *Parser) parseMapLiteral() Node {
 	}
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
 		var key string
-		if p.curTok.Type == TOKEN_STRING {
+
+		switch p.curTok.Type {
+		case TOKEN_STRING, TOKEN_IDENT:
 			key = p.curTok.Value
 			p.nextToken()
-		} else if p.curTok.Type == TOKEN_IDENT {
-			key = p.curTok.Value
-			p.nextToken()
-		} else {
+		default:
 			p.except("Expected string or identifier as key in map-literal")
 		}
 
@@ -680,7 +679,7 @@ func (p *Parser) parseMapLiteral() Node {
 func (p *Parser) except(msgErr string) {
 
 	msg := fmt.Sprintln("Parser Exception: Line:", p.curTok.Line, ":", p.curTok.Col, "Error:", msgErr)
-	_, err := fmt.Fprintf(os.Stderr, msg)
+	_, err := fmt.Fprint(os.Stderr, msg)
 	if err != nil {
 		panic(msg)
 	}
