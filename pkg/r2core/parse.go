@@ -347,29 +347,35 @@ func (p *Parser) parseForStatement() Node {
 	}
 	p.nextToken()
 
+	// Check for for-in loop
+	if p.peekTok.Value == IN {
+		return p.parseForInStatement()
+	}
+
+	// Standard for loop
+	return p.parseStandardForStatement()
+}
+
+func (p *Parser) parseForInStatement() Node {
+	indexName := p.curTok.Value
+	p.nextToken() // consume index name
+	p.nextToken() // consume 'in'
+
+	collName := p.curTok.Value
+	exp := p.parseExpression()
+	for p.curTok.Value != "{" {
+		p.nextToken()
+	}
+	body := p.parseBlockStatement()
+	return &ForStatement{Init: exp, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
+}
+
+func (p *Parser) parseStandardForStatement() Node {
 	var init Node
-	if p.curTok.Value == LET || p.curTok.Value == VAR {
+	if p.curTok.Type == TOKEN_IDENT && p.peekTok.Value == "=" {
+		init = p.parseAssignmentOrExpressionStatement()
+	} else if p.curTok.Value == LET || p.curTok.Value == VAR {
 		init = p.parseLetStatement()
-		init.(*LetStatement).Value = Node(&NumberLiteral{Value: 0})
-		indexName := init.(*LetStatement).Name
-		if p.curTok.Value == IN {
-			p.nextToken()
-
-			collName := p.curTok.Value
-			exp := p.parseExpression()
-			for p.curTok.Value != "{" {
-				p.nextToken()
-			}
-			body := p.parseBlockStatement()
-			return &ForStatement{Init: exp, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
-		}
-
-	} else {
-		if p.curTok.Type != TOKEN_SYMBOL && !(p.curTok.Type == TOKEN_IDENT && p.peekTok.Value == "=") {
-			// no hay init
-		} else if p.curTok.Type == TOKEN_IDENT && p.peekTok.Value == "=" {
-			init = p.parseAssignmentOrExpressionStatement()
-		}
 	}
 
 	var condition Node
@@ -398,7 +404,6 @@ func (p *Parser) parseForStatement() Node {
 	return &ForStatement{Init: init, Condition: condition, Post: post, Body: body, inFlag: false}
 }
 
-// obj MiObj { ... }
 func (p *Parser) parseObjectDeclaration() Node {
 	p.nextToken() // "obj"
 	if p.curTok.Type != TOKEN_IDENT {
@@ -406,22 +411,14 @@ func (p *Parser) parseObjectDeclaration() Node {
 	}
 	objName := p.curTok.Value
 	p.nextToken()
-	if p.curTok.Value != "{" && p.curTok.Value != EXTENDS {
-		p.except("Expected ‘{’ or ‘extends’ after object name")
-	}
-	parentName := ""
-	if p.curTok.Value == EXTENDS {
-		p.nextToken()
-		if p.curTok.Type != TOKEN_IDENT {
-			p.except("Expected object name after ‘extends’")
-		}
-		parentName = p.curTok.Value
-		p.nextToken()
-		if p.curTok.Value != "{" {
-			p.except("Expected ‘{’ after object name")
-		}
+
+	parentName := p.parseOptionalExtends()
+
+	if p.curTok.Value != "{" {
+		p.except("Expected ‘{’ after object name")
 	}
 	p.nextToken()
+
 	var members []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
 		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
@@ -443,6 +440,19 @@ func (p *Parser) parseObjectDeclaration() Node {
 	}
 	p.nextToken()
 	return &ObjectDeclaration{Name: objName, Members: members, ParentName: parentName}
+}
+
+func (p *Parser) parseOptionalExtends() string {
+	if p.curTok.Value != EXTENDS {
+		return ""
+	}
+	p.nextToken() // consume 'extends'
+	if p.curTok.Type != TOKEN_IDENT {
+		p.except("Expected object name after ‘extends’")
+	}
+	parentName := p.curTok.Value
+	p.nextToken()
+	return parentName
 }
 
 // parseFunctionArgs => lee identificadores separados por coma hasta ")"

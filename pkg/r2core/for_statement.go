@@ -14,80 +14,63 @@ type ForStatement struct {
 func (fs *ForStatement) Eval(env *Environment) interface{} {
 	newEnv := NewInnerEnv(env)
 
+	if fs.inFlag {
+		return fs.evalForIn(newEnv)
+	}
+	return fs.evalStandardFor(newEnv)
+}
+
+func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 	var result interface{}
+	raw, _ := env.Get(fs.inArray)
+	env.Set("$c", raw)
 
-	var arr []interface{}
-	var mapVal map[string]interface{}
-	var ok bool
-	flagArr := true
-	if fs.inFlag {
-		var raw interface{}
-		if _, ok = fs.Init.(*CallExpression); ok {
-			raw = fs.Init.Eval(newEnv)
-			newEnv.Set("$c", raw)
-		} else {
-			raw, _ = newEnv.Get(fs.inArray)
-			newEnv.Set("$c", raw)
-		}
-
-		arr, ok = raw.([]interface{})
-		if !ok {
-			flagArr = false
-			mapVal, ok = raw.(map[string]interface{})
-			if !ok {
-				panic("Not an array or map for ‘for’")
+	if arr, ok := raw.([]interface{}); ok {
+		for i, v := range arr {
+			env.Set(fs.inIndexName, float64(i))
+			env.Set("$k", float64(i))
+			env.Set("$v", v)
+			val := fs.Body.Eval(env)
+			if rv, ok := val.(ReturnValue); ok {
+				return rv
 			}
+			result = val
 		}
+	} else if mapVal, ok := raw.(map[string]interface{}); ok {
+		for k, v := range mapVal {
+			env.Set(fs.inIndexName, k)
+			env.Set("$k", k)
+			env.Set("$v", v)
+			val := fs.Body.Eval(env)
+			if rv, ok := val.(ReturnValue); ok {
+				return rv
+			}
+			result = val
+		}
+	} else {
+		panic("Not an array or map for ‘for’")
 	}
-	if fs.inFlag {
-		if flagArr {
-			for i, v := range arr {
-				newEnv.Set(fs.inIndexName, float64(i))
-				newEnv.Set("$k", float64(i))
-				newEnv.Set("$v", v)
-				val := fs.Body.Eval(newEnv)
-				if rv, ok := val.(ReturnValue); ok {
-					return rv
-				}
-				result = val
-				if fs.Post != nil {
-					fs.Post.Eval(newEnv)
-				}
-			}
-		} else {
-			for k, v := range mapVal {
-				newEnv.Set(fs.inIndexName, k)
-				newEnv.Set("$k", k)
-				newEnv.Set("$v", v)
-				val := fs.Body.Eval(newEnv)
-				if rv, ok := val.(ReturnValue); ok {
-					return rv
-				}
-				result = val
-				if fs.Post != nil {
-					fs.Post.Eval(newEnv)
-				}
-			}
-		}
-		return result
-	}
+	return result
+}
 
+func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
+	var result interface{}
 	if fs.Init != nil {
-		fs.Init.Eval(newEnv)
+		fs.Init.Eval(env)
 	}
 
 	for {
-		condVal := fs.Condition.Eval(newEnv)
+		condVal := fs.Condition.Eval(env)
 		if !toBool(condVal) {
 			break
 		}
-		val := fs.Body.Eval(newEnv)
+		val := fs.Body.Eval(env)
 		if rv, ok := val.(ReturnValue); ok {
 			return rv
 		}
 		result = val
 		if fs.Post != nil {
-			fs.Post.Eval(newEnv)
+			fs.Post.Eval(env)
 		}
 	}
 	return result
