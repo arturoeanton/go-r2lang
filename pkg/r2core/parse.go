@@ -103,6 +103,10 @@ func (p *Parser) nextToken() {
 func (p *Parser) ParseProgram() *Program {
 	prog := &Program{}
 	for p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+			p.nextToken()
+			continue
+		}
 		stmt := p.parseStatement()
 		prog.Statements = append(prog.Statements, stmt)
 	}
@@ -420,6 +424,10 @@ func (p *Parser) parseObjectDeclaration() Node {
 	p.nextToken()
 	var members []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+			p.nextToken()
+			continue
+		}
 		if p.curTok.Value == LET || p.curTok.Value == VAR {
 			members = append(members, p.parseLetStatement())
 		} else if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION || p.curTok.Value == METHOD {
@@ -463,6 +471,10 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 	p.nextToken()
 	var stmts []Node
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+			p.nextToken()
+			continue
+		}
 		stmts = append(stmts, p.parseStatement())
 	}
 	if p.curTok.Value != "}" {
