@@ -175,8 +175,8 @@ func TestLexer_Identifiers(t *testing.T) {
 
 func TestLexer_Keywords(t *testing.T) {
 	tests := []struct {
-		input        string
-		expectedType string
+		input         string
+		expectedType  string
 		expectedValue string
 	}{
 		{"import", TOKEN_IMPORT, "import"},
@@ -567,7 +567,6 @@ func TestHelperFunctions(t *testing.T) {
 	if isWhitespace('a') {
 		t.Error("Expected 'a' to not be whitespace")
 	}
-
 
 	// Test isLetter
 	if !isLetter('a') {
