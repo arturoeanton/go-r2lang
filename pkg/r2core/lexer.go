@@ -179,6 +179,25 @@ skipWhitespace:
 
 	ch := l.input[l.pos]
 
+	if token, ok := l.parseSymbolToken(ch); ok {
+		return token
+	}
+
+	if token, ok := l.parseNumberToken(ch); ok {
+		return token
+	}
+
+	if token, ok := l.parseIdentifierToken(ch); ok {
+		return token
+	}
+
+	fmt.Fprintf(os.Stderr, "Line: %d,Col: %d\n", l.line, l.col)
+	fmt.Fprintf(os.Stderr, "Unexpected character in lexer: %c\n", ch)
+	os.Exit(1)
+	return Token{}
+}
+
+func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 	// Números con signo y operadores
 	// busca signos + o - seguidos de dígitos y que no estén precedidos por (, [, , o =
 	if ch == '-' || ch == '+' {
@@ -189,7 +208,7 @@ skipWhitespace:
 		}
 		if (l.input[pos] == '(' || l.input[pos] == ',' || l.input[pos] == '[' || l.input[pos] == '=') &&
 			(l.pos+1 < l.length && isDigit(l.input[l.pos+1])) {
-			return l.parseNumberOrSign()
+			return l.parseNumberOrSign(), true
 		}
 	}
 
@@ -198,7 +217,7 @@ skipWhitespace:
 		if nextch == '+' {
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
-			return l.currentToken
+			return l.currentToken, true
 		}
 	}
 
@@ -208,7 +227,7 @@ skipWhitespace:
 			l.currentToken = Token{Type: TOKEN_ARROW, Value: "=>", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
 
-			return l.currentToken
+			return l.currentToken, true
 		}
 	}
 
@@ -217,7 +236,7 @@ skipWhitespace:
 		if nextch == '-' {
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
-			return l.currentToken
+			return l.currentToken, true
 		}
 	}
 
@@ -233,7 +252,7 @@ skipWhitespace:
 				l.line++
 				l.col = 0
 			}
-			return l.currentToken
+			return l.currentToken, true
 		}
 	}
 
@@ -241,11 +260,11 @@ skipWhitespace:
 		if l.pos+1 < l.length && l.input[l.pos+1] == '=' {
 			l.pos += 2
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "==", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		}
 		l.nextch()
 		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=", Line: l.line, Pos: l.pos, Col: l.col}
-		return l.currentToken
+		return l.currentToken, true
 	}
 
 	// Operadores relacionales
@@ -256,14 +275,25 @@ skipWhitespace:
 				op := string(ch) + string(nextCh)
 				l.pos += 2
 				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: l.line, Pos: l.pos, Col: l.col}
-				return l.currentToken
+				return l.currentToken, true
 			}
 		}
 		l.nextch()
 		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: string(ch), Line: l.line, Pos: l.pos, Col: l.col}
-		return l.currentToken
+		return l.currentToken, true
 	}
+	return Token{}, false
+}
 
+func (l *Lexer) parseNumberToken(ch byte) (Token, bool) {
+	// Números sin signo
+	if isDigit(ch) {
+		return l.parseNumberOrSign(), true
+	}
+	return Token{}, false
+}
+
+func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 	// Cadena
 	if ch == '"' || ch == '\'' {
 		quote := ch
@@ -278,14 +308,8 @@ skipWhitespace:
 		val := l.input[start+1 : l.pos]
 		l.nextch()
 		l.currentToken = Token{Type: TOKEN_STRING, Value: val, Line: l.line, Pos: l.pos, Col: l.col}
-		return l.currentToken
+		return l.currentToken, true
 	}
-
-	// Números sin signo
-	if isDigit(ch) {
-		return l.parseNumberOrSign()
-	}
-
 	// Identificadores
 	if isLetter(ch) {
 		start := l.pos
@@ -296,34 +320,30 @@ skipWhitespace:
 		switch strings.ToLower(literal) {
 		case strings.ToLower(IMPORT):
 			l.currentToken = Token{Type: TOKEN_IMPORT, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case strings.ToLower(AS):
 			l.currentToken = Token{Type: TOKEN_AS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case "given":
 			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case "when":
 			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case "then":
 			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case "and":
 			l.currentToken = Token{Type: TOKEN_AND, Value: "And", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		case "testcase":
 			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
-		// ... otras palabras clave
+			return l.currentToken, true
+			// ... otras palabras clave
 		default:
 			l.currentToken = Token{Type: TOKEN_IDENT, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken
+			return l.currentToken, true
 		}
 	}
-
-	fmt.Fprintf(os.Stderr, "Line: %d,Col: %d\n", l.line, l.col)
-	fmt.Fprintf(os.Stderr, "Unexpected character in lexer: %c\n", ch)
-	os.Exit(1)
-	return Token{}
+	return Token{}, false
 }
