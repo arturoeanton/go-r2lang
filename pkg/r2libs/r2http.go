@@ -14,10 +14,10 @@ import (
 
 // Definiremos una estructura para guardar las rutas
 type r2Route struct {
-	method      string
-	pattern     string
-	handlerName string
-	handlerfx   *r2core.UserFunction
+	method  string
+	pattern string
+	//handlerName string
+	handlerfx *r2core.UserFunction
 	// Podrías también almacenar un compilado de regexp, si quisieras
 }
 

@@ -1,7 +1,6 @@
 package r2libs
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -73,44 +72,4 @@ func equals(a, b interface{}) bool {
 		return b == nil
 	}
 	return false
-}
-
-func addValues(a, b interface{}) interface{} {
-
-	if isNumeric(a) && isNumeric(b) {
-		return toFloat(a) + toFloat(b)
-	}
-
-	if aa, ok := a.([]interface{}); ok {
-		if bb, ok := b.([]interface{}); ok {
-			return append(aa, bb...)
-		}
-		return append(aa, b)
-	}
-
-	if ab, ok := b.([]interface{}); ok {
-		return append([]interface{}{a}, ab...)
-	}
-
-	// Si uno es string => concatenar
-	if sa, ok := a.(string); ok {
-		return sa + fmt.Sprint(b)
-	}
-	if sb, ok := b.(string); ok {
-		return fmt.Sprint(a) + sb
-	}
-	return toFloat(a) + toFloat(b)
-}
-func subValues(a, b interface{}) interface{} {
-	return toFloat(a) - toFloat(b)
-}
-func mulValues(a, b interface{}) interface{} {
-	return toFloat(a) * toFloat(b)
-}
-func divValues(a, b interface{}) interface{} {
-	den := toFloat(b)
-	if den == 0 {
-		panic("Division by zero")
-	}
-	return toFloat(a) / den
 }
