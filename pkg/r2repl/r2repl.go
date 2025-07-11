@@ -44,7 +44,7 @@ func Repl(outputFlag bool) {
 	defer line.Close()
 
 	line.SetCtrlCAborts(true)
-	setupHistory(line);
+	setupHistory(line)
 
 	fmt.Println(infoColor("Welcome to R2Lang REPL!"))
 
