@@ -1,4 +1,3 @@
-
 # Análisis de Complejidad Ciclomática y Plan de Refactorización
 
 ## Introducción
@@ -28,8 +27,8 @@ Estas funciones son el objetivo perfecto para una refactorización de bajo riesg
 
 | Archivo y Función | Complejidad | Estrategia de Refactorización (Cómo Mejorar) | Riesgo | Complejidad de Arreglo | Beneficio (Qué Ganamos) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `pkg/r2libs/r2print.go` - `RegisterPrint()` | 60 | Crear un `slice` de `structs` donde cada `struct` contenga el nombre de la función (`"print"`, `"println"`, etc.) y la referencia a la función Go que la implementa. Un bucle `for` registrará todo. | **Bajo** | **Bajo** | **Enorme**. Reducimos la complejidad de 60 a ~2. Añadir/quitar funciones será trivial y a prueba de errores. |
-| `pkg/r2libs/r2hack.go` - `RegisterHack()` | 74 | Misma estrategia. | **Bajo** | **Bajo** | **Enorme**. Simplificación masiva y mantenibilidad. |
+| `pkg/r2libs/r2hack.go` - `RegisterHack()` | 74 | Crear un `slice` de `structs` donde cada `struct` contenga el nombre de la función (`"print"`, `"println"`, etc.) y la referencia a la función Go que la implementa. Un bucle `for` registrará todo. | **Bajo** | **Bajo** | **Enorme**. Reducimos la complejidad de 74 a ~2. Añadir/quitar funciones será trivial y a prueba de errores. |
+| `pkg/r2libs/r2print.go` - `RegisterPrint()` | 60 | Misma estrategia. | **Bajo** | **Bajo** | **Enorme**. Simplificación masiva y mantenibilidad. |
 | `pkg/r2libs/r2string.go` - `RegisterString()` | 43 | Misma estrategia. | **Bajo** | **Bajo** | **Muy Alto**. Código más limpio y fácil de extender. |
 | `pkg/r2libs/r2os.go` - `RegisterOS()` | 40 | Misma estrategia. | **Bajo** | **Bajo** | **Muy Alto**. |
 | `pkg/r2libs/r2http.go` - `RegisterHTTP()` | 37 | Misma estrategia. | **Bajo** | **Bajo** | **Muy Alto**. |
