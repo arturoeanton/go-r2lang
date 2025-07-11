@@ -1,0 +1,212 @@
+{
+  "name": "r2lang",
+  "displayName": "R2Lang Language Support",
+  "description": "Language support for R2Lang - syntax highlighting, snippets, and IntelliSense",
+  "version": "0.1.0",
+  "publisher": "r2lang",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "r2lang",
+    "r2",
+    "scripting",
+    "testing",
+    "bdd",
+    "javascript-like"
+  ],
+  "main": "./out/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arturoeanton/go-r2lang.git",
+    "directory": "vscode_syntax_highlighting"
+  },
+  "bugs": {
+    "url": "https://github.com/arturoeanton/go-r2lang/issues"
+  },
+  "homepage": "https://github.com/arturoeanton/go-r2lang#readme",
+  "license": "Apache-2.0",
+  "activationEvents": [
+    "onLanguage:r2lang"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "r2lang",
+        "aliases": [
+          "R2Lang",
+          "r2lang",
+          "r2"
+        ],
+        "extensions": [
+          ".r2"
+        ],
+        "configuration": "./language-configuration/r2lang-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "r2lang",
+        "scopeName": "source.r2lang",
+        "path": "./syntaxes/r2lang.tmGrammar.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "r2lang",
+        "path": "./snippets/r2lang-snippets.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "R2Lang Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/r2lang-dark-color-theme.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "r2lang.runFile",
+        "title": "Run R2Lang File",
+        "category": "R2Lang",
+        "icon": "$(play)"
+      },
+      {
+        "command": "r2lang.runSelection",
+        "title": "Run Selected R2Lang Code",
+        "category": "R2Lang"
+      },
+      {
+        "command": "r2lang.openRepl",
+        "title": "Open R2Lang REPL",
+        "category": "R2Lang",
+        "icon": "$(terminal)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.runFile",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.runFile",
+          "group": "r2lang@1"
+        },
+        {
+          "when": "resourceExtname == .r2 && editorHasSelection",
+          "command": "r2lang.runSelection",
+          "group": "r2lang@2"
+        },
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.openRepl",
+          "group": "r2lang@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "r2lang.runFile",
+          "when": "resourceExtname == .r2"
+        },
+        {
+          "command": "r2lang.runSelection",
+          "when": "resourceExtname == .r2 && editorHasSelection"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "r2lang.runFile",
+        "key": "ctrl+f5",
+        "mac": "cmd+f5",
+        "when": "resourceExtname == .r2"
+      },
+      {
+        "command": "r2lang.runSelection",
+        "key": "ctrl+shift+f5",
+        "mac": "cmd+shift+f5",
+        "when": "resourceExtname == .r2 && editorHasSelection"
+      },
+      {
+        "command": "r2lang.openRepl",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "resourceExtname == .r2"
+      }
+    ],
+    "configuration": {
+      "title": "R2Lang",
+      "properties": {
+        "r2lang.executablePath": {
+          "type": "string",
+          "default": "r2lang",
+          "description": "Path to the R2Lang executable",
+          "scope": "machine-overridable"
+        },
+        "r2lang.enableCodeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable CodeLens for R2Lang functions and classes"
+        },
+        "r2lang.enableAutoCompletion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable auto-completion suggestions"
+        },
+        "r2lang.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable syntax and semantic error checking"
+        },
+        "r2lang.maxNumberOfProblems": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of problems to report per file"
+        },
+        "r2lang.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.2"
+  }
+}
