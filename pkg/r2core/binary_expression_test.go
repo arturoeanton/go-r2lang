@@ -410,7 +410,7 @@ func TestBinaryExpression_UnsupportedOperator(t *testing.T) {
 
 	be := &BinaryExpression{
 		Left:  &NumberLiteral{Value: 5},
-		Op:    "**",  // Unsupported operator
+		Op:    "**", // Unsupported operator
 		Right: &NumberLiteral{Value: 2},
 	}
 
@@ -529,20 +529,20 @@ func BenchmarkBinaryExpression_Comparison(b *testing.B) {
 
 func BenchmarkBinaryExpression_NestedArithmetic(b *testing.B) {
 	env := NewEnvironment()
-	
+
 	// (10 + 5) * (20 - 5)
 	leftExpr := &BinaryExpression{
 		Left:  &NumberLiteral{Value: 10},
 		Op:    "+",
 		Right: &NumberLiteral{Value: 5},
 	}
-	
+
 	rightExpr := &BinaryExpression{
 		Left:  &NumberLiteral{Value: 20},
 		Op:    "-",
 		Right: &NumberLiteral{Value: 5},
 	}
-	
+
 	be := &BinaryExpression{
 		Left:  leftExpr,
 		Op:    "*",
