@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fileGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#66BB6A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#42A5F5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- File shape -->
+  <path d="M2 1 L11 1 L14 4 L14 15 L2 15 Z" fill="url(#fileGradDark)" stroke="#666" stroke-width="0.5"/>
+  
+  <!-- Corner fold -->
+  <path d="M11 1 L11 4 L14 4" fill="none" stroke="#666" stroke-width="0.5"/>
+  
+  <!-- R2 text -->
+  <text x="8" y="9" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white" text-anchor="middle">R2</text>
+  <text x="8" y="13" font-family="Arial, sans-serif" font-size="3" fill="white" text-anchor="middle">.r2</text>
+</svg>

@@ -1,0 +1,221 @@
+{
+  "name": "R2Lang Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1e1e1e",
+    "editor.foreground": "#d4d4d4",
+    "activityBarBadge.background": "#007acc",
+    "sideBarTitle.foreground": "#bbbbbb"
+  },
+  "tokenColors": [
+    {
+      "name": "Comment",
+      "scope": [
+        "comment",
+        "punctuation.definition.comment"
+      ],
+      "settings": {
+        "fontStyle": "italic",
+        "foreground": "#6A9955"
+      }
+    },
+    {
+      "name": "Keywords",
+      "scope": [
+        "keyword.control.r2lang",
+        "keyword.declaration.r2lang",
+        "keyword.other.r2lang"
+      ],
+      "settings": {
+        "foreground": "#569CD6"
+      }
+    },
+    {
+      "name": "TestCase Keywords",
+      "scope": [
+        "keyword.control.testcase.r2lang"
+      ],
+      "settings": {
+        "foreground": "#C586C0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "String",
+      "scope": [
+        "string.quoted.double.r2lang",
+        "string.quoted.single.r2lang"
+      ],
+      "settings": {
+        "foreground": "#CE9178"
+      }
+    },
+    {
+      "name": "Test Case Title",
+      "scope": [
+        "string.quoted.double.testcase.title.r2lang"
+      ],
+      "settings": {
+        "foreground": "#DCDCAA",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Number",
+      "scope": [
+        "constant.numeric.integer.r2lang",
+        "constant.numeric.float.r2lang"
+      ],
+      "settings": {
+        "foreground": "#B5CEA8"
+      }
+    },
+    {
+      "name": "Boolean",
+      "scope": [
+        "constant.language.boolean.r2lang"
+      ],
+      "settings": {
+        "foreground": "#569CD6"
+      }
+    },
+    {
+      "name": "Null",
+      "scope": [
+        "constant.language.null.r2lang"
+      ],
+      "settings": {
+        "foreground": "#569CD6"
+      }
+    },
+    {
+      "name": "Function Name",
+      "scope": [
+        "entity.name.function.r2lang",
+        "entity.name.function.method.r2lang"
+      ],
+      "settings": {
+        "foreground": "#DCDCAA"
+      }
+    },
+    {
+      "name": "Function Call",
+      "scope": [
+        "entity.name.function.call.r2lang"
+      ],
+      "settings": {
+        "foreground": "#DCDCAA"
+      }
+    },
+    {
+      "name": "Class Name",
+      "scope": [
+        "entity.name.class.r2lang"
+      ],
+      "settings": {
+        "foreground": "#4EC9B0"
+      }
+    },
+    {
+      "name": "Inherited Class",
+      "scope": [
+        "entity.other.inherited-class.r2lang"
+      ],
+      "settings": {
+        "foreground": "#4EC9B0"
+      }
+    },
+    {
+      "name": "Variable",
+      "scope": [
+        "variable.other.r2lang",
+        "variable.parameter.r2lang"
+      ],
+      "settings": {
+        "foreground": "#9CDCFE"
+      }
+    },
+    {
+      "name": "Property",
+      "scope": [
+        "variable.other.property.r2lang"
+      ],
+      "settings": {
+        "foreground": "#9CDCFE"
+      }
+    },
+    {
+      "name": "This",
+      "scope": [
+        "variable.language.this.r2lang"
+      ],
+      "settings": {
+        "foreground": "#569CD6",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Super",
+      "scope": [
+        "variable.language.super.r2lang"
+      ],
+      "settings": {
+        "foreground": "#569CD6",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Operators",
+      "scope": [
+        "keyword.operator.arithmetic.r2lang",
+        "keyword.operator.comparison.r2lang",
+        "keyword.operator.logical.r2lang",
+        "keyword.operator.assignment.r2lang"
+      ],
+      "settings": {
+        "foreground": "#D4D4D4"
+      }
+    },
+    {
+      "name": "Punctuation",
+      "scope": [
+        "punctuation.section.block.begin.r2lang",
+        "punctuation.section.block.end.r2lang",
+        "punctuation.section.group.begin.r2lang",
+        "punctuation.section.group.end.r2lang",
+        "punctuation.section.array.begin.r2lang",
+        "punctuation.section.array.end.r2lang"
+      ],
+      "settings": {
+        "foreground": "#D4D4D4"
+      }
+    },
+    {
+      "name": "Import Path",
+      "scope": [
+        "string.quoted.double.import.path.r2lang"
+      ],
+      "settings": {
+        "foreground": "#CE9178"
+      }
+    },
+    {
+      "name": "Import Alias",
+      "scope": [
+        "variable.other.alias.r2lang"
+      ],
+      "settings": {
+        "foreground": "#4EC9B0"
+      }
+    },
+    {
+      "name": "Escape Characters",
+      "scope": [
+        "constant.character.escape.r2lang"
+      ],
+      "settings": {
+        "foreground": "#D7BA7D"
+      }
+    }
+  ]
+}

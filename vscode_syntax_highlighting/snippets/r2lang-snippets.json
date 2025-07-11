@@ -1,0 +1,292 @@
+{
+  "Function Declaration": {
+    "prefix": ["func", "function"],
+    "body": [
+      "func ${1:functionName}(${2:parameters}) {",
+      "\t${3:// function body}",
+      "\treturn ${4:value}",
+      "}"
+    ],
+    "description": "Create a function declaration"
+  },
+  "Anonymous Function": {
+    "prefix": ["afunc", "lambda"],
+    "body": [
+      "func(${1:parameters}) {",
+      "\t${2:// function body}",
+      "\treturn ${3:value}",
+      "}"
+    ],
+    "description": "Create an anonymous function"
+  },
+  "Main Function": {
+    "prefix": "main",
+    "body": [
+      "func main() {",
+      "\t${1:// main function body}",
+      "}"
+    ],
+    "description": "Create a main function"
+  },
+  "Class Declaration": {
+    "prefix": ["class"],
+    "body": [
+      "class ${1:ClassName} {",
+      "\tconstructor(${2:parameters}) {",
+      "\t\t${3:// constructor body}",
+      "\t}",
+      "\t",
+      "\t${4:methodName}() {",
+      "\t\t${5:// method body}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a class declaration"
+  },
+  "Class with Inheritance": {
+    "prefix": ["class-extends", "extends"],
+    "body": [
+      "class ${1:ClassName} extends ${2:ParentClass} {",
+      "\tconstructor(${3:parameters}) {",
+      "\t\tsuper.constructor(${4:superParameters});",
+      "\t\t${5:// constructor body}",
+      "\t}",
+      "\t",
+      "\t${6:methodName}() {",
+      "\t\t${7:// method body}",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a class with inheritance"
+  },
+  "Constructor": {
+    "prefix": "constructor",
+    "body": [
+      "constructor(${1:parameters}) {",
+      "\t${2:// constructor body}",
+      "}"
+    ],
+    "description": "Create a constructor method"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:// if body}",
+      "}"
+    ],
+    "description": "Create an if statement"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:// if body}",
+      "} else {",
+      "\t${3:// else body}",
+      "}"
+    ],
+    "description": "Create an if-else statement"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while (${1:condition}) {",
+      "\t${2:// loop body}",
+      "}"
+    ],
+    "description": "Create a while loop"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for (${1:let i = 0}; ${2:i < length}; ${3:i++}) {",
+      "\t${4:// loop body}",
+      "}"
+    ],
+    "description": "Create a for loop"
+  },
+  "For-In Loop": {
+    "prefix": "forin",
+    "body": [
+      "for (${1:let item} in ${2:collection}) {",
+      "\t${3:// loop body}",
+      "}"
+    ],
+    "description": "Create a for-in loop"
+  },
+  "Try-Catch": {
+    "prefix": ["try", "trycatch"],
+    "body": [
+      "try {",
+      "\t${1:// try body}",
+      "} catch (${2:error}) {",
+      "\t${3:// catch body}",
+      "}"
+    ],
+    "description": "Create a try-catch block"
+  },
+  "Try-Catch-Finally": {
+    "prefix": "trycatchfinally",
+    "body": [
+      "try {",
+      "\t${1:// try body}",
+      "} catch (${2:error}) {",
+      "\t${3:// catch body}",
+      "} finally {",
+      "\t${4:// finally body}",
+      "}"
+    ],
+    "description": "Create a try-catch-finally block"
+  },
+  "TestCase": {
+    "prefix": ["testcase", "test"],
+    "body": [
+      "TestCase \"${1:Test Description}\" {",
+      "\tGiven ${2:setup()}",
+      "\tWhen func() {",
+      "\t\t${3:// test logic}",
+      "\t\treturn \"${4:when description}\"",
+      "\t}",
+      "\tThen func() {",
+      "\t\t${5:// assertions}",
+      "\t\treturn \"${6:then description}\"",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a BDD TestCase"
+  },
+  "TestCase with And": {
+    "prefix": ["testcase-full", "test-full"],
+    "body": [
+      "TestCase \"${1:Test Description}\" {",
+      "\tGiven ${2:setup()}",
+      "\tWhen func() {",
+      "\t\t${3:// test logic}",
+      "\t\treturn \"${4:when description}\"",
+      "\t}",
+      "\tThen func() {",
+      "\t\t${5:// first assertion}",
+      "\t\treturn \"${6:then description}\"",
+      "\t}",
+      "\tAnd func() {",
+      "\t\t${7:// additional assertion}",
+      "\t\treturn \"${8:and description}\"",
+      "\t}",
+      "\tThen ${9:teardown()}",
+      "}"
+    ],
+    "description": "Create a full BDD TestCase with And clause"
+  },
+  "Variable Declaration": {
+    "prefix": ["let", "var"],
+    "body": "let ${1:variableName} = ${2:value};",
+    "description": "Create a variable declaration"
+  },
+  "Import Statement": {
+    "prefix": "import",
+    "body": "import \"${1:modulePath}\" as ${2:alias}",
+    "description": "Create an import statement"
+  },
+  "Print Statement": {
+    "prefix": "print",
+    "body": "print(${1:value});",
+    "description": "Create a print statement"
+  },
+  "HTTP Server": {
+    "prefix": ["httpserver", "server"],
+    "body": [
+      "http.get(\"${1:/route}\", func(req, res) {",
+      "\t${2:// handle request}",
+      "\tres.json(${3:response});",
+      "});",
+      "",
+      "http.listen(${4:8080});"
+    ],
+    "description": "Create an HTTP server route"
+  },
+  "HTTP Get Route": {
+    "prefix": ["httpget", "get"],
+    "body": [
+      "http.get(\"${1:/route}\", func(req, res) {",
+      "\t${2:// handle GET request}",
+      "\tres.json(${3:response});",
+      "});"
+    ],
+    "description": "Create an HTTP GET route"
+  },
+  "HTTP Post Route": {
+    "prefix": ["httppost", "post"],
+    "body": [
+      "http.post(\"${1:/route}\", func(req, res) {",
+      "\t${2:// handle POST request}",
+      "\tres.json(${3:response});",
+      "});"
+    ],
+    "description": "Create an HTTP POST route"
+  },
+  "Array Declaration": {
+    "prefix": ["array", "arr"],
+    "body": "let ${1:arrayName} = [${2:elements}];",
+    "description": "Create an array declaration"
+  },
+  "Object Declaration": {
+    "prefix": ["object", "obj"],
+    "body": [
+      "let ${1:objectName} = {",
+      "\t${2:key}: ${3:value}",
+      "};"
+    ],
+    "description": "Create an object declaration"
+  },
+  "Goroutine": {
+    "prefix": ["r2", "goroutine"],
+    "body": "r2(${1:functionName}, ${2:arguments});",
+    "description": "Create a goroutine call"
+  },
+  "Switch Statement": {
+    "prefix": "switch",
+    "body": [
+      "switch (${1:variable}) {",
+      "\tcase ${2:value1}:",
+      "\t\t${3:// case body}",
+      "\t\tbreak;",
+      "\tcase ${4:value2}:",
+      "\t\t${5:// case body}",
+      "\t\tbreak;",
+      "\tdefault:",
+      "\t\t${6:// default body}",
+      "}"
+    ],
+    "description": "Create a switch statement"
+  },
+  "Console Log": {
+    "prefix": ["log", "console"],
+    "body": "print(\"${1:Debug}: \", ${2:variable});",
+    "description": "Create a debug print statement"
+  },
+  "Assert Equal": {
+    "prefix": ["assertEqual", "assert"],
+    "body": "assertEqual(${1:actual}, ${2:expected});",
+    "description": "Create an assertion for testing"
+  },
+  "Comment Block": {
+    "prefix": "comment",
+    "body": [
+      "/*",
+      " * ${1:Comment description}",
+      " */"
+    ],
+    "description": "Create a comment block"
+  },
+  "TODO Comment": {
+    "prefix": "todo",
+    "body": "// TODO: ${1:Description}",
+    "description": "Create a TODO comment"
+  },
+  "FIXME Comment": {
+    "prefix": "fixme",
+    "body": "// FIXME: ${1:Description}",
+    "description": "Create a FIXME comment"
+  }
+}

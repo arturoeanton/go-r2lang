@@ -1,0 +1,365 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "R2Lang",
+  "scopeName": "source.r2lang",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#testcase"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#classes"
+    },
+    {
+      "include": "#import"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#identifiers"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.r2lang",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.r2lang",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.r2lang",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.r2lang",
+              "match": "\\\\[\"\\\\nrtbfav0]"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.r2lang",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.r2lang",
+              "match": "\\\\['\\\\nrtbfav0]"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.r2lang",
+          "match": "\\b[+-]?\\d+\\.\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.r2lang",
+          "match": "\\b[+-]?\\d+\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.r2lang",
+          "match": "\\b(if|else|while|for|in|break|continue|return|try|catch|finally|throw)\\b"
+        },
+        {
+          "name": "keyword.declaration.r2lang",
+          "match": "\\b(let|var|func|function|method|class|extends|import|as|export)\\b"
+        },
+        {
+          "name": "keyword.other.r2lang",
+          "match": "\\b(this|super|new|typeof|instanceof)\\b"
+        },
+        {
+          "name": "constant.language.boolean.r2lang",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.r2lang",
+          "match": "\\b(null|undefined)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.r2lang",
+          "match": "\\b(and|or|not)\\b"
+        }
+      ]
+    },
+    "testcase": {
+      "patterns": [
+        {
+          "name": "keyword.control.testcase.r2lang",
+          "match": "\\b(TestCase|Given|When|Then|And)\\b"
+        },
+        {
+          "name": "entity.name.function.test.r2lang",
+          "begin": "\\b(TestCase)\\s+",
+          "end": "\\s*\\{",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.testcase.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "name": "string.quoted.double.testcase.title.r2lang",
+              "begin": "\"",
+              "end": "\""
+            }
+          ]
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "meta.function.r2lang",
+          "begin": "\\b(func|function)\\s+(\\w+)\\s*\\(",
+          "end": "\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.declaration.function.r2lang"
+            },
+            "2": {
+              "name": "entity.name.function.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        },
+        {
+          "name": "meta.function.anonymous.r2lang",
+          "begin": "\\b(func|function)\\s*\\(",
+          "end": "\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.declaration.function.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        },
+        {
+          "name": "meta.function.call.r2lang",
+          "match": "\\b(\\w+)\\s*\\(",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.call.r2lang"
+            }
+          }
+        }
+      ]
+    },
+    "classes": {
+      "patterns": [
+        {
+          "name": "meta.class.r2lang",
+          "begin": "\\b(class)\\s+(\\w+)(?:\\s+(extends)\\s+(\\w+))?\\s*\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.declaration.class.r2lang"
+            },
+            "2": {
+              "name": "entity.name.class.r2lang"
+            },
+            "3": {
+              "name": "keyword.declaration.extends.r2lang"
+            },
+            "4": {
+              "name": "entity.other.inherited-class.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "include": "$self"
+            }
+          ]
+        },
+        {
+          "name": "meta.method.r2lang",
+          "begin": "\\b(constructor|\\w+)\\s*\\(",
+          "end": "\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "entity.name.function.method.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        }
+      ]
+    },
+    "import": {
+      "patterns": [
+        {
+          "name": "meta.import.r2lang",
+          "begin": "\\b(import)\\s+",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.declaration.import.r2lang"
+            }
+          },
+          "patterns": [
+            {
+              "name": "string.quoted.double.import.path.r2lang",
+              "begin": "\"",
+              "end": "\""
+            },
+            {
+              "name": "keyword.declaration.as.r2lang",
+              "match": "\\b(as)\\b"
+            },
+            {
+              "name": "variable.other.alias.r2lang",
+              "match": "\\b(\\w+)$"
+            }
+          ]
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arithmetic.r2lang",
+          "match": "\\+\\+|--|\\+|\\-|\\*|\\/|%"
+        },
+        {
+          "name": "keyword.operator.comparison.r2lang",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.r2lang",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.assignment.r2lang",
+          "match": "=|\\+=|-=|\\*=|\\/=|%="
+        },
+        {
+          "name": "keyword.operator.bitwise.r2lang",
+          "match": "&|\\||\\^|~|<<|>>"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.language.this.r2lang",
+          "match": "\\bthis\\b"
+        },
+        {
+          "name": "variable.language.super.r2lang", 
+          "match": "\\bsuper\\b"
+        },
+        {
+          "name": "variable.other.property.r2lang",
+          "match": "\\.(\\w+)",
+          "captures": {
+            "1": {
+              "name": "variable.other.property.r2lang"
+            }
+          }
+        },
+        {
+          "name": "variable.other.r2lang",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "function-parameters": {
+      "patterns": [
+        {
+          "name": "variable.parameter.r2lang",
+          "match": "\\b\\w+\\b"
+        },
+        {
+          "name": "punctuation.separator.parameter.r2lang",
+          "match": ","
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.section.block.begin.r2lang",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.section.block.end.r2lang",
+          "match": "\\}"
+        },
+        {
+          "name": "punctuation.section.group.begin.r2lang",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.group.end.r2lang",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.section.array.begin.r2lang",
+          "match": "\\["
+        },
+        {
+          "name": "punctuation.section.array.end.r2lang",
+          "match": "\\]"
+        },
+        {
+          "name": "punctuation.terminator.statement.r2lang",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.comma.r2lang",
+          "match": ","
+        },
+        {
+          "name": "punctuation.accessor.r2lang",
+          "match": "\\."
+        }
+      ]
+    }
+  }
+}
