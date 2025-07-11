@@ -15,6 +15,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -110,7 +111,8 @@ func RegisterHack(env *r2core.Environment) {
 		}
 		var openPorts []interface{}
 		for port := startP; port <= endP; port++ {
-			address := fmt.Sprintf("%s:%d", host, port)
+			portStr := strconv.Itoa(port)
+			address := net.JoinHostPort(host, portStr)
 			conn, err := net.DialTimeout("tcp", address, 300*time.Millisecond)
 			if err == nil {
 				// Conexión exitosa => puerto abierto

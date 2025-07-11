@@ -29,7 +29,7 @@ func (s *Semaphore) Release() {
 }
 
 // Builtin function para crear un semáforo
-func builtinSemaphore(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinSemaphore(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("semaphore necesita exactamente un argumento: número de permisos")
 	}
@@ -45,7 +45,7 @@ func builtinSemaphore(env *r2core.Environment, args ...interface{}) interface{} 
 }
 
 // Builtin functions para adquirir y liberar semáforos
-func builtinAcquireSemaphore(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinAcquireSemaphore(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("acquire necesita exactamente un argumento: semáforo")
 	}
@@ -57,7 +57,7 @@ func builtinAcquireSemaphore(env *r2core.Environment, args ...interface{}) inter
 	return nil
 }
 
-func builtinReleaseSemaphore(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinReleaseSemaphore(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("release necesita exactamente un argumento: semáforo")
 	}
@@ -110,7 +110,7 @@ func (m *Monitor) Broadcast() {
 }
 
 // Builtin function para crear un monitor
-func builtinMonitor(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinMonitor(args ...interface{}) interface{} {
 	if len(args) != 0 {
 		panic("monitor no necesita argumentos")
 	}
@@ -119,7 +119,7 @@ func builtinMonitor(env *r2core.Environment, args ...interface{}) interface{} {
 }
 
 // Builtin functions para operar sobre monitores
-func builtinLock(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinLock(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("lock necesita exactamente un argumento: monitor")
 	}
@@ -131,7 +131,7 @@ func builtinLock(env *r2core.Environment, args ...interface{}) interface{} {
 	return nil
 }
 
-func builtinUnlock(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinUnlock(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("unlock necesita exactamente un argumento: monitor")
 	}
@@ -143,7 +143,7 @@ func builtinUnlock(env *r2core.Environment, args ...interface{}) interface{} {
 	return nil
 }
 
-func builtinWait(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinWait(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("wait necesita exactamente un argumento: monitor")
 	}
@@ -155,7 +155,7 @@ func builtinWait(env *r2core.Environment, args ...interface{}) interface{} {
 	return nil
 }
 
-func builtinSignal(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinSignal(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("signal necesita exactamente un argumento: monitor")
 	}
@@ -167,7 +167,7 @@ func builtinSignal(env *r2core.Environment, args ...interface{}) interface{} {
 	return nil
 }
 
-func builtinBroadcast(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinBroadcast(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("broadcast necesita exactamente un argumento: monitor")
 	}
@@ -179,7 +179,7 @@ func builtinBroadcast(env *r2core.Environment, args ...interface{}) interface{} 
 	return nil
 }
 
-func builtinWaitAll(env *r2core.Environment, args ...interface{}) interface{} {
+func builtinWaitAll(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("waitAll necesita exactamente un argumento: monitor o semáforo")
 	}
@@ -201,37 +201,37 @@ func builtinWaitAll(env *r2core.Environment, args ...interface{}) interface{} {
 func RegisterConcurrency(env *r2core.Environment) {
 	// Semáforos
 	env.Set("semaphore", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinSemaphore(env, args...)
+		return builtinSemaphore(args...)
 	}))
 
 	env.Set("acquire", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinAcquireSemaphore(env, args...)
+		return builtinAcquireSemaphore(args...)
 	}))
 
 	env.Set("release", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinReleaseSemaphore(env, args...)
+		return builtinReleaseSemaphore(args...)
 	}))
 
 	// Monitores
 	env.Set("monitor", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinMonitor(env, args...)
+		return builtinMonitor(args...)
 	}))
 	env.Set("lock", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinLock(env, args...)
+		return builtinLock(args...)
 	}))
 	env.Set("unlock", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinUnlock(env, args...)
+		return builtinUnlock(args...)
 	}))
 	env.Set("wait", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinWait(env, args...)
+		return builtinWait(args...)
 	}))
 	env.Set("signal", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinSignal(env, args...)
+		return builtinSignal(args...)
 	}))
 	env.Set("broadcast", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinBroadcast(env, args...)
+		return builtinBroadcast(args...)
 	}))
 	env.Set("waitAll", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinWaitAll(env, args...)
+		return builtinWaitAll(args...)
 	}))
 }

@@ -1,8 +1,10 @@
-package r2core
+package r2libs
 
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 // Estructura que podemos usar para simular objetos Go
@@ -12,7 +14,7 @@ type GoObject struct {
 }
 
 // Eval => no hace nada especial
-func (g *GoObject) Eval(env *Environment) interface{} {
+func (g *GoObject) Eval(env *r2core.Environment) interface{} {
 	return g
 }
 
@@ -26,12 +28,12 @@ var goFuncRegistry = make(map[string]reflect.Value)
 var goStructRegistry = make(map[string]func() interface{})
 
 // RegisterGoInterOp: expone funciones que permiten a R2 usar el registro
-func RegisterGoInterOp(env *Environment) {
+func RegisterGoInterOp(env *r2core.Environment) {
 
 	// 1) goRegisterFunc("nombre", GoFuncion)
 	//    => En Go:   goRegisterFunc("miSum", reflect.ValueOf(MiSum))
 	//    => En R2:   callGoFunc("miSum", 10, 20)
-	env.Set("goRegisterFunc", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goRegisterFunc", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			panic("goRegisterFunc necesita (name, goFuncValueReflect)")
 		}
@@ -51,7 +53,7 @@ func RegisterGoInterOp(env *Environment) {
 
 	// 2) callGoFunc("nombre", arg1, arg2, ...)
 	//    => Llama a la función de Go que se registró en goFuncRegistry
-	env.Set("callGoFunc", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("callGoFunc", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
 			panic("callGoFunc necesita (funcName, ...)")
 		}
@@ -91,12 +93,12 @@ func RegisterGoInterOp(env *Environment) {
 
 	// 3) goRegisterStruct("Nombre", constructor)
 	// => para permitir goNew("Nombre") en R2
-	env.Set("goRegisterStruct", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goRegisterStruct", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		panic("goRegisterStruct: se debe llamar desde Go con la map, no desde R2 (Truco).")
 	}))
 
 	// 4) goNew(structName) => crea un objeto Go y retorna un *GoObject
-	env.Set("goNew", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goNew", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
 			panic("goNew necesita (structName)")
 		}
@@ -114,7 +116,7 @@ func RegisterGoInterOp(env *Environment) {
 
 	// 5) goSetField(goObj, "FieldName", value)
 	// => setea un campo exportado en la struct
-	env.Set("goSetField", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goSetField", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 3 {
 			panic("goSetField(goObj, fieldName, value)")
 		}
@@ -142,7 +144,7 @@ func RegisterGoInterOp(env *Environment) {
 	}))
 
 	// 6) goGetField(goObj, "FieldName") => obtiene un campo
-	env.Set("goGetField", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goGetField", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			panic("goGetField(goObj, fieldName)")
 		}
@@ -164,7 +166,7 @@ func RegisterGoInterOp(env *Environment) {
 
 	// 7) goCallMethod(goObj, "MethodName", ...args)
 	// => llama un método exportado en la struct
-	env.Set("goCallMethod", BuiltinFunction(func(args ...interface{}) interface{} {
+	env.Set("goCallMethod", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			panic("goCallMethod(goObj, methodName, ...)")
 		}

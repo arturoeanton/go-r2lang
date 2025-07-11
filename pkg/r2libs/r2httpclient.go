@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -58,7 +57,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 			panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
 		}
 		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			panic(fmt.Sprintf("clientHttpPost: error al leer body: %v", err))
 		}
@@ -120,7 +119,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 			panic(fmt.Sprintf("httpGetJSON: error en GET '%s': %v", url, err))
 		}
 		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			panic(fmt.Sprintf("httpGetJSON: error al leer body: %v", err))
 		}
@@ -156,7 +155,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 			panic(fmt.Sprintf("httpPostJSON: error en POST '%s': %v", url, err))
 		}
 		defer resp.Body.Close()
-		respData, err := ioutil.ReadAll(resp.Body)
+		respData, err := io.ReadAll(resp.Body)
 		if err != nil {
 			panic(fmt.Sprintf("httpPostJSON: error al leer respuesta: %v", err))
 		}

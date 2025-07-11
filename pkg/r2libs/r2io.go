@@ -2,7 +2,6 @@ package r2libs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -21,7 +20,7 @@ func RegisterIO(env *r2core.Environment) {
 		if !ok {
 			panic("readFile: primer argumento debe ser string (path)")
 		}
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			panic(fmt.Sprintf("readFile: error al leer '%s': %v", path, err))
 		}
@@ -39,7 +38,7 @@ func RegisterIO(env *r2core.Environment) {
 		if !ok1 || !ok2 {
 			panic("writeFile: (path, contents) deben ser strings")
 		}
-		err := ioutil.WriteFile(path, []byte(contents), 0644)
+		err := os.WriteFile(path, []byte(contents), 0644)
 		if err != nil {
 			panic(fmt.Sprintf("writeFile: error al escribir '%s': %v", path, err))
 		}
@@ -114,7 +113,7 @@ func RegisterIO(env *r2core.Environment) {
 		if !ok {
 			panic("readDir: path debe ser string")
 		}
-		files, err := ioutil.ReadDir(dir)
+		files, err := os.ReadDir(dir)
 		if err != nil {
 			panic(fmt.Sprintf("readDir: error al leer directorio '%s': %v", dir, err))
 		}
@@ -186,9 +185,6 @@ func RegisterIO(env *r2core.Environment) {
 			panic("fileExists: path debe ser string")
 		}
 		_, err := os.Stat(p)
-		if os.IsNotExist(err) {
-			return false
-		}
-		return true
+		return !os.IsNotExist(err)
 	}))
 }
