@@ -558,9 +558,6 @@ func TestHelperFunctions(t *testing.T) {
 	if !isWhitespace(' ') {
 		t.Error("Expected space to be whitespace")
 	}
-	if !isWhitespace('\n') {
-		t.Error("Expected newline to be whitespace")
-	}
 	if !isWhitespace('\t') {
 		t.Error("Expected tab to be whitespace")
 	}
@@ -570,6 +567,7 @@ func TestHelperFunctions(t *testing.T) {
 	if isWhitespace('a') {
 		t.Error("Expected 'a' to not be whitespace")
 	}
+
 
 	// Test isLetter
 	if !isLetter('a') {

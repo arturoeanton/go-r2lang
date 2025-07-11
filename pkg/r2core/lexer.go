@@ -97,7 +97,7 @@ func NewLexer(input string) *Lexer {
 }
 
 func isWhitespace(ch byte) bool {
-	return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r'
+	return ch == ' ' || ch == '	' || ch == ''
 }
 func isLetter(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') ||
@@ -110,13 +110,8 @@ func isDigit(ch byte) bool {
 }
 
 func (l *Lexer) nextch() {
-	if l.input[l.pos] == '\n' {
-		l.line++
-		l.col = 0
-	}
 	l.pos++
 	l.col++
-
 }
 
 // parseNumberOrSign maneja -2.3, +10, etc.
@@ -234,6 +229,10 @@ skipWhitespace:
 		if string(ch) == s {
 			l.nextch()
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: s, Line: l.line, Pos: l.pos, Col: l.col}
+			if s == "\n" {
+				l.line++
+				l.col = 0
+			}
 			return l.currentToken
 		}
 	}
