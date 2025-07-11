@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/arturoeanton/go-r2lang/r2lang"
 	"os"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
+	"github.com/arturoeanton/go-r2lang/pkg/r2repl"
 )
 
 func main() {
@@ -17,7 +19,7 @@ func main() {
 					outputFlag = false
 				}
 			}
-			r2lang.Repl(outputFlag)
+			r2repl.Repl(outputFlag)
 			os.Exit(0)
 		}
 		filename = cmd
