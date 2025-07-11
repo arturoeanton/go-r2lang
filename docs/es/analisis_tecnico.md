@@ -6,38 +6,41 @@ Este documento analiza la implementación técnica de R2Lang desde una perspecti
 
 ## Métricas de Codebase
 
-### Estadísticas Generales
+### Estadísticas Generales (Actualizadas)
 ```
-Total Lines of Code: ~3,500 LOC
-├── Core Interpreter: ~2,300 LOC (66%)
-├── Built-in Libraries: ~1,000 LOC (28%)
-├── Examples: ~200 LOC (6%)
+Total Lines of Code: 6,346 LOC
+├── Core Interpreter: ~2,365 LOC (37%)
+├── Built-in Libraries: ~3,946 LOC (62%)
+├── Main entry: 35 LOC (1%)
 
 File Distribution:
-├── r2lang/r2lang.go: 2,366 LOC (core)
-├── r2lang/r2*.go: 15 files, ~1,000 LOC
+├── r2lang/r2lang.go: 2,365 LOC (core)
+├── r2lang/r2*.go: 20 files, 3,946 LOC
 ├── main.go: 35 LOC
-├── examples/: 29 files
+├── examples/: 29 archivos .r2
+├── Total archivos Go: 21 archivos
+├── Promedio LOC por archivo: 302.2 líneas
+├── Documentación/comentarios: 537 líneas (8.5% ratio)
 ```
 
 ### Complejidad de Código
 
-#### Cyclomatic Complexity
+#### Cyclomatic Complexity (Análisis Actualizado)
 ```
-Function                        Complexity    Status
-r2lang.go:NextToken()          45           🔴 Very High
-r2lang.go:parseExpression()    35           🔴 Very High  
-r2lang.go:parseStatement()     30           🔴 Very High
-r2lang.go:Eval() methods       15-25        🟡 High
-r2lang.go:parsePostfix()       20           🟡 High
-Built-in functions             5-10         🟢 Low-Medium
+Function                        LOC    Complexity    Status
+r2lang.go:NextToken()          182    60+          🔴 Critical
+r2lang.go:parseForStatement()   59    25+          🔴 Very High
+r2lang.go:parseObjectDecl()     43    20+          🔴 Very High  
+r2lang.go:CallExpression.Eval() 39    18+          🟡 High
+r2lang.go:parseExpression()     35    15+          🟡 High
+Built-in functions             5-15   3-8          🟢 Low-Medium
 ```
 
-**Observaciones**:
-- Core parsing functions tienen complexity muy alta
-- Métodos Eval() están en rango aceptable
-- Built-ins mantienen complexity baja
-- **Recomendación**: Refactorizar parser en módulos más pequeños
+**Observaciones Críticas**:
+- `NextToken()` es la función más compleja con 182 LOC (límite recomendado: 50)
+- Múltiples funciones de parsing superan umbral crítico
+- Control de flujo anidado excesivo en core functions
+- **Acción Inmediata**: Refactorizar NextToken() en métodos especializados
 
 #### Maintainability Index
 ```
@@ -48,6 +51,56 @@ r2std.go               82          🟢 High
 r2http.go              75          🟢 High
 r2string.go            80          🟢 High
 Overall Average        60          🟡 Medium
+```
+
+### Análisis Detallado por Archivo
+
+#### Top 10 Archivos por Tamaño
+| Archivo | LOC | Funciones | Responsabilidad Principal | Status |
+|---------|-----|-----------|---------------------------|---------|
+| **r2lang.go** | 2,365 | 85 | Core interpreter (lexer, parser, AST, evaluator) | 🔴 Crítico |
+| **r2hack.go** | 507 | 3 | Funciones criptográficas y seguridad | 🟡 Revisar |
+| **r2http.go** | 408 | 7 | Servidor web y manejo de rutas HTTP | 🟢 Bueno |
+| **r2print.go** | 363 | 1 | Funciones de formateo e impresión | 🟡 Función única muy grande |
+| **r2httpclient.go** | 322 | 3 | Cliente HTTP y requests | 🟢 Bueno |
+| **r2os.go** | 243 | 2 | Interfaz con sistema operativo | 🟢 Bueno |
+| **r2goroutine.r2.go** | 235 | 20 | Primitivas de concurrencia | 🟢 Bueno |
+| **r2go.go** | 206 | 2 | Integración con código Go nativo | 🟢 Bueno |
+| **r2string.go** | 192 | 1 | Manipulación de cadenas | 🟡 Función única muy grande |
+| **r2io.go** | 192 | 1 | Operaciones de entrada/salida | 🟡 Función única muy grande |
+
+#### Concentración de Complejidad
+```
+Core Processing (37% del código):
+├── r2lang.go: Lexer, Parser, AST, Evaluador, Environment
+├── Concentración: 60% de la complejidad total del sistema
+
+Bibliotecas Especializadas (63% del código):
+├── HTTP/Web: 730 LOC (r2http.go + r2httpclient.go)
+├── Sistema/IO: 627 LOC (r2os.go + r2io.go + r2print.go)
+├── Utilidades: 507 LOC (r2string.go + r2math.go + r2std.go)
+├── Seguridad: 507 LOC (r2hack.go)
+├── Concurrencia: 235 LOC (r2goroutine.r2.go)
+```
+
+#### Problemas de Estructura Identificados
+```
+🔴 ARCHIVO MONOLÍTICO: r2lang.go
+- 37% del código total en un solo archivo
+- Viola principio de responsabilidad única
+- Múltiples concerns: lexing, parsing, evaluation, AST
+- Dificulta testing unitario y mantenimiento
+
+🟡 FUNCIONES ÚNICAS MUY GRANDES:
+- r2print.go: RegisterPrint() - 363 LOC
+- r2string.go: RegisterString() - 192 LOC  
+- r2io.go: RegisterIo() - 192 LOC
+- Patrón: Una función gigante por biblioteca
+
+🟢 BIBLIOTECAS BIEN ESTRUCTURADAS:
+- r2http.go: Múltiples funciones especializadas
+- r2goroutine.r2.go: 20 funciones pequeñas
+- r2os.go: Separación clara de responsabilidades
 ```
 
 ## Arquitectura de Código
