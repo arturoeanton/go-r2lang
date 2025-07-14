@@ -1,5 +1,10 @@
 package r2core
 
+import (
+	"fmt"
+	"time"
+)
+
 type ForStatement struct {
 	Init      Node
 	Condition Node
@@ -9,6 +14,7 @@ type ForStatement struct {
 	inArray   string
 	//inMap       string
 	inIndexName string
+	LoopID      string // Para identificación JIT
 }
 
 func (fs *ForStatement) Eval(env *Environment) interface{} {
@@ -54,6 +60,33 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 }
 
 func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
+	// Generar ID único para el loop si no existe
+	if fs.LoopID == "" {
+		fs.LoopID = fmt.Sprintf("for_%p", fs)
+	}
+	
+	startTime := time.Now()
+	jit := GetJITCompiler()
+	
+	// Verificar si tenemos una versión optimizada JIT
+	if jit.IsLoopHot(fs.LoopID) {
+		result := jit.ExecuteOptimizedLoop(fs.LoopID, env)
+		if result != nil {
+			return result
+		}
+	}
+	
+	// Ejecución normal con profiling
+	result := fs.executeStandardLoop(env)
+	
+	// Registrar tiempo de ejecución para JIT
+	duration := time.Since(startTime)
+	jit.ProfileLoop(fs.LoopID, duration)
+	
+	return result
+}
+
+func (fs *ForStatement) executeStandardLoop(env *Environment) interface{} {
 	var result interface{}
 	if fs.Init != nil {
 		fs.Init.Eval(env)

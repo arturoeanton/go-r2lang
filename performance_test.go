@@ -101,8 +101,8 @@ func BenchmarkMapOperations(b *testing.B) {
 			}
 			
 			var sum = 0;
-			for (var key in map) {
-				sum = sum + map[key];
+			for (var i = 0; i < 100; i = i + 1) {
+				sum = sum + map["key" + i];
 			}
 			return sum;
 		}
