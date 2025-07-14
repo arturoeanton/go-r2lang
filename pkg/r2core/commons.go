@@ -13,16 +13,30 @@ var (
 
 	// Cache para números pequeños comunes
 	intToFloatCache map[int]float64
+	
+	// Cache optimizado para números frecuentes
+	frequentNumberCache map[string]float64
+	frequentNumberMu sync.RWMutex
 )
 
 func init() {
 	// Inicializar caches
 	stringToFloatCache = make(map[string]float64)
 	intToFloatCache = make(map[int]float64)
+	frequentNumberCache = make(map[string]float64)
 	
 	// Pre-poblar cache con números comunes
 	for i := -1000; i <= 1000; i++ {
 		intToFloatCache[i] = float64(i)
+	}
+	
+	// Pre-poblar números frecuentes como strings
+	frequentNumbers := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", 
+		"100", "1000", "-1", "-2", "-3", "0.5", "1.5", "2.5"}
+	for _, numStr := range frequentNumbers {
+		if f, err := strconv.ParseFloat(numStr, 64); err == nil {
+			frequentNumberCache[numStr] = f
+		}
 	}
 }
 
@@ -44,7 +58,15 @@ func toFloat(val interface{}) float64 {
 	case nil:
 		return 0
 	case string:
-		// Buscar en cache primero
+		// Buscar primero en cache de números frecuentes (más rápido)
+		frequentNumberMu.RLock()
+		if cached, ok := frequentNumberCache[v]; ok {
+			frequentNumberMu.RUnlock()
+			return cached
+		}
+		frequentNumberMu.RUnlock()
+		
+		// Buscar en cache general
 		commonsStringCacheMu.RLock()
 		if cached, ok := stringToFloatCache[v]; ok {
 			commonsStringCacheMu.RUnlock()
@@ -117,6 +139,12 @@ func equals(a, b interface{}) bool {
 }
 
 func addValues(a, b interface{}) interface{} {
+	// Fast path: evitar conversiones si ya son float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			return af + bf // Sin allocaciones extra
+		}
+	}
 
 	if isNumeric(a) && isNumeric(b) {
 		// Object pool desactivado para operaciones simples
@@ -154,14 +182,36 @@ func addValues(a, b interface{}) interface{} {
 	return toFloat(a) + toFloat(b)
 }
 func subValues(a, b interface{}) interface{} {
+	// Fast path: evitar conversiones si ya son float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			return af - bf // Sin allocaciones extra
+		}
+	}
 	// Object pool desactivado para operaciones simples
 	return toFloat(a) - toFloat(b)
 }
 func mulValues(a, b interface{}) interface{} {
+	// Fast path: evitar conversiones si ya son float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			return af * bf // Sin allocaciones extra
+		}
+	}
 	// Object pool desactivado para operaciones simples
 	return toFloat(a) * toFloat(b)
 }
 func divValues(a, b interface{}) interface{} {
+	// Fast path: evitar conversiones si ya son float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			if bf == 0 {
+				panic("Division by zero")
+			}
+			return af / bf // Sin allocaciones extra
+		}
+	}
+	
 	den := toFloat(b)
 	if den == 0 {
 		panic("Division by zero")

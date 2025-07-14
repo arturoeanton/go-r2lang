@@ -7,11 +7,10 @@ type BinaryExpression struct {
 }
 
 func (be *BinaryExpression) Eval(env *Environment) interface{} {
-	// Temporalmente deshabilitado para evitar recursión infinita
-	// TODO: Implementar bytecode compilation de manera segura
-	// if isBytecodeCandidate(be) {
-	//     return OptimizedEval(be, env)
-	// }
+	// Fast-path para operaciones aritméticas simples
+	if fastResult := be.tryFastArithmetic(); fastResult != nil {
+		return fastResult
+	}
 
 	lv := be.Left.Eval(env)
 
@@ -60,5 +59,45 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 		return !equals(lv, rv)
 	default:
 		panic("Unsupported binary operator: " + be.Op)
+	}
+}
+
+// tryFastArithmetic intenta resolver operaciones aritméticas simples sin evaluación completa
+func (be *BinaryExpression) tryFastArithmetic() interface{} {
+	// Solo optimizar para literals numéricos directos
+	leftNum, leftOk := be.Left.(*NumberLiteral)
+	rightNum, rightOk := be.Right.(*NumberLiteral)
+	
+	if !leftOk || !rightOk {
+		return nil // No es fast-path candidate
+	}
+	
+	// Fast arithmetic para números literales
+	switch be.Op {
+	case "+":
+		return leftNum.Value + rightNum.Value
+	case "-":
+		return leftNum.Value - rightNum.Value
+	case "*":
+		return leftNum.Value * rightNum.Value
+	case "/":
+		if rightNum.Value == 0 {
+			panic("Division by zero")
+		}
+		return leftNum.Value / rightNum.Value
+	case "<":
+		return leftNum.Value < rightNum.Value
+	case ">":
+		return leftNum.Value > rightNum.Value
+	case "<=":
+		return leftNum.Value <= rightNum.Value
+	case ">=":
+		return leftNum.Value >= rightNum.Value
+	case "==":
+		return leftNum.Value == rightNum.Value
+	case "!=":
+		return leftNum.Value != rightNum.Value
+	default:
+		return nil // No es operación aritmética simple
 	}
 }

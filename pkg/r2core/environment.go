@@ -16,27 +16,30 @@ type Environment struct {
 	imported map[string]bool
 	Dir      string
 	CurrenFx string
-	// Cache para variables frecuentemente accedidas
-	cache   map[string]interface{}
-	cacheMu sync.RWMutex
+	
+	// Cache optimizado para lookup frecuente
+	lookupCache   map[string]interface{}
+	lookupCacheMu sync.RWMutex
+	cacheHits     int
+	cacheMisses   int
 }
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		store:    make(map[string]interface{}),
-		outer:    nil,
-		imported: make(map[string]bool),
-		cache:    make(map[string]interface{}),
+		store:       make(map[string]interface{}),
+		outer:       nil,
+		imported:    make(map[string]bool),
+		lookupCache: make(map[string]interface{}),
 	}
 }
 
 func NewInnerEnv(outer *Environment) *Environment {
 	return &Environment{
-		store:    make(map[string]interface{}),
-		outer:    outer,
-		imported: make(map[string]bool),
-		Dir:      outer.Dir,
-		cache:    make(map[string]interface{}),
+		store:       make(map[string]interface{}),
+		outer:       outer,
+		imported:    make(map[string]bool),
+		Dir:         outer.Dir,
+		lookupCache: make(map[string]interface{}),
 	}
 }
 
@@ -50,27 +53,31 @@ func (e *Environment) GetStore() map[string]interface{} {
 func (e *Environment) Set(name string, value interface{}) {
 	e.store[name] = value
 	// Limpiar cache cuando se modifica una variable
-	e.cacheMu.Lock()
-	delete(e.cache, name)
-	e.cacheMu.Unlock()
+	e.lookupCacheMu.Lock()
+	delete(e.lookupCache, name)
+	e.lookupCacheMu.Unlock()
 }
 
 func (e *Environment) Get(name string) (interface{}, bool) {
-	// Primero buscar en cache local
-	e.cacheMu.RLock()
-	if val, ok := e.cache[name]; ok {
-		e.cacheMu.RUnlock()
+	// Fast path: buscar en cache optimizado
+	e.lookupCacheMu.RLock()
+	if val, ok := e.lookupCache[name]; ok {
+		e.cacheHits++
+		e.lookupCacheMu.RUnlock()
 		return val, true
 	}
-	e.cacheMu.RUnlock()
+	e.lookupCacheMu.RUnlock()
 
-	// Búsqueda normal
+	// Búsqueda en store local
 	val, ok := e.store[name]
 	if ok {
-		// Agregar al cache
-		e.cacheMu.Lock()
-		e.cache[name] = val
-		e.cacheMu.Unlock()
+		// Cachear solo si el cache no está lleno (evitar memory leak)
+		e.lookupCacheMu.Lock()
+		if len(e.lookupCache) < 100 { // Limitar tamaño del cache
+			e.lookupCache[name] = val
+		}
+		e.cacheMisses++
+		e.lookupCacheMu.Unlock()
 		return val, true
 	}
 
