@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -23,15 +23,15 @@ func BenchmarkBasicArithmetic(b *testing.B) {
 		}
 		calculate();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -48,15 +48,15 @@ func BenchmarkStringOperations(b *testing.B) {
 		}
 		stringTest();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -78,15 +78,15 @@ func BenchmarkArrayOperations(b *testing.B) {
 		}
 		arrayTest();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -108,15 +108,15 @@ func BenchmarkMapOperations(b *testing.B) {
 		}
 		mapTest();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -132,15 +132,15 @@ func BenchmarkFunctionCalls(b *testing.B) {
 		}
 		fibonacci(20);
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -174,15 +174,15 @@ func BenchmarkObjectOperations(b *testing.B) {
 		}
 		testObjects();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
 	}
 }
@@ -219,7 +219,7 @@ func BenchmarkLexerPerformance(b *testing.B) {
 		
 		complexFunction(10, 50, 20);
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		lexer := r2core.NewLexer(code)
@@ -263,7 +263,7 @@ func BenchmarkParserPerformance(b *testing.B) {
 		
 		complexFunction(10, 50, 20);
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		parser := r2core.NewParser(code)
@@ -287,25 +287,25 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		}
 		memoryTest();
 	`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		runtime.GC()
-		
+
 		var m1 runtime.MemStats
 		runtime.ReadMemStats(&m1)
-		
+
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		env := r2core.NewEnvironment()
 		registerAllLibs(env)
-		
+
 		program.Eval(env)
-		
+
 		var m2 runtime.MemStats
 		runtime.ReadMemStats(&m2)
-		
+
 		// Reportar uso de memoria
 		b.ReportMetric(float64(m2.Alloc-m1.Alloc)/1024/1024, "MB/op")
 	}
@@ -315,13 +315,13 @@ func BenchmarkMemoryUsage(b *testing.B) {
 func TestPerformanceReport(t *testing.T) {
 	fmt.Println("=== REPORTE DE RENDIMIENTO R2LANG ===")
 	fmt.Println("Ejecutando benchmarks...")
-	
+
 	// Información del sistema
 	fmt.Printf("Sistema: %s\n", runtime.GOOS)
 	fmt.Printf("Arquitectura: %s\n", runtime.GOARCH)
 	fmt.Printf("CPUs: %d\n", runtime.NumCPU())
 	fmt.Printf("Versión Go: %s\n", runtime.Version())
-	
+
 	// Crear archivo de reporte
 	report := fmt.Sprintf(`# Reporte de Performance - R2Lang
 Fecha: %s
@@ -332,9 +332,9 @@ Versión Go: %s
 ## Benchmarks Ejecutados
 
 Para ejecutar estos benchmarks:
-` + "```bash" + `
+`+"```bash"+`
 go test -bench=. -benchmem performance_test.go
-` + "```" + `
+`+"```"+`
 
 ## Casos de Prueba
 
@@ -352,12 +352,12 @@ go test -bench=. -benchmem performance_test.go
 
 Los resultados de estos benchmarks se detallan en docs/es/performance.md
 `, time.Now().Format("2006-01-02 15:04:05"), runtime.GOOS, runtime.GOARCH, runtime.NumCPU(), runtime.Version())
-	
-	err := ioutil.WriteFile("performance_report.md", []byte(report), 0644)
+
+	err := os.WriteFile("performance_report.md", []byte(report), 0644)
 	if err != nil {
 		t.Fatalf("Error escribiendo reporte: %v", err)
 	}
-	
+
 	fmt.Println("Reporte generado: performance_report.md")
 	fmt.Println("Ejecuta: go test -bench=. -benchmem performance_test.go")
 }
@@ -368,7 +368,7 @@ func registerAllLibs(env *r2core.Environment) {
 	env.Set("false", false)
 	env.Set("nil", nil)
 	env.Set("null", nil)
-	
+
 	r2libs.RegisterLib(env)
 	r2libs.RegisterStd(env)
 	r2libs.RegisterIO(env)

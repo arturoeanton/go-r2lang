@@ -8,7 +8,7 @@ type BinaryExpression struct {
 
 func (be *BinaryExpression) Eval(env *Environment) interface{} {
 	lv := be.Left.Eval(env)
-	
+
 	// Evaluación lazy para operadores lógicos
 	switch be.Op {
 	case "&&":

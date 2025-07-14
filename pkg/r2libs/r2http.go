@@ -100,7 +100,7 @@ func RegisterHTTP(env *r2core.Environment) {
 			respStr, okResp := respVal.(string)
 			if !okResp {
 				respCustom, okResp := respVal.(*r2core.ObjectInstance)
-				data := make(map[string]interface{})
+				var data map[string]interface{}
 				if okResp {
 					data = respCustom.Env.GetStore()
 				} else {
@@ -169,7 +169,7 @@ func RegisterHTTP(env *r2core.Environment) {
 			panic("XML: argument must be a string")
 		}
 		objectInstance, ok := args[1].(*r2core.ObjectInstance)
-		instance := make(map[string]interface{})
+		var instance map[string]interface{}
 		if !ok {
 			instance, ok = args[1].(map[string]interface{})
 			if !ok {
@@ -236,7 +236,7 @@ func RegisterHTTP(env *r2core.Environment) {
 		if len(args) < 1 {
 			panic("JSON needs at least 1 argument")
 		}
-		instance := make(map[string]interface{})
+		var instance map[string]interface{}
 		objectInstance, ok := args[0].(*r2core.ObjectInstance)
 		if !ok {
 			instance, ok = args[0].(map[string]interface{})
