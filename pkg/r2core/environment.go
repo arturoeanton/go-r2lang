@@ -17,8 +17,8 @@ type Environment struct {
 	Dir      string
 	CurrenFx string
 	// Cache para variables frecuentemente accedidas
-	cache    map[string]interface{}
-	cacheMu  sync.RWMutex
+	cache   map[string]interface{}
+	cacheMu sync.RWMutex
 }
 
 func NewEnvironment() *Environment {
@@ -63,7 +63,7 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 		return val, true
 	}
 	e.cacheMu.RUnlock()
-	
+
 	// Búsqueda normal
 	val, ok := e.store[name]
 	if ok {
@@ -73,7 +73,7 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 		e.cacheMu.Unlock()
 		return val, true
 	}
-	
+
 	if e.outer != nil {
 		return e.outer.Get(name)
 	}

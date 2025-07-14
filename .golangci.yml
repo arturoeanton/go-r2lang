@@ -1,0 +1,76 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters-settings:
+  gocyclo:
+    min-complexity: 30  # Aumentar umbral para funciones complejas existentes
+  misspell:
+    locale: US
+    ignore-words:
+      - argumentos
+      - asume
+      - calcular
+      - columnas 
+      - comando
+      - directorios
+      - monitores
+      - recorre
+      - regulares
+      - representativo
+  lll:
+    line-length: 120
+  goconst:
+    min-len: 3
+    min-occurrences: 5  # Aumentar umbral
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+  
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - gofmt
+    - goimports
+  disable:
+    - errcheck      # Muchos errores en código legacy
+    - misspell      # Comentarios en español
+    - goconst       # Muchas constantes repetidas en código existente
+    - gocyclo       # Funciones complejas existentes
+    - lll           # Líneas largas existentes
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+    # Exclude performance test file
+    - path: performance_test\.go
+      linters:
+        - staticcheck
+    # Exclude Spanish comments from misspell
+    - linters:
+        - misspell
+      source: "//.*[áéíóúñ]"
+    # Exclude lll issues for long lines with go:generate
+    - linters:
+        - lll
+      source: "^//go:generate "
+  max-issues-per-linter: 10
+  max-same-issues: 3
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true

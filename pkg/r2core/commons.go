@@ -10,7 +10,7 @@ var (
 	// Cache para conversiones de string a float
 	stringToFloatCache = make(map[string]float64)
 	stringCacheMu      sync.RWMutex
-	
+
 	// Cache para números pequeños comunes
 	intToFloatCache = make(map[int]float64)
 )
@@ -47,13 +47,13 @@ func toFloat(val interface{}) float64 {
 			return cached
 		}
 		stringCacheMu.RUnlock()
-		
+
 		// Parsear y cachear
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			panic("Cannot convert string to number:" + v)
 		}
-		
+
 		// Limitar tamaño del cache
 		stringCacheMu.Lock()
 		if len(stringToFloatCache) < 10000 {
