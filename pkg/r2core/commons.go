@@ -3,13 +3,34 @@ package r2core
 import (
 	"fmt"
 	"strconv"
+	"sync"
 )
+
+var (
+	// Cache para conversiones de string a float
+	stringToFloatCache = make(map[string]float64)
+	stringCacheMu      sync.RWMutex
+	
+	// Cache para números pequeños comunes
+	intToFloatCache = make(map[int]float64)
+)
+
+func init() {
+	// Pre-poblar cache con números comunes
+	for i := -1000; i <= 1000; i++ {
+		intToFloatCache[i] = float64(i)
+	}
+}
 
 func toFloat(val interface{}) float64 {
 	switch v := val.(type) {
 	case float64:
 		return v
 	case int:
+		// Usar cache para números pequeños
+		if cached, ok := intToFloatCache[v]; ok {
+			return cached
+		}
 		return float64(v)
 	case bool:
 		if v {
@@ -19,10 +40,26 @@ func toFloat(val interface{}) float64 {
 	case nil:
 		return 0
 	case string:
+		// Buscar en cache primero
+		stringCacheMu.RLock()
+		if cached, ok := stringToFloatCache[v]; ok {
+			stringCacheMu.RUnlock()
+			return cached
+		}
+		stringCacheMu.RUnlock()
+		
+		// Parsear y cachear
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			panic("Cannot convert string to number:" + v)
 		}
+		
+		// Limitar tamaño del cache
+		stringCacheMu.Lock()
+		if len(stringToFloatCache) < 10000 {
+			stringToFloatCache[v] = f
+		}
+		stringCacheMu.Unlock()
 		return f
 	}
 	panic("Cannot convert value to number")

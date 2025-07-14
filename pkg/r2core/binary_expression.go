@@ -8,8 +8,29 @@ type BinaryExpression struct {
 
 func (be *BinaryExpression) Eval(env *Environment) interface{} {
 	lv := be.Left.Eval(env)
-	rv := be.Right.Eval(env)
+	
+	// Evaluación lazy para operadores lógicos
+	switch be.Op {
+	case "&&":
+		if !toBool(lv) {
+			return false // No evaluar right si left es false
+		}
+		rv := be.Right.Eval(env)
+		return toBool(rv)
+	case "||":
+		if toBool(lv) {
+			return true // No evaluar right si left es true
+		}
+		rv := be.Right.Eval(env)
+		return toBool(rv)
+	default:
+		// Para operadores aritméticos y de comparación, evaluar ambos
+		rv := be.Right.Eval(env)
+		return be.evaluateArithmeticOp(lv, rv)
+	}
+}
 
+func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{} {
 	switch be.Op {
 	case "+":
 		return addValues(lv, rv)
