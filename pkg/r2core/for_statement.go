@@ -1,10 +1,5 @@
 package r2core
 
-import (
-	"fmt"
-	"time"
-)
-
 type ForStatement struct {
 	Init      Node
 	Condition Node
@@ -60,30 +55,23 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 }
 
 func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
-	// Generar ID único para el loop si no existe
-	if fs.LoopID == "" {
-		fs.LoopID = fmt.Sprintf("for_%p", fs)
+	// Intentar optimización específica para loops simples
+	if optimized := fs.trySimpleLoopOptimization(env); optimized != nil {
+		return optimized
 	}
 	
-	startTime := time.Now()
-	jit := GetJITCompiler()
+	// Ejecución normal para loops complejos
+	return fs.executeStandardLoop(env)
+}
+
+// trySimpleLoopOptimization intenta optimizar loops aritméticos simples
+func (fs *ForStatement) trySimpleLoopOptimization(env *Environment) interface{} {
+	// Solo optimizar loops muy específicos y seguros
+	// Por ejemplo: for (var i = 0; i < N; i++) { suma += i; }
 	
-	// Verificar si tenemos una versión optimizada JIT
-	if jit.IsLoopHot(fs.LoopID) {
-		result := jit.ExecuteOptimizedLoop(fs.LoopID, env)
-		if result != nil {
-			return result
-		}
-	}
-	
-	// Ejecución normal con profiling
-	result := fs.executeStandardLoop(env)
-	
-	// Registrar tiempo de ejecución para JIT
-	duration := time.Since(startTime)
-	jit.ProfileLoop(fs.LoopID, duration)
-	
-	return result
+	// TODO: Implementar detección de patrones simples
+	// Por ahora, no optimizar para mantener estabilidad
+	return nil
 }
 
 func (fs *ForStatement) executeStandardLoop(env *Environment) interface{} {

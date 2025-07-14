@@ -119,12 +119,8 @@ func equals(a, b interface{}) bool {
 func addValues(a, b interface{}) interface{} {
 
 	if isNumeric(a) && isNumeric(b) {
-		result := toFloat(a) + toFloat(b)
-		// Usar object pool para números pequeños frecuentemente utilizados
-		if IsSmallInteger(result) {
-			return GetFloat64(result)
-		}
-		return result
+		// Object pool desactivado para operaciones simples
+		return toFloat(a) + toFloat(b)
 	}
 
 	if aa, ok := a.([]interface{}); ok {
@@ -138,44 +134,40 @@ func addValues(a, b interface{}) interface{} {
 		return append([]interface{}{a}, ab...)
 	}
 
-	// Si uno es string => concatenar (optimizado)
+	// Si uno es string => concatenar (simple para strings pequeños)
 	if sa, ok := a.(string); ok {
 		sb := fmt.Sprint(b)
-		return OptimizedStringConcat2(sa, sb)
+		// Solo usar optimización para strings grandes o cuando realmente beneficie
+		if len(sa)+len(sb) > 100 {
+			return OptimizedStringConcat2(sa, sb)
+		}
+		return sa + sb
 	}
 	if sb, ok := b.(string); ok {
 		sa := fmt.Sprint(a)
-		return OptimizedStringConcat2(sa, sb)
+		// Solo usar optimización para strings grandes o cuando realmente beneficie  
+		if len(sa)+len(sb) > 100 {
+			return OptimizedStringConcat2(sa, sb)
+		}
+		return sa + sb
 	}
 	return toFloat(a) + toFloat(b)
 }
 func subValues(a, b interface{}) interface{} {
-	result := toFloat(a) - toFloat(b)
-	// Usar object pool para números pequeños frecuentemente utilizados
-	if IsSmallInteger(result) {
-		return GetFloat64(result)
-	}
-	return result
+	// Object pool desactivado para operaciones simples
+	return toFloat(a) - toFloat(b)
 }
 func mulValues(a, b interface{}) interface{} {
-	result := toFloat(a) * toFloat(b)
-	// Usar object pool para números pequeños frecuentemente utilizados
-	if IsSmallInteger(result) {
-		return GetFloat64(result)
-	}
-	return result
+	// Object pool desactivado para operaciones simples
+	return toFloat(a) * toFloat(b)
 }
 func divValues(a, b interface{}) interface{} {
 	den := toFloat(b)
 	if den == 0 {
 		panic("Division by zero")
 	}
-	result := toFloat(a) / den
-	// Usar object pool para números pequeños frecuentemente utilizados
-	if IsSmallInteger(result) {
-		return GetFloat64(result)
-	}
-	return result
+	// Object pool desactivado para operaciones simples
+	return toFloat(a) / den
 }
 
 // Asignación en map/array
