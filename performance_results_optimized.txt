@@ -1,0 +1,48 @@
+=== REPORTE DE RENDIMIENTO R2LANG ===
+Ejecutando benchmarks...
+Sistema: darwin
+Arquitectura: arm64
+CPUs: 14
+Versión Go: go1.24.4
+Reporte generado: performance_report.md
+Ejecuta: go test -bench=. -benchmem performance_test.go
+goos: darwin
+goarch: arm64
+cpu: Apple M4 Max
+BenchmarkBasicArithmetic-14      	    6744	    177252 ns/op	   86497 B/op	    8071 allocs/op
+BenchmarkStringOperations-14     	   23307	     52916 ns/op	  120124 B/op	    1073 allocs/op
+BenchmarkArrayOperations-14      	   12062	    104838 ns/op	   80252 B/op	    3611 allocs/op
+panic: Undeclared variable: in
+
+goroutine 4 [running]:
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*Identifier).Eval(0x140000da090, 0x11?)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/identifier.go:10 +0x74
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*ForStatement).executeStandardLoop(0x1400003c150, 0x140001255c0)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/for_statement.go:96 +0x70
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*ForStatement).evalStandardFor(0x1400003c150, 0x140001255c0)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/for_statement.go:80 +0xe0
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*ForStatement).Eval(0x1400003c150, 0x14000125500)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/for_statement.go:26 +0xf4
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*BlockStatement).Eval(0x140000afce8?, 0x14000125500)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/block_statement.go:10 +0x6c
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*UserFunction).NativeCall(0x14000120b80, 0x0?, {0x0, 0x0, 0x7?})
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/user_function.go:44 +0x2c4
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*UserFunction).Call(0x14000120b80, {0x0?, 0x140000afde8?, 0x10294a000?})
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/user_function.go:54 +0x74
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*CallExpression).Eval(0x140001136b0, 0x140001254a0)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/call_expression.go:35 +0x24c
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*ExprStatement).Eval(0x14000113650?, 0x140001254a0?)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/expr_statement.go:8 +0x28
+github.com/arturoeanton/go-r2lang/pkg/r2core.(*Program).Eval(0x140001254a0?, 0x140001254a0)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/pkg/r2core/program.go:11 +0x6c
+command-line-arguments.BenchmarkMapOperations(0x14000150848)
+	/Users/arturoeliasanton/github.com/arturoeanton/go-r2lang/performance_test.go:120 +0x4c
+testing.(*B).runN(0x14000150848, 0x1)
+	/opt/homebrew/Cellar/go/1.24.4/libexec/src/testing/benchmark.go:219 +0x1a4
+testing.(*B).run1.func1()
+	/opt/homebrew/Cellar/go/1.24.4/libexec/src/testing/benchmark.go:245 +0x4c
+created by testing.(*B).run1 in goroutine 1
+	/opt/homebrew/Cellar/go/1.24.4/libexec/src/testing/benchmark.go:238 +0x90
+exit status 2
+FAIL	command-line-arguments	6.277s
+FAIL

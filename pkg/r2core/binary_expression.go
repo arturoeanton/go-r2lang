@@ -7,6 +7,12 @@ type BinaryExpression struct {
 }
 
 func (be *BinaryExpression) Eval(env *Environment) interface{} {
+	// Temporalmente deshabilitado para evitar recursión infinita
+	// TODO: Implementar bytecode compilation de manera segura
+	// if isBytecodeCandidate(be) {
+	//     return OptimizedEval(be, env)
+	// }
+
 	lv := be.Left.Eval(env)
 
 	// Evaluación lazy para operadores lógicos

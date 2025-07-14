@@ -8,14 +8,18 @@ import (
 
 var (
 	// Cache para conversiones de string a float
-	stringToFloatCache = make(map[string]float64)
-	stringCacheMu      sync.RWMutex
+	stringToFloatCache map[string]float64
+	commonsStringCacheMu sync.RWMutex
 
 	// Cache para números pequeños comunes
-	intToFloatCache = make(map[int]float64)
+	intToFloatCache map[int]float64
 )
 
 func init() {
+	// Inicializar caches
+	stringToFloatCache = make(map[string]float64)
+	intToFloatCache = make(map[int]float64)
+	
 	// Pre-poblar cache con números comunes
 	for i := -1000; i <= 1000; i++ {
 		intToFloatCache[i] = float64(i)
@@ -41,12 +45,12 @@ func toFloat(val interface{}) float64 {
 		return 0
 	case string:
 		// Buscar en cache primero
-		stringCacheMu.RLock()
+		commonsStringCacheMu.RLock()
 		if cached, ok := stringToFloatCache[v]; ok {
-			stringCacheMu.RUnlock()
+			commonsStringCacheMu.RUnlock()
 			return cached
 		}
-		stringCacheMu.RUnlock()
+		commonsStringCacheMu.RUnlock()
 
 		// Parsear y cachear
 		f, err := strconv.ParseFloat(v, 64)
@@ -55,11 +59,11 @@ func toFloat(val interface{}) float64 {
 		}
 
 		// Limitar tamaño del cache
-		stringCacheMu.Lock()
+		commonsStringCacheMu.Lock()
 		if len(stringToFloatCache) < 10000 {
 			stringToFloatCache[v] = f
 		}
-		stringCacheMu.Unlock()
+		commonsStringCacheMu.Unlock()
 		return f
 	}
 	panic("Cannot convert value to number")
@@ -115,7 +119,12 @@ func equals(a, b interface{}) bool {
 func addValues(a, b interface{}) interface{} {
 
 	if isNumeric(a) && isNumeric(b) {
-		return toFloat(a) + toFloat(b)
+		result := toFloat(a) + toFloat(b)
+		// Usar object pool para números pequeños frecuentemente utilizados
+		if IsSmallInteger(result) {
+			return GetFloat64(result)
+		}
+		return result
 	}
 
 	if aa, ok := a.([]interface{}); ok {
@@ -129,27 +138,44 @@ func addValues(a, b interface{}) interface{} {
 		return append([]interface{}{a}, ab...)
 	}
 
-	// Si uno es string => concatenar
+	// Si uno es string => concatenar (optimizado)
 	if sa, ok := a.(string); ok {
-		return sa + fmt.Sprint(b)
+		sb := fmt.Sprint(b)
+		return OptimizedStringConcat2(sa, sb)
 	}
 	if sb, ok := b.(string); ok {
-		return fmt.Sprint(a) + sb
+		sa := fmt.Sprint(a)
+		return OptimizedStringConcat2(sa, sb)
 	}
 	return toFloat(a) + toFloat(b)
 }
 func subValues(a, b interface{}) interface{} {
-	return toFloat(a) - toFloat(b)
+	result := toFloat(a) - toFloat(b)
+	// Usar object pool para números pequeños frecuentemente utilizados
+	if IsSmallInteger(result) {
+		return GetFloat64(result)
+	}
+	return result
 }
 func mulValues(a, b interface{}) interface{} {
-	return toFloat(a) * toFloat(b)
+	result := toFloat(a) * toFloat(b)
+	// Usar object pool para números pequeños frecuentemente utilizados
+	if IsSmallInteger(result) {
+		return GetFloat64(result)
+	}
+	return result
 }
 func divValues(a, b interface{}) interface{} {
 	den := toFloat(b)
 	if den == 0 {
 		panic("Division by zero")
 	}
-	return toFloat(a) / den
+	result := toFloat(a) / den
+	// Usar object pool para números pequeños frecuentemente utilizados
+	if IsSmallInteger(result) {
+		return GetFloat64(result)
+	}
+	return result
 }
 
 // Asignación en map/array
