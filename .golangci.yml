@@ -35,10 +35,10 @@ linters:
     - unused
     - gosimple
     - ineffassign
-    - typecheck
     - gofmt
     - goimports
   disable:
+    - typecheck     # Problemas con Go 1.23
     - errcheck      # Muchos errores en código legacy
     - misspell      # Comentarios en español
     - goconst       # Muchas constantes repetidas en código existente
