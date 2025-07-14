@@ -345,21 +345,10 @@ func (vm *VM) LastPoppedStackElem() interface{} {
 
 // OptimizedEval evalúa un nodo usando bytecode si es posible
 func OptimizedEval(node Node, env *Environment) interface{} {
-	// Solo optimizar operaciones simples que se benefician del bytecode
-	if isBytecodeCandidate(node) {
-		compiler := NewCompiler()
-		err := compiler.Compile(node)
-		if err == nil {
-			vm := NewVM(compiler.Bytecode())
-			err = vm.Run()
-			if err == nil {
-				return vm.LastPoppedStackElem()
-			}
-		}
-		// Si falla la compilación/ejecución, usar evaluación normal
-	}
+	// TEMPORALMENTE DESACTIVADO - evitar recursión infinita
+	// Solo activar para casos muy específicos después de más testing
 	
-	// Fallback a evaluación normal
+	// Fallback a evaluación normal (siempre seguro)
 	return node.Eval(env)
 }
 

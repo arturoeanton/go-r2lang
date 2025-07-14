@@ -78,12 +78,8 @@ func evalArrayLen(arr interfaceSlice) interface{} {
 		if len(args) != 0 {
 			panic("len: only one argument is accepted")
 		}
-		result := float64(len(arr))
-		// Usar object pool para números pequeños frecuentemente utilizados
-		if IsSmallInteger(result) {
-			return GetFloat64(result)
-		}
-		return result
+		// Object pool desactivado para operaciones simples
+		return float64(len(arr))
 	})
 }
 
@@ -348,7 +344,20 @@ func evalArrayJoin(arr interfaceSlice) interface{} {
 		if len(args) == 1 {
 			sep = args[0].(string)
 		}
-		// Usar StringBuilder para concatenación eficiente en loop
+		// Solo usar StringBuilder para arrays grandes, concatenación simple para pequeños
+		if len(arr) <= 10 {
+			// Concatenación simple para arrays pequeños
+			var result string
+			for i, v := range arr {
+				if i > 0 {
+					result += sep
+				}
+				result += fmt.Sprintf("%v", v)
+			}
+			return result
+		}
+		
+		// StringBuilder para arrays grandes
 		sb := GetStringBuilder()
 		defer PutStringBuilder(sb)
 		

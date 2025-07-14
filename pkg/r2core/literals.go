@@ -5,10 +5,7 @@ type NumberLiteral struct {
 }
 
 func (nl *NumberLiteral) Eval(env *Environment) interface{} {
-	// Usar object pool para números pequeños frecuentemente utilizados
-	if IsSmallInteger(nl.Value) {
-		return GetFloat64(nl.Value)
-	}
+	// Object pool desactivado para operaciones simples - usar solo valor directo
 	return nl.Value
 }
 
