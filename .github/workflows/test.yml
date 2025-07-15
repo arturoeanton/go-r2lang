@@ -28,7 +28,7 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}-test
         restore-keys: |
           ${{ runner.os }}-go-${{ matrix.go-version }}-
 
@@ -61,11 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.22'  # Usar Go 1.22 para evitar problemas con 1.23
+        go-version: '1.22'
 
     - name: Cache Go modules
       uses: actions/cache@v3
@@ -73,24 +73,22 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-1.22-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-1.22-${{ hashFiles('**/go.sum') }}-lint
 
     - name: Download dependencies
       run: go mod download
 
+    - name: Cleanup temp files before lint
+      run: rm -rf /tmp/golangci-lint-* || true
+
     - name: Basic Go checks
       run: |
-        # Verificar formato
         if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
           echo "Code is not properly formatted. Run 'gofmt -w .'"
           gofmt -s -l .
           exit 1
         fi
-        
-        # Verificar que compila
         go build -v ./...
-        
-        # Verificar imports
         if command -v goimports &> /dev/null; then
           goimports -l .
         fi
@@ -98,8 +96,8 @@ jobs:
     - name: golangci-lint (optional)
       uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.54.2  # Versión más estable
-        args: --timeout=3m --disable=typecheck
+        version: v1.54.2
+        args: --timeout=3m --disable=typecheck --no-cache
       continue-on-error: true
 
   integration:
@@ -121,7 +119,6 @@ jobs:
     - name: Test simple R2Lang examples
       timeout-minutes: 5
       run: |
-        # Test basic examples that don't use goroutines
         examples_to_test=(
           "examples/example1-if.r2"
           "examples/example2-while.r2"
@@ -134,7 +131,6 @@ jobs:
           "examples/example12-rand.r2"
           "examples/example22-array.r2"
         )
-        
         for example in "${examples_to_test[@]}"; do
           if [[ -f "$example" ]]; then
             echo "Testing $example..."
@@ -158,11 +154,19 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.22'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-1.22-${{ hashFiles('**/go.sum') }}-security
 
     - name: Download dependencies
       run: go mod download
@@ -170,23 +174,17 @@ jobs:
     - name: Basic security checks
       run: |
         echo "Running basic security checks..."
-        
-        # Verificar que no hay credenciales hardcodeadas
         if grep -r -i "password\|secret\|key\|token" --include="*.go" . | grep -v "test" | head -5; then
           echo "Warning: Potential hardcoded credentials found"
         fi
-        
-        # Verificar imports seguros
         echo "Checking for unsafe imports..."
         if grep -r "unsafe" --include="*.go" . | head -5; then
           echo "Warning: Unsafe package usage found"
         fi
-        
         echo "Basic security check completed"
 
     - name: Run gosec (if available)
       run: |
-        # Intentar instalar gosec
         if go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; then
           echo "gosec installed successfully"
           if command -v gosec &> /dev/null; then
