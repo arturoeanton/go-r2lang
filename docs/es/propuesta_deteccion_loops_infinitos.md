@@ -38,9 +38,11 @@ func infiniteRecursion() {
 
 ## Solución Propuesta
 
-### 1. Sistema de Contadores de Iteración
+### 1. Sistema de Contadores de Iteración Optimizado
 
-#### 1.1 Contador Global de Iteraciones
+#### 1.1 Instrumentación a Nivel de Bytecode
+**Propuesta mejorada:** Insertar contador en bytecode en lugar de cada nodo Eval.
+
 ```go
 type ExecutionLimiter struct {
     MaxIterations     int64
@@ -49,19 +51,66 @@ type ExecutionLimiter struct {
     CurrentDepth      int
     StartTime         time.Time
     MaxExecutionTime  time.Duration
+    InstructionCount  int64
+    CheckInterval     int64  // Verificar cada K instrucciones
+}
+
+// Ejemplo de integración en bytecode
+const (
+    OP_COUNT = iota + 100  // Nueva operación de contador
+    OP_LOOP_START
+    OP_LOOP_END
+)
+
+func (vm *VM) executeInstruction(op OpCode) {
+    vm.instructionCount++
+    
+    // Verificar límites cada K instrucciones (k=64-128)
+    if vm.instructionCount%vm.limiter.CheckInterval == 0 {
+        if vm.limiter.CheckLimits() {
+            panic(NewInfiniteLoopError("bytecode", vm.getCurrentLocation()))
+        }
+    }
+    
+    switch op {
+    case OP_COUNT:
+        vm.limiter.IncrementIterations()
+    // ... otras operaciones
+    }
 }
 ```
 
-#### 1.2 Integración en Estructuras de Control
+#### 1.2 Contador por Bucle (Scope-Based)
+**Mejora:** Reiniciar contador por bucle en lugar de global.
 
-**En WhileStatement:**
 ```go
+type LoopContext struct {
+    Type           string    // "while", "for", "for-in"
+    Iterations     int64     // Comienza en 0 cada bucle
+    MaxIterations  int64     // Límite específico del bucle
+    StartTime      time.Time
+    Location       string
+}
+
 func (ws *WhileStatement) Eval(env *Environment) interface{} {
     limiter := env.GetLimiter()
     
+    // Crear contexto específico para este bucle
+    loopCtx := &LoopContext{
+        Type:          "while",
+        Iterations:    0,
+        MaxIterations: limiter.MaxIterations,
+        StartTime:     time.Now(),
+        Location:      ws.GetLocation(),
+    }
+    
+    limiter.EnterLoop(loopCtx)
+    defer limiter.ExitLoop()
+    
     for {
-        if limiter.CheckIterationLimit() {
-            panic("Loop infinito detectado: Máximo de iteraciones excedido")
+        // Verificar límites del bucle actual
+        if loopCtx.CheckIterationLimit() {
+            panic(NewInfiniteLoopError("while", loopCtx))
         }
         
         condition := ws.Condition.Eval(env)
@@ -69,7 +118,7 @@ func (ws *WhileStatement) Eval(env *Environment) interface{} {
             break
         }
         
-        limiter.IncrementIterations()
+        loopCtx.Iterations++
         ws.Body.Eval(env)
     }
     return nil
@@ -108,59 +157,103 @@ func (fs *ForStatement) Eval(env *Environment) interface{} {
 }
 ```
 
-### 2. Detección de Recursión Infinita
+### 2. Detección de Recursión Infinita Mejorada
 
-#### 2.1 Stack de Llamadas con Límite
+#### 2.1 Límite de Profundidad Absoluta + Timeout
+**Propuesta mejorada:** Combinar límite de profundidad con timeout para evitar falsos positivos.
+
 ```go
+type RecursionLimiter struct {
+    MaxDepth        int           // Límite absoluto de profundidad
+    Timeout         time.Duration // Timeout para recursión prolongada
+    CallStack       []CallFrame
+    PatternDetector *PatternDetector
+    StrictMode      bool          // Modo estricto para análisis de patrones
+}
+
+type CallFrame struct {
+    FunctionName string
+    StartTime    time.Time
+    Args         []interface{}
+    CallSite     string
+}
+
 func (fc *FunctionCall) Eval(env *Environment) interface{} {
-    limiter := env.GetLimiter()
+    limiter := env.GetRecursionLimiter()
     
-    if limiter.CheckRecursionDepth() {
-        panic("Recursión infinita detectada: Máxima profundidad excedida")
+    // Verificar límite de profundidad absoluta
+    if len(limiter.CallStack) >= limiter.MaxDepth {
+        panic(NewRecursionError("max_depth", limiter.MaxDepth, limiter.CallStack))
     }
     
-    limiter.EnterFunction(fc.FunctionName)
+    // Verificar timeout si la recursión es prolongada
+    if len(limiter.CallStack) > 0 {
+        elapsed := time.Since(limiter.CallStack[0].StartTime)
+        if elapsed > limiter.Timeout {
+            panic(NewRecursionError("timeout", elapsed, limiter.CallStack))
+        }
+    }
+    
+    // Análisis de patrones solo en modo estricto
+    if limiter.StrictMode {
+        if limiter.PatternDetector.DetectCyclicPattern(fc.FunctionName) {
+            panic(NewRecursionError("cyclic_pattern", fc.FunctionName, limiter.CallStack))
+        }
+    }
+    
+    frame := CallFrame{
+        FunctionName: fc.FunctionName,
+        StartTime:    time.Now(),
+        Args:         fc.Args,
+        CallSite:     fc.GetLocation(),
+    }
+    
+    limiter.EnterFunction(frame)
     defer limiter.ExitFunction()
     
-    // Lógica existente de llamada a función
     return result
 }
 ```
 
-#### 2.2 Detección de Patrones Recursivos
+#### 2.2 Detector de Patrones Simplificado
+**Mejora:** Simplificar detección para reducir falsos positivos en backtracking.
+
 ```go
-type CallStack struct {
-    Functions []string
-    Counts    map[string]int
+type PatternDetector struct {
+    MaxConsecutiveCalls int  // Límite de llamadas consecutivas
+    WindowSize          int  // Tamaño de ventana para detección
 }
 
-func (cs *CallStack) DetectInfinitePattern(funcName string) bool {
-    cs.Counts[funcName]++
-    
-    // Si una función se llama más de N veces consecutivas
-    if cs.Counts[funcName] > 1000 {
-        return true
+func (pd *PatternDetector) DetectCyclicPattern(funcName string) bool {
+    // Contar llamadas consecutivas de la misma función
+    consecutiveCount := 0
+    for i := len(pd.callHistory) - 1; i >= 0; i-- {
+        if pd.callHistory[i] == funcName {
+            consecutiveCount++
+        } else {
+            break
+        }
     }
     
-    // Detectar patrones cíclicos simples (A->B->A->B...)
-    if len(cs.Functions) >= 4 {
-        pattern := cs.Functions[len(cs.Functions)-2:]
-        prevPattern := cs.Functions[len(cs.Functions)-4 : len(cs.Functions)-2]
-        return reflect.DeepEqual(pattern, prevPattern)
-    }
-    
-    return false
+    // Solo detectar si hay demasiadas llamadas consecutivas
+    return consecutiveCount > pd.MaxConsecutiveCalls
 }
 ```
 
-### 3. Límites de Tiempo de Ejecución
+### 3. Timeout Global y Goroutines Mejorado
 
-#### 3.1 Timeout Global
+#### 3.1 Context-Based Timeout
+**Propuesta mejorada:** Usar context.WithTimeout para cancelación uniforme.
+
 ```go
-func (env *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) interface{} {
-    limiter := env.GetLimiter()
-    limiter.StartTime = time.Now()
-    limiter.MaxExecutionTime = timeout
+import (
+    "context"
+    "time"
+)
+
+func (env *Environment) ExecuteWithContext(ctx context.Context, node Node) interface{} {
+    // Pasar contexto a través del Environment
+    env.SetContext(ctx)
     
     done := make(chan interface{}, 1)
     go func() {
@@ -176,9 +269,59 @@ func (env *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) int
     select {
     case result := <-done:
         return result
-    case <-time.After(timeout):
-        panic("Tiempo de ejecución excedido: Posible loop infinito")
+    case <-ctx.Done():
+        switch ctx.Err() {
+        case context.DeadlineExceeded:
+            panic(NewTimeoutError("execution_timeout", ctx))
+        case context.Canceled:
+            panic(NewTimeoutError("execution_canceled", ctx))
+        }
     }
+}
+
+// Integración en built-ins y goroutines
+func (env *Environment) checkContext() {
+    if ctx := env.GetContext(); ctx != nil {
+        select {
+        case <-ctx.Done():
+            panic(NewTimeoutError("context_canceled", ctx))
+        default:
+            // Continuar ejecución
+        }
+    }
+}
+```
+
+#### 3.2 Timeout por Goroutine
+**Mejora:** Cada goroutine tiene su propio ExecutionLimiter.
+
+```go
+type GoroutineManager struct {
+    limiters map[int]*ExecutionLimiter  // Por goroutine ID
+    timeout  time.Duration
+}
+
+func (gm *GoroutineManager) StartGoroutine(fn func()) {
+    goroutineID := getGoroutineID()
+    limiter := NewExecutionLimiter()
+    limiter.MaxExecutionTime = gm.timeout
+    
+    gm.limiters[goroutineID] = limiter
+    
+    go func() {
+        defer func() {
+            delete(gm.limiters, goroutineID)
+        }()
+        
+        ctx, cancel := context.WithTimeout(context.Background(), gm.timeout)
+        defer cancel()
+        
+        env := NewEnvironment()
+        env.SetContext(ctx)
+        env.SetLimiter(limiter)
+        
+        fn()
+    }()
 }
 ```
 
@@ -201,12 +344,43 @@ func riskyFunction() {
 }
 ```
 
-#### 4.2 Variables de Entorno
+#### 4.2 CLI Arguments y Variables de Entorno
+**Propuesta mejorada:** CLI tiene prioridad sobre variables de entorno.
+
 ```bash
+# Flags CLI (mayor prioridad)
+r2 --max-iter 1000000 --max-depth 1000 --timeout 30s script.r2
+r2 --strict-mode script.r2
+r2 --no-limits script.r2
+
+# Variables de entorno (fallback)
 export R2LANG_MAX_ITERATIONS=1000000
 export R2LANG_MAX_RECURSION=1000
 export R2LANG_MAX_TIME=30s
 export R2LANG_INFINITE_DETECTION=true
+export R2LANG_STRICT_MODE=false
+```
+
+#### 4.3 Integración con REPL
+**Mejora:** Capturar panics y mantener sesión REPL.
+
+```go
+func (repl *REPL) HandleInfiniteLoop(err error) {
+    if infiniteErr, ok := err.(*InfiniteLoopError); ok {
+        // Mensaje truncado y user-friendly
+        fmt.Printf("⚠️  Loop infinito detectado: %s\n", infiniteErr.ShortMessage())
+        fmt.Printf("💡 Sugerencia: %s\n", infiniteErr.Suggestion)
+        
+        // Resetear contadores pero mantener variables
+        repl.env.GetLimiter().Reset()
+        
+        // Continuar REPL
+        return
+    }
+    
+    // Otros errores se manejan normalmente
+    panic(err)
+}
 ```
 
 ### 5. Implementación Técnica
@@ -308,15 +482,24 @@ func setExecutionLimits(args ...interface{}) interface{} {
 }
 ```
 
-### 7. Mensajes de Error Informativos
+### 7. Errores Irrevocables y Manejo Mejorado
 
 ```go
+// Error sentinel para hosts externos (IDE, LSP, REPL)
+var (
+    ErrBudgetExceeded = errors.New("execution budget exceeded")
+    ErrInfiniteLoop   = errors.New("infinite loop detected")
+    ErrRecursionLimit = errors.New("recursion limit exceeded")
+)
+
 type InfiniteLoopError struct {
-    Type        string
-    Location    string
-    Iterations  int64
-    Duration    time.Duration
-    Suggestion  string
+    Type        string            // "while", "for", "recursion", "timeout"
+    Location    string            // Ubicación en el código
+    Iterations  int64             // Número de iteraciones
+    Duration    time.Duration     // Tiempo transcurrido
+    Suggestion  string            // Sugerencia de solución
+    Stats       map[string]interface{} // Estadísticas adicionales
+    Sentinel    error             // Error sentinel para identificación
 }
 
 func (ile *InfiniteLoopError) Error() string {
@@ -327,6 +510,36 @@ func (ile *InfiniteLoopError) Error() string {
         "- Sugerencia: %s",
         ile.Type, ile.Location, ile.Iterations, ile.Duration, ile.Suggestion,
     )
+}
+
+func (ile *InfiniteLoopError) ShortMessage() string {
+    return fmt.Sprintf("%s loop tras %d iteraciones", ile.Type, ile.Iterations)
+}
+
+func (ile *InfiniteLoopError) Is(target error) bool {
+    return ile.Sentinel == target
+}
+
+func NewInfiniteLoopError(loopType string, ctx *LoopContext) *InfiniteLoopError {
+    suggestions := map[string]string{
+        "while": "Verifica que la condición del while pueda volverse false",
+        "for":   "Asegúrate de que el incremento modifique la condición",
+        "recursion": "Añade un caso base que termine la recursión",
+        "timeout": "Considera dividir el trabajo en partes más pequeñas",
+    }
+    
+    return &InfiniteLoopError{
+        Type:       loopType,
+        Location:   ctx.Location,
+        Iterations: ctx.Iterations,
+        Duration:   time.Since(ctx.StartTime),
+        Suggestion: suggestions[loopType],
+        Sentinel:   ErrInfiniteLoop,
+        Stats: map[string]interface{}{
+            "start_time": ctx.StartTime,
+            "loop_type":  loopType,
+        },
+    }
 }
 ```
 
@@ -340,32 +553,53 @@ func (ile *InfiniteLoopError) Error() string {
 
 ## Consideraciones de Rendimiento
 
-- **Overhead mínimo:** Solo incremento de contadores
+### 8.1 Análisis de Overhead
+- **Overhead medido:** Instrumentación cada K instrucciones (k≈64-128)
+- **Micro-benchmarks:** Comparar "sin límites" vs "con contador" en loop de 1M NOPs
+- **Sweet spot:** k=64-128 minimiza overhead manteniendo detección efectiva
+
+### 8.2 Puntos de Atención
+1. **Tight loops:** Bucles de 10M iteraciones pueden añadir 100-500µs
+2. **Interacción con actores:** Cada actor necesita su propio ExecutionLimiter
+3. **Falsos positivos:** Algoritmos como backtracking o FFT pueden disparar límites
+
+### 8.3 Optimizaciones
 - **Configuración inteligente:** Límites razonables por defecto
-- **Deshabilitación:** Posibilidad de desactivar en producción
+- **Deshabilitación:** Flag `--no-limits` para casos especiales
 - **Granularidad:** Control por función o bloque específico
+- **Context cancellation:** Liberación uniforme de recursos I/O y network
 
 ## Plan de Implementación
 
-### Fase 1: Infraestructura Base
-- [ ] Crear ExecutionLimiter
-- [ ] Integrar en Environment
+### Fase 1: Infraestructura Base + Micro-benchmarks
+- [ ] Crear ExecutionLimiter con support para bytecode
+- [ ] Integrar en Environment con context support
+- [ ] Micro-benchmark: medir overhead de contador vs sin límites
 - [ ] Tests unitarios básicos
 
-### Fase 2: Detección de Loops
-- [ ] Implementar en WhileStatement
-- [ ] Implementar en ForStatement
-- [ ] Tests de detección
+### Fase 2: Detección de Loops Optimizada
+- [ ] Implementar LoopContext scope-based
+- [ ] Instrumentación a nivel bytecode (OP_COUNT cada K instrucciones)
+- [ ] Integrar en WhileStatement y ForStatement
+- [ ] Tests de detección con casos edge
 
-### Fase 3: Recursión Infinita
-- [ ] Stack de llamadas
-- [ ] Detección de patrones
-- [ ] Tests de recursión
+### Fase 3: Recursión Infinita Mejorada
+- [ ] RecursionLimiter con límite absoluto + timeout
+- [ ] PatternDetector simplificado (reducir falsos positivos)
+- [ ] Modo estricto configurable
+- [ ] Tests de recursión con backtracking
 
-### Fase 4: Configuración Avanzada
-- [ ] Built-in functions
-- [ ] Variables de entorno
+### Fase 4: Configuración Avanzada y CLI
+- [ ] CLI flags: --max-iter, --max-depth, --timeout, --strict-mode
+- [ ] Built-in functions con context support
+- [ ] Variables de entorno como fallback
+- [ ] Integración REPL con manejo de panics
 - [ ] Documentación completa
+
+### Fase 5: Soporte para Actores (Futuro)
+- [ ] GoroutineManager con limiters por actor
+- [ ] Context propagation para goroutines
+- [ ] Tests de concurrencia
 
 ## Conclusión
 
