@@ -9,54 +9,54 @@ type OpCode uint8
 
 const (
 	// Operaciones básicas
-	OpConstant OpCode = iota // Cargar una constante
-	OpAdd                    // Suma
-	OpSub                    // Resta
-	OpMul                    // Multiplicación
-	OpDiv                    // División
-	OpEqual                  // Igualdad
-	OpNotEqual               // Desigualdad
-	OpGreater                // Mayor que
-	OpLess                   // Menor que
-	OpGreaterEqual           // Mayor o igual que
-	OpLessEqual              // Menor o igual que
-	
+	OpConstant     OpCode = iota // Cargar una constante
+	OpAdd                        // Suma
+	OpSub                        // Resta
+	OpMul                        // Multiplicación
+	OpDiv                        // División
+	OpEqual                      // Igualdad
+	OpNotEqual                   // Desigualdad
+	OpGreater                    // Mayor que
+	OpLess                       // Menor que
+	OpGreaterEqual               // Mayor o igual que
+	OpLessEqual                  // Menor o igual que
+
 	// Operaciones de variables
-	OpGetLocal               // Obtener variable local
-	OpSetLocal               // Establecer variable local
-	OpGetGlobal              // Obtener variable global
-	OpSetGlobal              // Establecer variable global
-	OpDefineGlobal           // Definir variable global
-	
+	OpGetLocal     // Obtener variable local
+	OpSetLocal     // Establecer variable local
+	OpGetGlobal    // Obtener variable global
+	OpSetGlobal    // Establecer variable global
+	OpDefineGlobal // Definir variable global
+
 	// Operaciones de control de flujo
-	OpJump                   // Salto incondicional
-	OpJumpNotTruthy          // Salto si es falso
-	OpJumpIfFalse            // Salto condicional optimizado
-	OpLoop                   // Salto hacia atrás (loop)
-	
+	OpJump          // Salto incondicional
+	OpJumpNotTruthy // Salto si es falso
+	OpJumpIfFalse   // Salto condicional optimizado
+	OpLoop          // Salto hacia atrás (loop)
+
 	// Operaciones de función
-	OpCall                   // Llamada a función
-	OpReturn                 // Retorno de función
-	OpClosure                // Crear closure
-	OpGetBuiltin             // Acceso a funciones built-in
-	OpGetFree                // Variables libres en closures
-	OpSetFree                // Establecer variables libres
-	OpCurrentClosure         // Acceso a closure actual
-	
+	OpCall           // Llamada a función
+	OpReturn         // Retorno de función
+	OpClosure        // Crear closure
+	OpGetBuiltin     // Acceso a funciones built-in
+	OpGetFree        // Variables libres en closures
+	OpSetFree        // Establecer variables libres
+	OpCurrentClosure // Acceso a closure actual
+
 	// Operaciones de array y objetos
-	OpArray                  // Crear array
-	OpHash                   // Crear hash/map
-	OpIndex                  // Acceso por índice
-	OpGetProperty            // obj.prop
-	OpSetProperty            // obj.prop = value
-	
+	OpArray       // Crear array
+	OpHash        // Crear hash/map
+	OpIndex       // Acceso por índice
+	OpGetProperty // obj.prop
+	OpSetProperty // obj.prop = value
+
 	// Operaciones especiales
-	OpPop                    // Quitar del stack
-	OpTrue                   // Valor true
-	OpFalse                  // Valor false
-	OpNull                   // Valor null
-	OpNegate                 // Negación unaria
-	OpBang                   // Negación lógica
+	OpPop    // Quitar del stack
+	OpTrue   // Valor true
+	OpFalse  // Valor false
+	OpNull   // Valor null
+	OpNegate // Negación unaria
+	OpBang   // Negación lógica
 )
 
 // Instruction representa una instrucción bytecode
@@ -93,35 +93,35 @@ func (c *Compiler) Compile(node Node) error {
 	case *NumberLiteral:
 		constant := n.Value
 		c.emit(OpConstant, c.addConstant(constant))
-		
+
 	case *BooleanLiteral:
 		if n.Value {
 			c.emit(OpTrue)
 		} else {
 			c.emit(OpFalse)
 		}
-		
+
 	case *StringLiteral:
 		constant := n.Value
 		c.emit(OpConstant, c.addConstant(constant))
-		
+
 	case *BinaryExpression:
 		// Intentar constant folding primero
 		if c.optimizeConstantFolding(n) {
 			return nil
 		}
-		
+
 		// Compilar operandos primero
 		err := c.Compile(n.Left)
 		if err != nil {
 			return err
 		}
-		
+
 		err = c.Compile(n.Right)
 		if err != nil {
 			return err
 		}
-		
+
 		// Luego emitir la operación
 		switch n.Op {
 		case "+":
@@ -147,7 +147,7 @@ func (c *Compiler) Compile(node Node) error {
 		default:
 			return fmt.Errorf("unknown operator %s", n.Op)
 		}
-		
+
 	case *ArrayLiteral:
 		for _, elem := range n.Elements {
 			err := c.Compile(elem)
@@ -156,11 +156,11 @@ func (c *Compiler) Compile(node Node) error {
 			}
 		}
 		c.emit(OpArray, len(n.Elements))
-		
+
 	default:
 		return fmt.Errorf("compilation of %T not implemented", node)
 	}
-	
+
 	return nil
 }
 
@@ -196,7 +196,7 @@ func (c *Compiler) Bytecode() *Bytecode {
 // makeInstruction crea una instrucción bytecode con operandos
 func makeInstruction(op OpCode, operands ...int) []byte {
 	instruction := []byte{byte(op)}
-	
+
 	for _, operand := range operands {
 		// Por ahora, solo operandos de 8-bit para simplificar
 		if operand < 256 {
@@ -206,7 +206,7 @@ func makeInstruction(op OpCode, operands ...int) []byte {
 			instruction = append(instruction, byte(operand%256))
 		}
 	}
-	
+
 	return instruction
 }
 
@@ -214,12 +214,12 @@ func makeInstruction(op OpCode, operands ...int) []byte {
 func (c *Compiler) optimizeConstantFolding(n *BinaryExpression) bool {
 	left, isLeftNumber := n.Left.(*NumberLiteral)
 	right, isRightNumber := n.Right.(*NumberLiteral)
-	
+
 	// Solo optimizar si ambos operandos son números
 	if !isLeftNumber || !isRightNumber {
 		return false
 	}
-	
+
 	var result float64
 	switch n.Op {
 	case "+":
@@ -236,7 +236,7 @@ func (c *Compiler) optimizeConstantFolding(n *BinaryExpression) bool {
 	default:
 		return false // No optimizar otros operadores por ahora
 	}
-	
+
 	// Emitir la constante optimizada
 	c.emit(OpConstant, c.addConstant(result))
 	return true
@@ -271,168 +271,168 @@ func NewVM(bytecode *Bytecode) *VM {
 func (vm *VM) Run() error {
 	for ip := 0; ip < len(vm.instructions); {
 		opcode := OpCode(vm.instructions[ip])
-		
+
 		switch opcode {
 		case OpConstant:
 			constIndex := int(vm.instructions[ip+1])
 			ip += 2
-			
+
 			err := vm.push(vm.constants[constIndex])
 			if err != nil {
 				return err
 			}
-			
+
 		case OpAdd:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := addValues(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpSub:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := subValues(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpMul:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := mulValues(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpDiv:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := divValues(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpEqual:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := equals(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpGreater:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := toFloat(left) > toFloat(right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpTrue:
 			ip++
 			err := vm.push(true)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpFalse:
 			ip++
 			err := vm.push(false)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpNotEqual:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := !equals(left, right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpLess:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := toFloat(left) < toFloat(right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpGreaterEqual:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := toFloat(left) >= toFloat(right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpLessEqual:
 			ip++
 			right := vm.pop()
 			left := vm.pop()
-			
+
 			result := toFloat(left) <= toFloat(right)
 			err := vm.push(result)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpNull:
 			ip++
 			err := vm.push(nil)
 			if err != nil {
 				return err
 			}
-			
+
 		case OpArray:
 			arraySize := int(vm.instructions[ip+1])
 			ip += 2
-			
+
 			// Crear array tomando elementos del stack
 			array := make([]interface{}, arraySize)
 			for i := arraySize - 1; i >= 0; i-- {
 				array[i] = vm.pop()
 			}
-			
+
 			err := vm.push(array)
 			if err != nil {
 				return err
 			}
-			
+
 		default:
 			return fmt.Errorf("unknown opcode %d", opcode)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -441,10 +441,10 @@ func (vm *VM) push(obj interface{}) error {
 	if vm.sp >= len(vm.stack) {
 		return fmt.Errorf("stack overflow")
 	}
-	
+
 	vm.stack[vm.sp] = obj
 	vm.sp++
-	
+
 	return nil
 }
 
@@ -453,10 +453,10 @@ func (vm *VM) pop() interface{} {
 	if vm.sp == 0 {
 		return nil
 	}
-	
+
 	obj := vm.stack[vm.sp-1]
 	vm.sp--
-	
+
 	return obj
 }
 
@@ -474,7 +474,7 @@ func OptimizedEval(node Node, env *Environment) interface{} {
 	if !isBytecodeCandidate(node) {
 		return node.Eval(env)
 	}
-	
+
 	// Intentar compilación a bytecode para operaciones simples
 	compiler := NewCompiler()
 	err := compiler.Compile(node)
@@ -482,7 +482,7 @@ func OptimizedEval(node Node, env *Environment) interface{} {
 		// Si falla la compilación, usar evaluación normal
 		return node.Eval(env)
 	}
-	
+
 	// Ejecutar en VM
 	vm := NewVM(compiler.Bytecode())
 	err = vm.Run()
@@ -490,7 +490,7 @@ func OptimizedEval(node Node, env *Environment) interface{} {
 		// Si falla la ejecución, usar evaluación normal
 		return node.Eval(env)
 	}
-	
+
 	// Retornar el resultado del bytecode
 	return vm.LastPoppedStackElem()
 }
@@ -510,9 +510,9 @@ func isBytecodeCandidate(node Node) bool {
 
 // isNumericOp verifica si es una operación numérica
 func isNumericOp(op string) bool {
-	return op == "+" || op == "-" || op == "*" || op == "/" || 
-		   op == ">" || op == "<" || op == ">=" || op == "<=" || 
-		   op == "==" || op == "!="
+	return op == "+" || op == "-" || op == "*" || op == "/" ||
+		op == ">" || op == "<" || op == ">=" || op == "<=" ||
+		op == "==" || op == "!="
 }
 
 // isSimpleExpression verifica si es una expresión simple

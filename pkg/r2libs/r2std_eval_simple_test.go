@@ -53,15 +53,15 @@ func TestEvalFunction_Simple(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterStd(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -91,16 +91,16 @@ func TestEvalFunction_Errors(t *testing.T) {
 					t.Errorf("expected panic for input: %s", tt.input)
 				}
 			}()
-			
+
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterStd(env)
-			
+
 			program.Eval(env)
 		})
 	}

@@ -20,16 +20,16 @@ func RegisterUnicode(env *r2core.Environment) {
 	env.Set("ulower", r2core.BuiltinFunction(unicodeLower))
 	env.Set("utitle", r2core.BuiltinFunction(unicodeTitle))
 	env.Set("ureverse", r2core.BuiltinFunction(unicodeReverse))
-	
+
 	// Normalización Unicode
 	env.Set("unormalize", r2core.BuiltinFunction(unicodeNormalize))
 	env.Set("ucompare", r2core.BuiltinFunction(unicodeCompare))
-	
+
 	// Validación y utilidades
 	env.Set("uisvalid", r2core.BuiltinFunction(isValidUTF8))
 	env.Set("ucharcode", r2core.BuiltinFunction(getCharCode))
 	env.Set("ufromcode", r2core.BuiltinFunction(fromCharCode))
-	
+
 	// Clasificación de caracteres
 	env.Set("uisLetter", r2core.BuiltinFunction(isLetter))
 	env.Set("uisDigit", r2core.BuiltinFunction(isDigit))
@@ -38,7 +38,7 @@ func RegisterUnicode(env *r2core.Environment) {
 	env.Set("uisUpper", r2core.BuiltinFunction(isUpper))
 	env.Set("uisLower", r2core.BuiltinFunction(isLower))
 	env.Set("ugetCategory", r2core.BuiltinFunction(getCategory))
-	
+
 	// Expresiones regulares Unicode
 	env.Set("uregex", r2core.BuiltinFunction(unicodeRegex))
 	env.Set("uregexMatch", r2core.BuiltinFunction(unicodeRegexMatch))
@@ -54,12 +54,12 @@ func unicodeLength(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("ulen() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("ulen() requiere un string")
 	}
-	
+
 	return float64(utf8.RuneCountInString(str))
 }
 
@@ -68,27 +68,27 @@ func unicodeSubstring(args ...interface{}) interface{} {
 	if len(args) < 2 || len(args) > 3 {
 		panic("usubstr() requiere 2 o 3 argumentos")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("usubstr() requiere un string como primer argumento")
 	}
-	
+
 	start, ok := args[1].(float64)
 	if !ok {
 		panic("usubstr() requiere un número como segundo argumento")
 	}
-	
+
 	runes := []rune(str)
 	startIdx := int(start)
-	
+
 	if startIdx < 0 {
 		startIdx = 0
 	}
 	if startIdx >= len(runes) {
 		return ""
 	}
-	
+
 	endIdx := len(runes)
 	if len(args) == 3 {
 		length, ok := args[2].(float64)
@@ -103,7 +103,7 @@ func unicodeSubstring(args ...interface{}) interface{} {
 			endIdx = startIdx
 		}
 	}
-	
+
 	return string(runes[startIdx:endIdx])
 }
 
@@ -112,12 +112,12 @@ func unicodeUpper(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("uupper() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("uupper() requiere un string")
 	}
-	
+
 	return strings.ToUpper(str)
 }
 
@@ -126,12 +126,12 @@ func unicodeLower(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("ulower() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("ulower() requiere un string")
 	}
-	
+
 	return strings.ToLower(str)
 }
 
@@ -140,12 +140,12 @@ func unicodeTitle(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("utitle() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("utitle() requiere un string")
 	}
-	
+
 	return strings.ToTitle(str)
 }
 
@@ -154,17 +154,17 @@ func unicodeReverse(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("ureverse() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("ureverse() requiere un string")
 	}
-	
+
 	runes := []rune(str)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
 	}
-	
+
 	return string(runes)
 }
 
@@ -177,19 +177,19 @@ func unicodeNormalize(args ...interface{}) interface{} {
 	if len(args) < 1 || len(args) > 2 {
 		panic("unormalize() requiere 1 o 2 argumentos")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("unormalize() requiere un string")
 	}
-	
+
 	form := "NFC" // Por defecto
 	if len(args) == 2 {
 		if formArg, ok := args[1].(string); ok {
 			form = formArg
 		}
 	}
-	
+
 	var normalizer norm.Form
 	switch form {
 	case "NFC":
@@ -203,7 +203,7 @@ func unicodeNormalize(args ...interface{}) interface{} {
 	default:
 		panic("Forma de normalización inválida: " + form + " (usar NFC, NFD, NFKC, NFKD)")
 	}
-	
+
 	return normalizer.String(str)
 }
 
@@ -212,27 +212,27 @@ func unicodeCompare(args ...interface{}) interface{} {
 	if len(args) < 2 || len(args) > 3 {
 		panic("ucompare() requiere 2 o 3 argumentos")
 	}
-	
+
 	str1, ok := args[0].(string)
 	if !ok {
 		panic("ucompare() requiere strings")
 	}
-	
+
 	str2, ok := args[1].(string)
 	if !ok {
 		panic("ucompare() requiere strings")
 	}
-	
+
 	locale := "en"
 	if len(args) == 3 {
 		if localeArg, ok := args[2].(string); ok {
 			locale = localeArg
 		}
 	}
-	
+
 	tag := language.Make(locale)
 	col := collate.New(tag)
-	
+
 	result := col.CompareString(str1, str2)
 	return float64(result)
 }
@@ -246,12 +246,12 @@ func isValidUTF8(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("uisvalid() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("uisvalid() requiere un string")
 	}
-	
+
 	return utf8.ValidString(str)
 }
 
@@ -260,16 +260,16 @@ func getCharCode(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("ucharcode() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic("ucharcode() requiere un string")
 	}
-	
+
 	if str == "" {
 		panic("ucharcode() requiere un string no vacío")
 	}
-	
+
 	r, _ := utf8.DecodeRuneInString(str)
 	return float64(r)
 }
@@ -279,17 +279,17 @@ func fromCharCode(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("ufromcode() requiere exactamente 1 argumento")
 	}
-	
+
 	code, ok := args[0].(float64)
 	if !ok {
 		panic("ufromcode() requiere un número")
 	}
-	
+
 	r := rune(code)
 	if !utf8.ValidRune(r) {
 		panic("Código Unicode inválido")
 	}
-	
+
 	return string(r)
 }
 
@@ -301,16 +301,16 @@ func getFirstRune(args []interface{}, funcName string) rune {
 	if len(args) != 1 {
 		panic(funcName + "() requiere exactamente 1 argumento")
 	}
-	
+
 	str, ok := args[0].(string)
 	if !ok {
 		panic(funcName + "() requiere un string")
 	}
-	
+
 	if str == "" {
 		panic(funcName + "() requiere un string no vacío")
 	}
-	
+
 	r, _ := utf8.DecodeRuneInString(str)
 	return r
 }
@@ -364,29 +364,29 @@ func unicodeRegex(args ...interface{}) interface{} {
 	if len(args) < 2 {
 		panic("uregex() requiere al menos 2 argumentos")
 	}
-	
+
 	pattern, ok := args[0].(string)
 	if !ok {
 		panic("Patrón debe ser string")
 	}
-	
+
 	text, ok := args[1].(string)
 	if !ok {
 		panic("Texto debe ser string")
 	}
-	
+
 	// Compilar regex con soporte Unicode
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		panic("Patrón regex inválido: " + err.Error())
 	}
-	
+
 	matches := re.FindAllString(text, -1)
 	result := make([]interface{}, len(matches))
 	for i, match := range matches {
 		result[i] = match
 	}
-	
+
 	return result
 }
 
@@ -395,22 +395,22 @@ func unicodeRegexMatch(args ...interface{}) interface{} {
 	if len(args) != 2 {
 		panic("uregexMatch() requiere exactamente 2 argumentos")
 	}
-	
+
 	pattern, ok := args[0].(string)
 	if !ok {
 		panic("Patrón debe ser string")
 	}
-	
+
 	text, ok := args[1].(string)
 	if !ok {
 		panic("Texto debe ser string")
 	}
-	
+
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		panic("Patrón regex inválido: " + err.Error())
 	}
-	
+
 	return re.MatchString(text)
 }
 
@@ -419,26 +419,26 @@ func unicodeRegexReplace(args ...interface{}) interface{} {
 	if len(args) != 3 {
 		panic("uregexReplace() requiere exactamente 3 argumentos")
 	}
-	
+
 	pattern, ok := args[0].(string)
 	if !ok {
 		panic("Patrón debe ser string")
 	}
-	
+
 	replacement, ok := args[1].(string)
 	if !ok {
 		panic("Reemplazo debe ser string")
 	}
-	
+
 	text, ok := args[2].(string)
 	if !ok {
 		panic("Texto debe ser string")
 	}
-	
+
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		panic("Patrón regex inválido: " + err.Error())
 	}
-	
+
 	return re.ReplaceAllString(text, replacement)
 }

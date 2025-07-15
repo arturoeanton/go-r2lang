@@ -83,15 +83,15 @@ func TestUnicodeBasicFunctions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -126,15 +126,15 @@ func TestUnicodeNormalization(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			// For normalization, we just check that it returns a string
 			if _, ok := result.(string); !ok {
 				t.Errorf("expected string, got %T", result)
@@ -170,20 +170,20 @@ func TestUnicodeComparison(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			resultFloat, ok := result.(float64)
 			if !ok {
 				t.Fatalf("expected float64, got %T", result)
 			}
-			
+
 			if resultFloat != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, resultFloat)
 			}
@@ -218,15 +218,15 @@ func TestUnicodeValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -261,15 +261,15 @@ func TestUnicodeCharacterCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -304,15 +304,15 @@ func TestUnicodeFromCharCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -387,15 +387,15 @@ func TestUnicodeCharacterClassification(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -430,16 +430,16 @@ func TestUnicodeRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
 			RegisterStd(env) // For len function
-			
+
 			result := program.Eval(env)
-			
+
 			var resultInt int
 			if boolResult, ok := result.(bool); ok {
 				if boolResult {
@@ -452,7 +452,7 @@ func TestUnicodeRegex(t *testing.T) {
 			} else {
 				t.Fatalf("unexpected result type: %T", result)
 			}
-			
+
 			if resultInt != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, resultInt)
 			}
@@ -492,15 +492,15 @@ func TestUnicodeEscapeSequences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -545,15 +545,15 @@ func TestUnicodeIdentifiers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := r2core.NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := r2core.NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			RegisterUnicode(env)
-			
+
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}

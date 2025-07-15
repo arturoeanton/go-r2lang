@@ -23,7 +23,7 @@ var (
 			},
 		},
 	}
-	
+
 	// Cache para números pequeños frecuentemente utilizados
 	smallNumberCache map[int]*NumberWrapper
 	smallNumberMu    sync.RWMutex
@@ -32,7 +32,7 @@ var (
 func init() {
 	// Inicializar cache
 	smallNumberCache = make(map[int]*NumberWrapper)
-	
+
 	// Pre-poblar cache con números pequeños (-100 a 100)
 	for i := -100; i <= 100; i++ {
 		smallNumberCache[i] = &NumberWrapper{Value: float64(i)}
@@ -51,7 +51,7 @@ func GetNumber(value float64) *NumberWrapper {
 		}
 		smallNumberMu.RUnlock()
 	}
-	
+
 	// Para otros números, usar pool
 	wrapper := globalNumberPool.pool.Get().(*NumberWrapper)
 	wrapper.Value = value
