@@ -25,7 +25,7 @@ func (fs *ForStatement) Eval(env *Environment) interface{} {
 
 func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 	limiter := env.GetLimiter()
-	
+
 	// Crear contexto de bucle
 	loopCtx := &LoopContext{
 		Type:          "for-in",
@@ -34,7 +34,7 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 		StartTime:     time.Now(),
 		Location:      "for-in statement", // TODO: agregar ubicación real del archivo
 	}
-	
+
 	var result interface{}
 	raw, _ := env.Get(fs.inArray)
 	env.Set("$c", raw)
@@ -47,25 +47,25 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 				if limiter.CheckTimeLimit() {
 					panic(NewTimeoutError("for_in_timeout", env.GetContext()))
 				}
-				
+
 				// Verificar context cancelation
 				if limiter.CheckContext() {
 					panic(NewTimeoutError("for_in_context_canceled", env.GetContext()))
 				}
-				
+
 				// Verificar límite de iteraciones del bucle
 				if loopCtx.Iterations >= loopCtx.MaxIterations {
 					panic(NewInfiniteLoopError("for-in", loopCtx))
 				}
 			}
-			
+
 			env.Set(fs.inIndexName, float64(i))
 			env.Set("$k", float64(i))
 			env.Set("$v", v)
-			
+
 			// Incrementar contador de iteraciones del bucle
 			loopCtx.Iterations++
-			
+
 			val := fs.Body.Eval(env)
 			if rv, ok := val.(ReturnValue); ok {
 				return rv
@@ -86,25 +86,25 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 				if limiter.CheckTimeLimit() {
 					panic(NewTimeoutError("for_in_timeout", env.GetContext()))
 				}
-				
+
 				// Verificar context cancelation
 				if limiter.CheckContext() {
 					panic(NewTimeoutError("for_in_context_canceled", env.GetContext()))
 				}
-				
+
 				// Verificar límite de iteraciones del bucle
 				if loopCtx.Iterations >= loopCtx.MaxIterations {
 					panic(NewInfiniteLoopError("for-in", loopCtx))
 				}
 			}
-			
+
 			env.Set(fs.inIndexName, k)
 			env.Set("$k", k)
 			env.Set("$v", v)
-			
+
 			// Incrementar contador de iteraciones del bucle
 			loopCtx.Iterations++
-			
+
 			val := fs.Body.Eval(env)
 			if rv, ok := val.(ReturnValue); ok {
 				return rv
@@ -126,7 +126,7 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
 	// Crear un nuevo scope para la inicialización del loop
 	newEnv := NewInnerEnv(env)
-	
+
 	// Intentar optimización específica para loops simples
 	if optimized := fs.trySimpleLoopOptimization(newEnv); optimized != nil {
 		return optimized
@@ -148,7 +148,7 @@ func (fs *ForStatement) trySimpleLoopOptimization(env *Environment) interface{} 
 
 func (fs *ForStatement) executeStandardLoop(env *Environment) interface{} {
 	limiter := env.GetLimiter()
-	
+
 	// Crear contexto de bucle
 	loopCtx := &LoopContext{
 		Type:          "for",
@@ -157,7 +157,7 @@ func (fs *ForStatement) executeStandardLoop(env *Environment) interface{} {
 		StartTime:     time.Now(),
 		Location:      "for statement", // TODO: agregar ubicación real del archivo
 	}
-	
+
 	var result interface{}
 	if fs.Init != nil {
 		fs.Init.Eval(env)
@@ -170,26 +170,26 @@ func (fs *ForStatement) executeStandardLoop(env *Environment) interface{} {
 			if limiter.CheckTimeLimit() {
 				panic(NewTimeoutError("for_timeout", env.GetContext()))
 			}
-			
+
 			// Verificar context cancelation
 			if limiter.CheckContext() {
 				panic(NewTimeoutError("for_context_canceled", env.GetContext()))
 			}
-			
+
 			// Verificar límite de iteraciones del bucle
 			if loopCtx.Iterations >= loopCtx.MaxIterations {
 				panic(NewInfiniteLoopError("for", loopCtx))
 			}
 		}
-		
+
 		condVal := fs.Condition.Eval(env)
 		if !toBool(condVal) {
 			break
 		}
-		
+
 		// Incrementar contador de iteraciones del bucle
 		loopCtx.Iterations++
-		
+
 		val := fs.Body.Eval(env)
 		if rv, ok := val.(ReturnValue); ok {
 			return rv

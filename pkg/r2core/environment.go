@@ -24,7 +24,7 @@ type Environment struct {
 	lookupCacheMu sync.RWMutex
 	cacheHits     int
 	cacheMisses   int
-	
+
 	// Execution limiter para prevenir loops infinitos
 	limiter *ExecutionLimiter
 	context context.Context
@@ -79,13 +79,13 @@ func (e *Environment) Update(name string, value interface{}) {
 		e.lookupCacheMu.Unlock()
 		return
 	}
-	
+
 	// Si no está en el scope actual, buscar en el outer scope
 	if e.outer != nil {
 		e.outer.Update(name, value)
 		return
 	}
-	
+
 	// Si no existe en ningún scope, crear en el scope actual
 	e.Set(name, value)
 }
@@ -193,19 +193,19 @@ func (e *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) inter
 	// Crear contexto con timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	
+
 	// Crear limiter con timeout
 	limiter := NewExecutionLimiterWithTimeout(timeout)
-	
+
 	// Crear environment temporal
 	tempEnv := NewInnerEnv(e)
 	tempEnv.SetLimiter(limiter)
 	tempEnv.SetContext(ctx)
-	
+
 	// Canal para resultado
 	done := make(chan interface{}, 1)
 	errChan := make(chan error, 1)
-	
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -216,11 +216,11 @@ func (e *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) inter
 				}
 			}
 		}()
-		
+
 		result := node.Eval(tempEnv)
 		done <- result
 	}()
-	
+
 	select {
 	case result := <-done:
 		return result
