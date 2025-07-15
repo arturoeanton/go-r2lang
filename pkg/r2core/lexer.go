@@ -49,12 +49,7 @@ const (
 	BREAK    = "break"
 	CONTINUE = "continue"
 
-	// Nuevos Tokens para la sintaxis de pruebas
-	TOKEN_TESTCASE = "TESTCASE"
-	TOKEN_GIVEN    = "GIVEN"
-	TOKEN_WHEN     = "WHEN"
-	TOKEN_THEN     = "THEN"
-	TOKEN_AND      = "AND"
+	// Testing framework tokens - will be replaced with new system
 	TOKEN_BREAK    = "BREAK"
 	TOKEN_CONTINUE = "CONTINUE"
 )
@@ -350,21 +345,6 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case strings.ToLower(AS):
 			l.currentToken = Token{Type: TOKEN_AS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case "given":
-			l.currentToken = Token{Type: TOKEN_GIVEN, Value: "Given", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case "when":
-			l.currentToken = Token{Type: TOKEN_WHEN, Value: "When", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case "then":
-			l.currentToken = Token{Type: TOKEN_THEN, Value: "Then", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case "and":
-			l.currentToken = Token{Type: TOKEN_AND, Value: "And", Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case "testcase":
-			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 		case strings.ToLower(BREAK):
 			l.currentToken = Token{Type: TOKEN_BREAK, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}

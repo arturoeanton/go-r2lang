@@ -1,0 +1,341 @@
+{
+  "metadata": {
+    "generatedAt": "2025-07-15T16:43:33.405584-03:00",
+    "generator": "R2Lang Test Framework",
+    "version": "1.0.0",
+    "format": "json"
+  },
+  "coverage": {
+    "summary": {
+      "totalFiles": 0,
+      "totalLines": 0,
+      "coveredLines": 0,
+      "linePercentage": 0,
+      "totalStatements": 0,
+      "coveredStatements": 0,
+      "statementPercentage": 0,
+      "totalBranches": 0,
+      "coveredBranches": 0,
+      "branchPercentage": 0,
+      "totalFunctions": 0,
+      "coveredFunctions": 0,
+      "functionPercentage": 0,
+      "duration": "2562047h47m16.854775807s"
+    },
+    "files": {}
+  },
+  "testResults": {
+    "summary": {
+      "total": 32,
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "timeout": 0,
+      "duration": "104.833µs",
+      "startTime": "2025-07-15T16:43:33-03:00",
+      "endTime": "2025-07-15T16:43:33-03:00"
+    },
+    "suites": [
+      {
+        "name": "Basic Test",
+        "description": "Advanced Assertions",
+        "tests": [
+          {
+            "name": "should add two numbers correctly",
+            "description": "should add two numbers correctly",
+            "status": "passed",
+            "duration": "1.833µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should subtract numbers correctly",
+            "description": "should subtract numbers correctly",
+            "status": "passed",
+            "duration": "1.292µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should multiply numbers correctly",
+            "description": "should multiply numbers correctly",
+            "status": "passed",
+            "duration": "917ns",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should concatenate strings",
+            "description": "should concatenate strings",
+            "status": "passed",
+            "duration": "2.083µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should check string length",
+            "description": "should check string length",
+            "status": "passed",
+            "duration": "5.334µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should find substrings",
+            "description": "should find substrings",
+            "status": "passed",
+            "duration": "2.375µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should create and access arrays",
+            "description": "should create and access arrays",
+            "status": "passed",
+            "duration": "1.042µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should detect empty arrays",
+            "description": "should detect empty arrays",
+            "status": "passed",
+            "duration": "1.084µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should detect non-empty arrays",
+            "description": "should detect non-empty arrays",
+            "status": "passed",
+            "duration": "1.166µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle true values",
+            "description": "should handle true values",
+            "status": "passed",
+            "duration": "2.125µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle false values",
+            "description": "should handle false values",
+            "status": "passed",
+            "duration": "1.041µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle null checks",
+            "description": "should handle null checks",
+            "status": "passed",
+            "duration": "1.834µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should define and call functions",
+            "description": "should define and call functions",
+            "status": "passed",
+            "duration": "1.208µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle variable scoping",
+            "description": "should handle variable scoping",
+            "status": "passed",
+            "duration": "2.25µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should catch expected errors",
+            "description": "should catch expected errors",
+            "status": "passed",
+            "duration": "1.167µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should not panic for valid operations",
+            "description": "should not panic for valid operations",
+            "status": "passed",
+            "duration": "9.917µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should compare numbers",
+            "description": "should compare numbers",
+            "status": "passed",
+            "duration": "1.541µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle inequality",
+            "description": "should handle inequality",
+            "status": "passed",
+            "duration": "2.208µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          }
+        ]
+      },
+      {
+        "name": "Advanced Test",
+        "description": "Performance Tests",
+        "tests": [
+          {
+            "name": "should initialize with zero",
+            "description": "should initialize with zero",
+            "status": "passed",
+            "duration": "16.375µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should add numbers",
+            "description": "should add numbers",
+            "status": "passed",
+            "duration": "3.584µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should subtract numbers",
+            "description": "should subtract numbers",
+            "status": "passed",
+            "duration": "1.542µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle chained operations",
+            "description": "should handle chained operations",
+            "status": "passed",
+            "duration": "1.292µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should create files",
+            "description": "should create files",
+            "status": "passed",
+            "duration": "1.208µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should read file contents",
+            "description": "should read file contents",
+            "status": "passed",
+            "duration": "2.042µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle promises",
+            "description": "should handle promises",
+            "status": "passed",
+            "duration": "1.541µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should timeout long operations",
+            "description": "should timeout long operations",
+            "status": "passed",
+            "duration": "1.792µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should work with maps",
+            "description": "should work with maps",
+            "status": "passed",
+            "duration": "917ns",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle nested structures",
+            "description": "should handle nested structures",
+            "status": "passed",
+            "duration": "1.791µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle empty values",
+            "description": "should handle empty values",
+            "status": "passed",
+            "duration": "1.125µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle large numbers",
+            "description": "should handle large numbers",
+            "status": "passed",
+            "duration": "1.917µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should handle special characters",
+            "description": "should handle special characters",
+            "status": "passed",
+            "duration": "1.958µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          },
+          {
+            "name": "should complete operations quickly",
+            "description": "should complete operations quickly",
+            "status": "passed",
+            "duration": "1.125µs",
+            "message": "Test passed",
+            "startTime": "2025-07-15T16:43:33-03:00",
+            "endTime": "2025-07-15T16:43:33-03:00"
+          }
+        ]
+      }
+    ]
+  }
+}
