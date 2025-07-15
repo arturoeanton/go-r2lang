@@ -259,29 +259,62 @@ func (p *Parser) parseReturnStatement() Node {
 // let x = expr;
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
+	
+	var declarations []LetDeclaration
+	
+	// Parsear primera declaración
 	if p.curTok.Type != TOKEN_IDENT {
 		p.except("Variable name expected after 'let'/'var'")
 	}
+	
 	name := p.curTok.Value
 	p.nextToken()
-	if p.curTok.Value == ";" {
-		p.nextToken()
-		return &LetStatement{Name: name, Value: nil}
-	}
-
+	
+	// Manejar caso especial para bucles for-in
 	if p.curTok.Value == IN {
 		return &LetStatement{Name: name, Value: nil}
 	}
-
-	if p.curTok.Value != "=" {
-		p.except("Variable assignment expected after variable name")
+	
+	var value Node
+	if p.curTok.Value == "=" {
+		p.nextToken()
+		value = p.parseExpression()
 	}
-	p.nextToken()
-	val := p.parseExpression()
+	
+	declarations = append(declarations, LetDeclaration{Name: name, Value: value})
+	
+	// Parsear declaraciones adicionales separadas por comas
+	for p.curTok.Value == "," {
+		p.nextToken() // consumir ","
+		
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Variable name expected after ','")
+		}
+		
+		name = p.curTok.Value
+		p.nextToken()
+		
+		var value Node
+		if p.curTok.Value == "=" {
+			p.nextToken()
+			value = p.parseExpression()
+		}
+		
+		declarations = append(declarations, LetDeclaration{Name: name, Value: value})
+	}
+	
+	// Consumir punto y coma opcional
 	if p.curTok.Value == ";" {
 		p.nextToken()
 	}
-	return &LetStatement{Name: name, Value: val}
+	
+	// Si solo hay una declaración, usar LetStatement simple para mantener compatibilidad
+	if len(declarations) == 1 {
+		return &LetStatement{Name: declarations[0].Name, Value: declarations[0].Value}
+	}
+	
+	// Si hay múltiples declaraciones, usar MultipleLetStatement
+	return &MultipleLetStatement{Declarations: declarations}
 }
 
 // parseFunctionDeclaration => "func nombre(args) { ... }"
@@ -494,8 +527,27 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 	return &BlockStatement{Statements: stmts}
 }
 
-// parseExpression => parsea binarios
+// parseExpression => parsea ternarios y binarios
 func (p *Parser) parseExpression() Node {
+	left := p.parseBinaryExpression()
+	
+	// Operador ternario tiene la precedencia más baja
+	if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "?" {
+		p.nextToken() // consumir "?"
+		trueExpr := p.parseExpression()
+		if p.curTok.Type != TOKEN_SYMBOL || p.curTok.Value != ":" {
+			p.except("Expected ':' in ternary expression")
+		}
+		p.nextToken() // consumir ":"
+		falseExpr := p.parseExpression()
+		return &TernaryExpression{Condition: left, TrueExpr: trueExpr, FalseExpr: falseExpr}
+	}
+	
+	return left
+}
+
+// parseBinaryExpression => parsea operadores binarios
+func (p *Parser) parseBinaryExpression() Node {
 	left := p.parseFactor()
 	for p.curTok.Type == TOKEN_SYMBOL && isBinaryOp(p.curTok.Value) {
 		op := p.curTok.Value

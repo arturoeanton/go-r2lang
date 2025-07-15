@@ -149,4 +149,21 @@ func RegisterStd(env *r2core.Environment) {
 		return arr
 	}))
 
+	env.Set("eval", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("eval needs 1 argument (code string)")
+		}
+		code, ok := args[0].(string)
+		if !ok {
+			panic("eval: argument should be a string")
+		}
+		
+		// Crear un nuevo parser para el código dinámico
+		parser := r2core.NewParser(code)
+		program := parser.ParseProgram()
+		
+		// Evaluar en el contexto del entorno actual
+		return program.Eval(env)
+	}))
+
 }

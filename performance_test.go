@@ -15,8 +15,8 @@ import (
 func BenchmarkBasicArithmetic(b *testing.B) {
 	code := `
 		func calculate() {
-			var result = 0;
-			for (var i = 0; i < 1000; i = i + 1) {
+			let result = 0;
+			for (let i = 0; i < 1000; i = i + 1) {
 				result = result + i * 2 - 1;
 			}
 			return result;
@@ -40,8 +40,8 @@ func BenchmarkBasicArithmetic(b *testing.B) {
 func BenchmarkStringOperations(b *testing.B) {
 	code := `
 		func stringTest() {
-			var text = "Hello ";
-			for (var i = 0; i < 100; i = i + 1) {
+			let text = "Hello ";
+			for (let i = 0; i < 100; i = i + 1) {
 				text = text + "World " + i;
 			}
 			return text;
@@ -65,13 +65,13 @@ func BenchmarkStringOperations(b *testing.B) {
 func BenchmarkArrayOperations(b *testing.B) {
 	code := `
 		func arrayTest() {
-			var arr = [];
-			for (var i = 0; i < 500; i = i + 1) {
+			let arr = [];
+			for (let i = 0; i < 500; i = i + 1) {
 				arr.push(i);
 			}
 			
-			var sum = 0;
-			for (var i = 0; i < len(arr); i = i + 1) {
+			let sum = 0;
+			for (let i = 0; i < len(arr); i = i + 1) {
 				sum = sum + arr[i];
 			}
 			return sum;
@@ -95,13 +95,13 @@ func BenchmarkArrayOperations(b *testing.B) {
 func BenchmarkMapOperations(b *testing.B) {
 	code := `
 		func mapTest() {
-			var map = {};
-			for (var i = 0; i < 100; i = i + 1) {
+			let map = {};
+			for (let i = 0; i < 100; i = i + 1) {
 				map["key" + i] = i * 2;
 			}
 			
-			var sum = 0;
-			for (var i = 0; i < 100; i = i + 1) {
+			let sum = 0;
+			for (let i = 0; i < 100; i = i + 1) {
 				sum = sum + map["key" + i];
 			}
 			return sum;
@@ -160,14 +160,14 @@ func BenchmarkObjectOperations(b *testing.B) {
 		}
 		
 		func testObjects() {
-			var people = [];
-			for (var i = 0; i < 50; i = i + 1) {
-				var person = Person("Person" + i, i + 20);
+			let people = [];
+			for (let i = 0; i < 50; i = i + 1) {
+				let person = Person("Person" + i, i + 20);
 				people.push(person);
 			}
 			
-			var greetings = [];
-			for (var i = 0; i < len(people); i = i + 1) {
+			let greetings = [];
+			for (let i = 0; i < len(people); i = i + 1) {
 				greetings.push(people[i].greet());
 			}
 			return len(greetings);
@@ -192,10 +192,10 @@ func BenchmarkLexerPerformance(b *testing.B) {
 	// Código complejo para el lexer
 	code := `
 		func complexFunction(a, b, c) {
-			var result = 0;
+			let result = 0;
 			if (a > 0) {
 				while (b < 100) {
-					for (var i = 0; i < c; i = i + 1) {
+					for (let i = 0; i < c; i = i + 1) {
 						result = result + (a * b + i) / 2;
 					}
 					b = b + 1;
@@ -236,10 +236,10 @@ func BenchmarkLexerPerformance(b *testing.B) {
 func BenchmarkParserPerformance(b *testing.B) {
 	code := `
 		func complexFunction(a, b, c) {
-			var result = 0;
+			let result = 0;
 			if (a > 0) {
 				while (b < 100) {
-					for (var i = 0; i < c; i = i + 1) {
+					for (let i = 0; i < c; i = i + 1) {
 						result = result + (a * b + i) / 2;
 					}
 					b = b + 1;
@@ -275,13 +275,12 @@ func BenchmarkParserPerformance(b *testing.B) {
 func BenchmarkMemoryUsage(b *testing.B) {
 	code := `
 		func memoryTest() {
-			var bigArray = [];
-			for (var i = 0; i < 1000; i = i + 1) {
-				var obj = {
-					("id" + i): i,
-					("name" + i): "Item" + i,
-					("active" + i): true
-				};
+			let bigArray = [];
+			for (let i = 0; i < 1000; i = i + 1) {
+				let obj = {};
+				obj["id" + i] = i;
+				obj["name" + i] = "Item" + i;
+				obj["active" + i] = true;
 				bigArray.push(obj);
 			}
 			return len(bigArray);
