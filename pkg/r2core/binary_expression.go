@@ -40,7 +40,7 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 	if dateResult := be.evalDateOperations(lv, rv); dateResult != nil {
 		return dateResult
 	}
-	
+
 	switch be.Op {
 	case "+":
 		return addValues(lv, rv)
@@ -113,7 +113,7 @@ func (be *BinaryExpression) evalDateOperations(left, right interface{}) interfac
 	rightDate, rightIsDate := right.(*DateValue)
 	leftDuration, leftIsDuration := left.(*DurationValue)
 	rightDuration, rightIsDuration := right.(*DurationValue)
-	
+
 	switch be.Op {
 	case "+":
 		if leftIsDate && rightIsDuration {
@@ -184,6 +184,6 @@ func (be *BinaryExpression) evalDateOperations(left, right interface{}) interfac
 			return leftDuration.Duration != rightDuration.Duration
 		}
 	}
-	
+
 	return nil // No es operación de fecha/duración
 }

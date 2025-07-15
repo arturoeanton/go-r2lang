@@ -569,23 +569,23 @@ func (l *Lexer) readUnicodeHex(digits int) string {
 func (l *Lexer) parseDateLiteral() Token {
 	start := l.pos
 	l.nextch() // saltar @
-	
+
 	var dateStr string
-	
+
 	if l.pos < l.length && (l.input[l.pos] == '"' || l.input[l.pos] == '\'') {
 		// Fecha con formato específico @"2024-12-25T10:30:00"
 		quote := l.input[l.pos]
 		l.nextch() // saltar comilla inicial
-		
+
 		strStart := l.pos
 		for l.pos < l.length && l.input[l.pos] != quote {
 			l.nextch()
 		}
-		
+
 		if l.pos >= l.length {
 			panic("Closing quote of date literal expected")
 		}
-		
+
 		dateStr = l.input[strStart:l.pos]
 		l.nextch() // saltar comilla final
 	} else {
@@ -596,11 +596,11 @@ func (l *Lexer) parseDateLiteral() Token {
 		}
 		dateStr = l.input[strStart:l.pos]
 	}
-	
+
 	if dateStr == "" {
 		panic("Empty date literal")
 	}
-	
+
 	l.currentToken = Token{Type: TOKEN_DATE, Value: dateStr, Line: l.line, Pos: start, Col: l.col}
 	return l.currentToken
 }
