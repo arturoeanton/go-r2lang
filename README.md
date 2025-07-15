@@ -52,9 +52,15 @@ Whether you're writing automation scripts, building a web API, or creating a rob
     cd go-r2lang
     ```
 
-2.  **Build the interpreter:**
+2.  **Build the tools:**
     ```bash
+    # Build main R2Lang interpreter
     go build -o r2lang main.go
+    
+    # Build specialized commands
+    go build -o r2 cmd/r2/main.go
+    go build -o r2test cmd/r2test/main.go
+    go build -o r2repl cmd/repl/main.go
     ```
 
 3.  **Create your first R2Lang file (`hello.r2`):**
@@ -66,9 +72,110 @@ Whether you're writing automation scripts, building a web API, or creating a rob
 
 4.  **Run it!**
     ```bash
+    # Using the basic interpreter
     ./r2lang hello.r2
+    
+    # Using the advanced R2 command
+    ./r2 hello.r2
+    
+    # Or with Go directly
+    go run main.go hello.r2
+    
     # Output: Hello, R2Lang! 🚀
     ```
+
+---
+
+## 🛠️ Command Line Tools
+
+R2Lang provides specialized command-line tools for different development workflows:
+
+### Available Commands
+
+| Command | Purpose | Usage |
+|---------|---------|-------|
+| `r2lang` | Basic interpreter | `r2lang script.r2` |
+| `r2` | Advanced R2 execution with optimizations | `r2 [options] script.r2` |
+| `r2test` | Comprehensive testing framework | `r2test [options] [test-dirs...]` |
+| `r2repl` | Interactive REPL shell | `r2repl [options]` |
+
+### Basic Usage Examples
+
+```bash
+# Run a script with basic interpreter
+r2lang script.r2
+
+# Run a script with advanced options
+r2 -verbose -optimize script.r2
+
+# Start interactive REPL
+r2repl
+
+# Run tests with coverage
+r2test -coverage -verbose
+
+# Run tests in specific directory
+r2test ./tests
+
+# Run tests with detailed reporting
+r2test -coverage -reporters json,junit -output ./reports
+```
+
+### Advanced R2 Command Options
+
+The `r2` command provides extensive options for advanced usage:
+
+```bash
+# Performance and optimization
+r2 -optimize -profile cpu script.r2
+
+# Execution control
+r2 -timeout 30s -max-memory 100MB script.r2
+
+# Development tools
+r2 -check script.r2           # Syntax check only
+r2 -format script.r2          # Format code
+r2 -compile script.r2         # Compile to bytecode (future)
+
+# Debug and verbose output
+r2 -debug -verbose script.r2
+```
+
+### Testing Framework Options
+
+The `r2test` command supports comprehensive testing workflows:
+
+```bash
+# Basic test execution
+r2test                        # Run all tests
+r2test ./tests               # Run tests in specific directory
+r2test -verbose              # Verbose output
+
+# Test filtering
+r2test -grep "Calculator"    # Run tests matching pattern
+r2test -tags unit,integration # Run tests with specific tags
+
+# Coverage and reporting
+r2test -coverage -coverage-threshold 80
+r2test -reporters json,junit -output ./reports
+
+# Performance and parallel execution
+r2test -parallel -workers 4 -timeout 60s
+```
+
+### REPL Options
+
+The `r2repl` command provides an interactive development environment:
+
+```bash
+# Basic REPL
+r2repl
+
+# REPL with options
+r2repl -quiet               # Minimal startup output
+r2repl -no-output          # Disable output display
+r2repl -debug              # Debug mode with configuration info
+```
 
 ---
 
@@ -78,19 +185,54 @@ R2Lang features a professional-grade testing framework with enterprise-level cap
 
 ### Basic Test Structure
 ```r2
-import "r2test" as test;
-
-test.describe("Calculator", func() {
-    test.it("should add numbers correctly", func() {
+describe("Calculator", func() {
+    it("should add numbers correctly", func() {
         let result = 2 + 3;
-        test.assert("addition").that(result).equals(5);
+        assert.equals(result, 5);
     });
     
-    test.it("should handle subtraction", func() {
+    it("should handle subtraction", func() {
         let result = 10 - 4;
-        test.assert("subtraction").that(result).equals(6);
+        assert.equals(result, 6);
+    });
+    
+    it("should handle multiplication", func() {
+        let result = 3 * 4;
+        assert.equals(result, 12);
     });
 });
+```
+
+### Available Assertions
+```r2
+// Basic comparisons
+assert.equals(actual, expected);
+assert.notEquals(actual, expected);
+assert.true(value);
+assert.false(value);
+
+// Numeric comparisons
+assert.greater(10, 5);
+assert.greaterOrEqual(10, 10);
+assert.less(5, 10);
+assert.lessOrEqual(5, 5);
+
+// String operations
+assert.contains("Hello World", "World");
+assert.notContains("Hello", "Goodbye");
+
+// Collection operations
+assert.hasLength(array, 5);
+assert.empty([]);
+assert.notEmpty([1, 2, 3]);
+
+// Null checks
+assert.nil(null);
+assert.notNil("value");
+
+// Error handling
+assert.panics(func() { throw "error"; });
+assert.notPanics(func() { return "ok"; });
 ```
 
 ### Test Lifecycle Hooks

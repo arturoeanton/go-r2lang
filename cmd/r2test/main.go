@@ -345,8 +345,12 @@ func runTests(config *Config) int {
 		Parallel:       config.Parallel,
 		MaxWorkers:     config.MaxWorkers,
 		Bail:           config.Bail,
+		Grep:           config.Grep,
 		FilterTags:     config.Tags,
+		Skip:           config.Skip,
+		Only:           config.Only,
 		Verbose:        config.Verbose,
+		Retries:        config.Retries,
 	}
 
 	// Parse timeout

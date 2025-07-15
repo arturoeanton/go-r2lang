@@ -26,7 +26,17 @@ Rich snippet library including:
 - **Run current file** (Ctrl+F5 / Cmd+F5)
 - **Run selected code** (Ctrl+Shift+F5 / Cmd+Shift+F5)
 - **Open REPL** (Ctrl+Shift+R / Cmd+Shift+R)
+- **Run all tests** (Ctrl+Shift+T / Cmd+Shift+T)
+- **Run current test file** (Ctrl+F6 / Cmd+F6)
+- **Run tests with coverage** (Ctrl+Shift+F6 / Cmd+Shift+F6)
 - **Terminal integration** with automatic file execution
+
+### 🧪 Test Execution Features
+- **Individual test execution** via CodeLens - click "▶️ Run Test" above any test
+- **Test suite execution** - click "▶️ Run Test Suite" above describe blocks
+- **Smart binary detection** - automatically finds r2test in project root or system PATH
+- **Test pattern matching** - runs specific tests by name
+- **Coverage reporting** - integrated with r2test coverage features
 
 ### 🔧 Language Features
 - **Auto-closing pairs** for brackets, quotes, and comments
@@ -115,27 +125,29 @@ func main() {
 }
 ```
 
-### BDD Testing Example
+### R2Lang Testing Example
 ```r2lang
-TestCase "User Registration" {
-    Given func() {
-        setupDatabase();
-        return "Database initialized";
-    }
-    When func() {
+describe("User Registration", func() {
+    it("should register a new user successfully", func() {
         let result = registerUser("test@example.com", "password123");
-        return "User registration attempted";
-    }
-    Then func() {
-        assertEqual(result.success, true);
-        return "Registration should succeed";
-    }
-    And func() {
-        assertEqual(result.user.email, "test@example.com");
-        return "Email should be stored correctly";
-    }
-}
+        assert.equals(result.success, true);
+        assert.equals(result.user.email, "test@example.com");
+    });
+    
+    it("should validate email format", func() {
+        let result = registerUser("invalid-email", "password123");
+        assert.equals(result.success, false);
+        assert.contains(result.error, "Invalid email format");
+    });
+});
 ```
+
+### CodeLens Test Execution
+When you open a test file (ending with `_test.r2`), you'll see clickable links above each test:
+- **▶️ Run Test Suite** - appears above `describe()` blocks
+- **▶️ Run Test** - appears above `it()` blocks
+
+Simply click these links to run individual tests or test suites!
 
 ## Configuration
 
@@ -146,7 +158,10 @@ Configure the extension through VS Code settings:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `r2lang.executablePath` | `"r2lang"` | Path to the R2Lang executable |
+| `r2lang.testExecutablePath` | `"r2test"` | Path to the R2Test executable |
+| `r2lang.replExecutablePath` | `"r2repl"` | Path to the R2Lang REPL executable |
 | `r2lang.enableCodeLens` | `true` | Enable/disable CodeLens for functions and classes |
+| `r2lang.enableTestCodeLens` | `true` | Enable/disable CodeLens for running individual tests |
 | `r2lang.enableAutoCompletion` | `true` | Enable/disable auto-completion suggestions |
 | `r2lang.enableDiagnostics` | `true` | Enable/disable syntax and semantic error checking |
 | `r2lang.maxNumberOfProblems` | `100` | Maximum number of problems to report per file |
@@ -155,7 +170,10 @@ Configure the extension through VS Code settings:
 ```json
 {
     "r2lang.executablePath": "/usr/local/bin/r2lang",
+    "r2lang.testExecutablePath": "/usr/local/bin/r2test",
+    "r2lang.replExecutablePath": "/usr/local/bin/r2repl",
     "r2lang.enableCodeLens": true,
+    "r2lang.enableTestCodeLens": true,
     "r2lang.enableAutoCompletion": true
 }
 ```
@@ -167,6 +185,9 @@ Configure the extension through VS Code settings:
 | Run File | `Ctrl+F5` | `Cmd+F5` | Execute the current R2Lang file |
 | Run Selection | `Ctrl+Shift+F5` | `Cmd+Shift+F5` | Execute selected R2Lang code |
 | Open REPL | `Ctrl+Shift+R` | `Cmd+Shift+R` | Open R2Lang interactive shell |
+| Run All Tests | `Ctrl+Shift+T` | `Cmd+Shift+T` | Run all R2Lang tests |
+| Run Current Test | `Ctrl+F6` | `Cmd+F6` | Run current test file |
+| Run Tests with Coverage | `Ctrl+Shift+F6` | `Cmd+Shift+F6` | Run tests with coverage reporting |
 
 ## Code Snippets Reference
 

@@ -86,6 +86,24 @@
         "title": "Open R2Lang REPL",
         "category": "R2Lang",
         "icon": "$(terminal)"
+      },
+      {
+        "command": "r2lang.runTests",
+        "title": "Run R2Lang Tests",
+        "category": "R2Lang",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "r2lang.runCurrentTest",
+        "title": "Run Current Test File",
+        "category": "R2Lang",
+        "icon": "$(play)"
+      },
+      {
+        "command": "r2lang.runTestsWithCoverage",
+        "title": "Run Tests with Coverage",
+        "category": "R2Lang",
+        "icon": "$(graph)"
       }
     ],
     "menus": {
@@ -93,6 +111,11 @@
         {
           "when": "resourceExtname == .r2",
           "command": "r2lang.runFile",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceExtname == .r2 && resourceFilename =~ /.*_test\\.r2$/",
+          "command": "r2lang.runCurrentTest",
           "group": "navigation"
         }
       ],
@@ -111,6 +134,21 @@
           "when": "resourceExtname == .r2",
           "command": "r2lang.openRepl",
           "group": "r2lang@3"
+        },
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.runTests",
+          "group": "r2lang@4"
+        },
+        {
+          "when": "resourceExtname == .r2 && resourceFilename =~ /.*_test\\.r2$/",
+          "command": "r2lang.runCurrentTest",
+          "group": "r2lang@5"
+        },
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.runTestsWithCoverage",
+          "group": "r2lang@6"
         }
       ],
       "commandPalette": [
@@ -121,6 +159,16 @@
         {
           "command": "r2lang.runSelection",
           "when": "resourceExtname == .r2 && editorHasSelection"
+        },
+        {
+          "command": "r2lang.runTests"
+        },
+        {
+          "command": "r2lang.runCurrentTest",
+          "when": "resourceExtname == .r2"
+        },
+        {
+          "command": "r2lang.runTestsWithCoverage"
         }
       ]
     },
@@ -142,6 +190,24 @@
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
         "when": "resourceExtname == .r2"
+      },
+      {
+        "command": "r2lang.runTests",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "resourceExtname == .r2"
+      },
+      {
+        "command": "r2lang.runCurrentTest",
+        "key": "ctrl+f6",
+        "mac": "cmd+f6",
+        "when": "resourceExtname == .r2"
+      },
+      {
+        "command": "r2lang.runTestsWithCoverage",
+        "key": "ctrl+shift+f6",
+        "mac": "cmd+shift+f6",
+        "when": "resourceExtname == .r2"
       }
     ],
     "configuration": {
@@ -153,10 +219,27 @@
           "description": "Path to the R2Lang executable",
           "scope": "machine-overridable"
         },
+        "r2lang.testExecutablePath": {
+          "type": "string",
+          "default": "r2test",
+          "description": "Path to the R2Test executable",
+          "scope": "machine-overridable"
+        },
+        "r2lang.replExecutablePath": {
+          "type": "string",
+          "default": "r2repl",
+          "description": "Path to the R2Lang REPL executable",
+          "scope": "machine-overridable"
+        },
         "r2lang.enableCodeLens": {
           "type": "boolean",
           "default": true,
           "description": "Enable/disable CodeLens for R2Lang functions and classes"
+        },
+        "r2lang.enableTestCodeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable CodeLens for running individual tests"
         },
         "r2lang.enableAutoCompletion": {
           "type": "boolean",
