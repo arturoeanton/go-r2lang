@@ -23,6 +23,7 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
+        cache: true 
 
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -100,7 +101,8 @@ jobs:
     - name: golangci-lint (optional)
       uses: golangci/golangci-lint-action@v4
       with:
-        version: v1.54.2  # Versión más estable
+        #version: v1.54.2  # Versión más estable
+        version: v1.57.2 
         args: --timeout=3m --disable=typecheck
       continue-on-error: true
 
