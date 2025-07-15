@@ -153,35 +153,46 @@ func (dv *DateValue) Format(pattern string) string {
 
 // convertToGoFormat convierte patrones de fecha comunes a formato Go
 func ConvertToGoFormat(pattern string) string {
-	// Mapeo de patrones comunes a formato Go
-	replacements := map[string]string{
-		"YYYY": "2006",
-		"YY":   "06",
-		"MM":   "01",
-		"DD":   "02",
-		"HH":   "15",
-		"mm":   "04",
-		"ss":   "05",
-		"SSS":  "000",
-		"Z":    "Z07:00",
+	// Ordenar los reemplazos por longitud (más largos primero) para evitar conflictos
+	orderedReplacements := []struct {
+		pattern    string
+		go_pattern string
+	}{
+		// Patrones más largos primero
+		{"YYYY", "2006"},
+		{"MMMM", "January"},
+		{"dddd", "Monday"},
+		{"SSS", "000"},
+		{"MMM", "Jan"},
+		{"ddd", "Mon"},
+		{"YY", "06"},
+		{"MM", "01"},
+		{"DD", "02"},
+		{"HH", "15"},
+		{"mm", "04"},
+		{"ss", "05"},
 	}
 
 	result := pattern
-	for pattern, goPattern := range replacements {
-		result = strings.ReplaceAll(result, pattern, goPattern)
+
+	// Manejar caracteres literales entre comillas simples
+	// Reemplazar temporalmente las comillas simples
+	result = strings.ReplaceAll(result, "'", "___LITERAL_QUOTE___")
+
+	// Aplicar reemplazos en orden
+	for _, replacement := range orderedReplacements {
+		result = strings.ReplaceAll(result, replacement.pattern, replacement.go_pattern)
 	}
 
-	// Manejar nombres de meses y días
-	monthReplacements := map[string]string{
-		"MMMM": "January",
-		"MMM":  "Jan",
-		"dddd": "Monday",
-		"ddd":  "Mon",
+	// Manejar Z como zona horaria solo si está al final o seguido de comillas
+	if strings.HasSuffix(result, "Z___LITERAL_QUOTE___") {
+		result = strings.ReplaceAll(result, "Z___LITERAL_QUOTE___", "Z")
+	} else if strings.HasSuffix(result, "Z") {
+		result = strings.ReplaceAll(result, "Z", "Z07:00")
 	}
 
-	for pattern, goPattern := range monthReplacements {
-		result = strings.ReplaceAll(result, pattern, goPattern)
-	}
+	// Restaurar las comillas simples
+	result = strings.ReplaceAll(result, "___LITERAL_QUOTE___", "")
 
 	return result
 }

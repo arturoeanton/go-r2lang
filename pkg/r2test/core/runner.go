@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -82,10 +83,13 @@ func (s TestStatus) String() string {
 
 // NewTestRunner creates a new test runner
 func NewTestRunner(config *TestConfig) *TestRunner {
+	reporter := NewConsoleReporter()
+	reporter.Verbose = config.Verbose
+
 	return &TestRunner{
 		Suites:   make([]*TestSuite, 0),
 		Config:   config,
-		Reporter: NewConsoleReporter(),
+		Reporter: reporter,
 	}
 }
 
@@ -232,6 +236,21 @@ func (tr *TestRunner) shouldSkipTest(test *TestCase) bool {
 		return true
 	}
 
+	// Check grep filtering
+	if tr.Config.Grep != "" && !tr.matchesGrepPattern(test) {
+		return true
+	}
+
+	// Check skip patterns
+	if len(tr.Config.Skip) > 0 && tr.matchesSkipPattern(test) {
+		return true
+	}
+
+	// Check only patterns
+	if len(tr.Config.Only) > 0 && !tr.matchesOnlyPattern(test) {
+		return true
+	}
+
 	// Check tag filtering
 	if len(tr.Config.FilterTags) > 0 && !tr.hasMatchingTags(test.Tags, tr.Config.FilterTags) {
 		return true
@@ -271,6 +290,65 @@ func (tr *TestRunner) getAllTests() []*TestCase {
 		allTests = append(allTests, suite.Tests...)
 	}
 	return allTests
+}
+
+// matchesGrepPattern checks if test matches the grep pattern
+func (tr *TestRunner) matchesGrepPattern(test *TestCase) bool {
+	pattern := tr.Config.Grep
+
+	// Check test name
+	if strings.Contains(strings.ToLower(test.Name), strings.ToLower(pattern)) {
+		return true
+	}
+
+	// Check test description
+	if strings.Contains(strings.ToLower(test.Description), strings.ToLower(pattern)) {
+		return true
+	}
+
+	// Check suite name
+	if test.Suite != nil && strings.Contains(strings.ToLower(test.Suite.Name), strings.ToLower(pattern)) {
+		return true
+	}
+
+	// Check suite description
+	if test.Suite != nil && strings.Contains(strings.ToLower(test.Suite.Description), strings.ToLower(pattern)) {
+		return true
+	}
+
+	return false
+}
+
+// matchesSkipPattern checks if test matches any skip pattern
+func (tr *TestRunner) matchesSkipPattern(test *TestCase) bool {
+	for _, pattern := range tr.Config.Skip {
+		if strings.Contains(strings.ToLower(test.Name), strings.ToLower(pattern)) {
+			return true
+		}
+		if strings.Contains(strings.ToLower(test.Description), strings.ToLower(pattern)) {
+			return true
+		}
+		if test.Suite != nil && strings.Contains(strings.ToLower(test.Suite.Name), strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesOnlyPattern checks if test matches any only pattern
+func (tr *TestRunner) matchesOnlyPattern(test *TestCase) bool {
+	for _, pattern := range tr.Config.Only {
+		if strings.Contains(strings.ToLower(test.Name), strings.ToLower(pattern)) {
+			return true
+		}
+		if strings.Contains(strings.ToLower(test.Description), strings.ToLower(pattern)) {
+			return true
+		}
+		if test.Suite != nil && strings.Contains(strings.ToLower(test.Suite.Name), strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return false
 }
 
 // TestResults aggregates all test results

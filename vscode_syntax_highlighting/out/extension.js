@@ -26,6 +26,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deactivate = exports.activate = void 0;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
+const child_process_1 = require("child_process");
 function activate(context) {
     console.log('R2Lang extension is now active!');
     // Register commands
@@ -38,11 +40,25 @@ function activate(context) {
     const openReplCommand = vscode.commands.registerCommand('r2lang.openRepl', () => {
         openR2LangRepl();
     });
+    const runTestsCommand = vscode.commands.registerCommand('r2lang.runTests', () => {
+        runR2LangTests();
+    });
+    const runCurrentTestCommand = vscode.commands.registerCommand('r2lang.runCurrentTest', () => {
+        runCurrentTestFile();
+    });
+    const runTestsWithCoverageCommand = vscode.commands.registerCommand('r2lang.runTestsWithCoverage', () => {
+        runR2LangTestsWithCoverage();
+    });
+    const runIndividualTestCommand = vscode.commands.registerCommand('r2lang.runIndividualTest', (testName, filePath) => {
+        runIndividualTest(testName, filePath);
+    });
     // Register providers
     const documentFormattingProvider = vscode.languages.registerDocumentFormattingEditProvider('r2lang', new R2LangFormattingProvider());
     const hoverProvider = vscode.languages.registerHoverProvider('r2lang', new R2LangHoverProvider());
+    // Register CodeLens provider for test execution
+    const codeLensProvider = vscode.languages.registerCodeLensProvider('r2lang', new R2LangTestCodeLensProvider());
     // Add to context subscriptions
-    context.subscriptions.push(runFileCommand, runSelectionCommand, openReplCommand, documentFormattingProvider, hoverProvider);
+    context.subscriptions.push(runFileCommand, runSelectionCommand, openReplCommand, runTestsCommand, runCurrentTestCommand, runTestsWithCoverageCommand, runIndividualTestCommand, documentFormattingProvider, hoverProvider, codeLensProvider);
     // Show welcome message on first use
     const config = vscode.workspace.getConfiguration('r2lang');
     const hasShownWelcome = context.globalState.get('hasShownWelcome', false);
@@ -109,10 +125,10 @@ function runR2LangSelection() {
 }
 function openR2LangRepl() {
     const config = vscode.workspace.getConfiguration('r2lang');
-    const executablePath = config.get('executablePath', 'r2lang');
+    const replExecutablePath = config.get('replExecutablePath', 'r2repl');
     const terminal = vscode.window.createTerminal('R2Lang REPL');
     terminal.show();
-    terminal.sendText(`"${executablePath}" -repl`);
+    terminal.sendText(`"${replExecutablePath}"`);
 }
 function showWelcomeMessage(context) {
     const message = 'Welcome to R2Lang! Get started by creating a .r2 file or opening the REPL.';
@@ -179,7 +195,9 @@ function getKeywordInfo(word) {
     const keywords = {
         'func': 'Declares a function\n\n```r2lang\nfunc myFunction(param1, param2) {\n    return param1 + param2;\n}\n```',
         'class': 'Declares a class\n\n```r2lang\nclass MyClass {\n    constructor() {\n        this.value = 0;\n    }\n}\n```',
-        'TestCase': 'Defines a BDD test case\n\n```r2lang\nTestCase "My Test" {\n    Given setup()\n    When action()\n    Then assertion()\n}\n```',
+        'describe': 'Defines a test suite\n\n```r2lang\ndescribe("Calculator", func() {\n    it("should add numbers", func() {\n        assert.equals(2 + 2, 4);\n    });\n});\n```',
+        'it': 'Defines a test case\n\n```r2lang\nit("should handle edge cases", func() {\n    assert.true(condition);\n});\n```',
+        'assert': 'Test assertion functions\n\n```r2lang\nassert.equals(actual, expected);\nassert.true(condition);\nassert.false(condition);\n```',
         'if': 'Conditional statement\n\n```r2lang\nif (condition) {\n    // code\n}\n```',
         'while': 'Loop statement\n\n```r2lang\nwhile (condition) {\n    // code\n}\n```',
         'for': 'Loop statement\n\n```r2lang\nfor (let i = 0; i < 10; i++) {\n    // code\n}\n```',
@@ -190,5 +208,136 @@ function getKeywordInfo(word) {
         'extends': 'Inherits from a parent class\n\n```r2lang\nclass Child extends Parent {\n    // class body\n}\n```'
     };
     return keywords[word] || null;
+}
+// Helper function to find r2test binary
+function findR2TestBinary() {
+    const config = vscode.workspace.getConfiguration('r2lang');
+    const configuredPath = config.get('testExecutablePath', '');
+    // If configured path is absolute, use it
+    if (configuredPath && path.isAbsolute(configuredPath)) {
+        return configuredPath;
+    }
+    // Try to find r2test in the project root
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+        const projectR2Test = path.join(workspaceFolder.uri.fsPath, 'r2test');
+        const projectR2TestExe = path.join(workspaceFolder.uri.fsPath, 'r2test.exe');
+        if (fs.existsSync(projectR2Test)) {
+            return projectR2Test;
+        }
+        if (fs.existsSync(projectR2TestExe)) {
+            return projectR2TestExe;
+        }
+        // Try in cmd/r2test directory
+        const cmdR2Test = path.join(workspaceFolder.uri.fsPath, 'cmd', 'r2test', 'r2test');
+        const cmdR2TestExe = path.join(workspaceFolder.uri.fsPath, 'cmd', 'r2test', 'r2test.exe');
+        if (fs.existsSync(cmdR2Test)) {
+            return cmdR2Test;
+        }
+        if (fs.existsSync(cmdR2TestExe)) {
+            return cmdR2TestExe;
+        }
+    }
+    // Fall back to configured path or system PATH
+    return configuredPath || 'r2test';
+}
+function runR2LangTests() {
+    const testExecutablePath = findR2TestBinary();
+    const terminal = vscode.window.createTerminal('R2Lang Tests');
+    terminal.show();
+    terminal.sendText(`"${testExecutablePath}" -verbose`);
+}
+function runCurrentTestFile() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No active R2Lang test file found');
+        return;
+    }
+    const document = editor.document;
+    if (document.languageId !== 'r2lang') {
+        vscode.window.showErrorMessage('Current file is not a R2Lang file');
+        return;
+    }
+    const filePath = document.fileName;
+    if (!filePath.endsWith('_test.r2')) {
+        vscode.window.showErrorMessage('Current file is not a R2Lang test file (must end with _test.r2)');
+        return;
+    }
+    const testExecutablePath = findR2TestBinary();
+    // Save the file before running
+    document.save().then(() => {
+        const terminal = vscode.window.createTerminal('R2Lang Current Test');
+        terminal.show();
+        terminal.sendText(`"${testExecutablePath}" -verbose "${path.dirname(filePath)}"`);
+    });
+}
+function runR2LangTestsWithCoverage() {
+    const testExecutablePath = findR2TestBinary();
+    const terminal = vscode.window.createTerminal('R2Lang Tests with Coverage');
+    terminal.show();
+    terminal.sendText(`"${testExecutablePath}" -coverage -verbose -coverage-formats html,json`);
+}
+function runIndividualTest(testName, filePath) {
+    const testExecutablePath = findR2TestBinary();
+    // Check if the test binary exists
+    if (!testExecutablePath.includes('/') && !testExecutablePath.includes('\\')) {
+        // It's a system command, let's try to verify it exists
+        (0, child_process_1.exec)(`"${testExecutablePath}" --version`, (error) => {
+            if (error) {
+                vscode.window.showErrorMessage(`R2Test executable not found. Please build it first: go build -o r2test cmd/r2test/main.go`);
+                return;
+            }
+        });
+    }
+    const terminal = vscode.window.createTerminal(`R2Lang Test: ${testName}`);
+    terminal.show();
+    terminal.sendText(`"${testExecutablePath}" -verbose -grep "${testName}" "${path.dirname(filePath)}"`);
+    // Show notification
+    vscode.window.showInformationMessage(`Running test: ${testName}`);
+}
+// CodeLens provider for test execution
+class R2LangTestCodeLensProvider {
+    provideCodeLenses(document, token) {
+        const codeLenses = [];
+        // Check if test CodeLens is enabled
+        const config = vscode.workspace.getConfiguration('r2lang');
+        if (!config.get('enableTestCodeLens', true)) {
+            return codeLenses;
+        }
+        // Only provide CodeLens for test files
+        if (!document.fileName.endsWith('_test.r2')) {
+            return codeLenses;
+        }
+        const text = document.getText();
+        const lines = text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            // Look for describe() blocks - handle multi-line definitions
+            const describeMatch = line.match(/^\s*describe\s*\(\s*["']([^"']+)["']\s*,/);
+            if (describeMatch) {
+                const testSuiteName = describeMatch[1];
+                const range = new vscode.Range(i, 0, i, line.length);
+                const command = {
+                    title: '▶️ Run Test Suite',
+                    command: 'r2lang.runIndividualTest',
+                    arguments: [testSuiteName, document.fileName]
+                };
+                codeLenses.push(new vscode.CodeLens(range, command));
+            }
+            // Look for it() blocks - handle multi-line definitions
+            const itMatch = line.match(/^\s*it\s*\(\s*["']([^"']+)["']\s*,/);
+            if (itMatch) {
+                const testName = itMatch[1];
+                const range = new vscode.Range(i, 0, i, line.length);
+                const command = {
+                    title: '▶️ Run Test',
+                    command: 'r2lang.runIndividualTest',
+                    arguments: [testName, document.fileName]
+                };
+                codeLenses.push(new vscode.CodeLens(range, command));
+            }
+        }
+        return codeLenses;
+    }
 }
 //# sourceMappingURL=extension.js.map
