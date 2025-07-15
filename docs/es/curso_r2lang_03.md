@@ -4,6 +4,26 @@
 
 La Programación Orientada a Objetos (OOP) es un paradigma que organiza el código en **objetos** que contienen datos (propiedades) y código (métodos). R2Lang soporta OOP con clases, herencia, y encapsulación.
 
+### Mejoras en R2Lang v2
+
+La nueva arquitectura modular mejora significativamente el sistema OOP:
+
+- **AST especializado**: Cada construcción OOP tiene su propio archivo en `pkg/r2core/`
+- **Object instantiation optimizada**: Mejor rendimiento en creación de objetos
+- **Method binding mejorado**: Resolución más eficiente de métodos
+- **Herencia robusta**: Implementación completamente refactorizada
+- **Testing comprehensivo**: Cobertura completa de funcionalidades OOP
+
+```
+OOP Implementation (pkg/r2core/):
+├── object_declaration.go    # Declaración de clases
+├── object_instance.go       # Instanciación de objetos  
+├── method_call.go          # Llamadas a métodos
+├── access_expression.go    # Acceso a propiedades
+├── super_call.go           # Llamadas a super
+└── constructor_call.go     # Constructores
+```
+
 ### Conceptos Fundamentales
 
 - **Clase**: Plantilla o blueprint para crear objetos

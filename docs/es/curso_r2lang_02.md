@@ -4,6 +4,15 @@
 
 En este módulo aprenderás a controlar el flujo de ejecución de tus programas y a crear funciones reutilizables. Estas son las herramientas fundamentales para crear programas más complejos y organizados.
 
+### Novedades en R2Lang v2
+
+La nueva arquitectura modular mejora significativamente el rendimiento y la confiabilidad:
+
+- **Parser mejorado**: `pkg/r2core/parse.go` maneja mejor las estructuras de control
+- **AST especializado**: Cada construcción tiene su propio archivo en `pkg/r2core/`
+- **Testing robusto**: Control de flujo completamente probado
+- **Bibliotecas optimizadas**: Funciones built-in más eficientes
+
 ## Control de Flujo
 
 ### 1. Condicionales (if/else)
