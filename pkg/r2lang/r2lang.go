@@ -40,6 +40,7 @@ func RunCode(filename string) {
 	r2libs.RegisterHack(env)
 	r2libs.RegisterConcurrency(env)
 	r2libs.RegisterCollections(env)
+	r2libs.RegisterUnicode(env)
 	parser := r2core.NewParser(code)
 	env.Run(parser)
 }
