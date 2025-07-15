@@ -149,20 +149,21 @@ func BenchmarkFunctionCalls(b *testing.B) {
 func BenchmarkObjectOperations(b *testing.B) {
 	code := `
 		class Person {
-			constructor(name, age) {
-				this.name = name;
-				this.age = age;
-			}
-			
+			let name;
+			let age;
 			greet() {
 				return "Hello, " + this.name;
+			}
+			constructor(name, age) {
+				this.name = name;
+				this.age = age;	
 			}
 		}
 		
 		func testObjects() {
 			let people = [];
 			for (let i = 0; i < 50; i = i + 1) {
-				let person = Person("Person" + i, i + 20);
+				let person = Person("Person" + i, i+20);
 				people.push(person);
 			}
 			
@@ -277,11 +278,11 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		func memoryTest() {
 			let bigArray = [];
 			for (let i = 0; i < 1000; i = i + 1) {
-				let obj = {};
-				obj["id" + i] = i;
-				obj["name" + i] = "Item" + i;
-				obj["active" + i] = true;
-				bigArray.push(obj);
+				let obj1 = {};
+				obj1["id" + i] = i;
+				obj1["name" + i] = "Item" + i;
+				obj1["active" + i] = true;
+				bigArray.push(obj1);
 			}
 			return len(bigArray);
 		}

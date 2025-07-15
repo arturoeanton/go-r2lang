@@ -529,7 +529,7 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 
 // parseExpression => parsea ternarios y binarios
 func (p *Parser) parseExpression() Node {
-	left := p.parseBinaryExpression()
+	left := p.parseBinaryExpression(1)
 
 	// Operador ternario tiene la precedencia más baja
 	if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "?" {
@@ -547,15 +547,32 @@ func (p *Parser) parseExpression() Node {
 }
 
 // parseBinaryExpression => parsea operadores binarios
-func (p *Parser) parseBinaryExpression() Node {
+func (p *Parser) parseBinaryExpression(precedence int) Node {
 	left := p.parseFactor()
-	for p.curTok.Type == TOKEN_SYMBOL && isBinaryOp(p.curTok.Value) {
+	for p.curTok.Type == TOKEN_SYMBOL && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
 		op := p.curTok.Value
 		p.nextToken()
-		right := p.parseFactor()
+		right := p.parseBinaryExpression(getPrecedence(op) + 1)
 		left = &BinaryExpression{Left: left, Op: op, Right: right}
 	}
 	return left
+}
+
+func getPrecedence(op string) int {
+	switch op {
+	case "||":
+		return 1
+	case "&&":
+		return 2
+	case "==", "!=", "<", ">", "<=", ">=":
+		return 3
+	case "+", "-":
+		return 4
+	case "*", "/":
+		return 5
+	default:
+		return 0
+	}
 }
 
 // parseFactor => parsea literales, ident, arrays, maps, paréntesis, O LA FUNCIÓN ANÓNIMA
@@ -583,6 +600,15 @@ func (p *Parser) parseFactor() Node {
 
 	case TOKEN_TEMPLATE_STRING:
 		return p.parseTemplateString()
+
+	case TOKEN_DATE:
+		dateValue, err := ParseDateLiteral(p.curTok.Value)
+		if err != nil {
+			p.except("Invalid date literal: " + p.curTok.Value + " - " + err.Error())
+		}
+		node := &DateLiteral{Value: dateValue}
+		p.nextToken()
+		return node
 
 	case TOKEN_IDENT:
 		// normal ident

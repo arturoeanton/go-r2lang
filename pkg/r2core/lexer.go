@@ -19,6 +19,7 @@ const (
 	TOKEN_NUMBER          = "NUMBER"
 	TOKEN_STRING          = "STRING"
 	TOKEN_TEMPLATE_STRING = "TEMPLATE_STRING"
+	TOKEN_DATE            = "DATE"
 	TOKEN_IDENT           = "IDENT"
 	TOKEN_ARROW           = "ARROW"
 	TOKEN_SYMBOL          = "SYMBOL"
@@ -313,6 +314,10 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 	if ch == '`' {
 		return l.parseTemplateString(), true
 	}
+	// Literal de fecha (@fecha)
+	if ch == '@' {
+		return l.parseDateLiteral(), true
+	}
 	// Cadena con soporte Unicode
 	if ch == '"' || ch == '\'' {
 		val := l.readUnicodeString(ch)
@@ -558,4 +563,44 @@ func (l *Lexer) readUnicodeHex(digits int) string {
 	}
 
 	return string(rune(codePoint))
+}
+
+// parseDateLiteral parsea literales de fecha como @2024-12-25 o @"2024-12-25T10:30:00"
+func (l *Lexer) parseDateLiteral() Token {
+	start := l.pos
+	l.nextch() // saltar @
+	
+	var dateStr string
+	
+	if l.pos < l.length && (l.input[l.pos] == '"' || l.input[l.pos] == '\'') {
+		// Fecha con formato específico @"2024-12-25T10:30:00"
+		quote := l.input[l.pos]
+		l.nextch() // saltar comilla inicial
+		
+		strStart := l.pos
+		for l.pos < l.length && l.input[l.pos] != quote {
+			l.nextch()
+		}
+		
+		if l.pos >= l.length {
+			panic("Closing quote of date literal expected")
+		}
+		
+		dateStr = l.input[strStart:l.pos]
+		l.nextch() // saltar comilla final
+	} else {
+		// Fecha simple @2024-12-25
+		strStart := l.pos
+		for l.pos < l.length && (isDigit(l.input[l.pos]) || l.input[l.pos] == '-' || l.input[l.pos] == ':' || l.input[l.pos] == 'T' || l.input[l.pos] == 'Z' || l.input[l.pos] == '+' || l.input[l.pos] == '.') {
+			l.nextch()
+		}
+		dateStr = l.input[strStart:l.pos]
+	}
+	
+	if dateStr == "" {
+		panic("Empty date literal")
+	}
+	
+	l.currentToken = Token{Type: TOKEN_DATE, Value: dateStr, Line: l.line, Pos: start, Col: l.col}
+	return l.currentToken
 }

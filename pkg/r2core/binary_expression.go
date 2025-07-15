@@ -36,6 +36,11 @@ func (be *BinaryExpression) Eval(env *Environment) interface{} {
 }
 
 func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{} {
+	// Manejar operaciones con fechas primero
+	if dateResult := be.evalDateOperations(lv, rv); dateResult != nil {
+		return dateResult
+	}
+	
 	switch be.Op {
 	case "+":
 		return addValues(lv, rv)
@@ -100,4 +105,85 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 	default:
 		return nil // No es operación aritmética simple
 	}
+}
+
+// evalDateOperations maneja operaciones aritméticas con fechas y duraciones
+func (be *BinaryExpression) evalDateOperations(left, right interface{}) interface{} {
+	leftDate, leftIsDate := left.(*DateValue)
+	rightDate, rightIsDate := right.(*DateValue)
+	leftDuration, leftIsDuration := left.(*DurationValue)
+	rightDuration, rightIsDuration := right.(*DurationValue)
+	
+	switch be.Op {
+	case "+":
+		if leftIsDate && rightIsDuration {
+			// Fecha + Duración = Fecha
+			return leftDate.Add(rightDuration)
+		}
+		if leftIsDuration && rightIsDate {
+			// Duración + Fecha = Fecha
+			return rightDate.Add(leftDuration)
+		}
+		if leftIsDuration && rightIsDuration {
+			// Duración + Duración = Duración
+			return NewDurationValue(leftDuration.Duration + rightDuration.Duration)
+		}
+	case "-":
+		if leftIsDate && rightIsDate {
+			// Fecha - Fecha = Duración
+			return leftDate.Sub(rightDate)
+		}
+		if leftIsDate && rightIsDuration {
+			// Fecha - Duración = Fecha
+			return leftDate.Sub(rightDuration)
+		}
+		if leftIsDuration && rightIsDuration {
+			// Duración - Duración = Duración
+			return NewDurationValue(leftDuration.Duration - rightDuration.Duration)
+		}
+	case "<":
+		if leftIsDate && rightIsDate {
+			return leftDate.Compare(rightDate) < 0
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration < rightDuration.Duration
+		}
+	case "<=":
+		if leftIsDate && rightIsDate {
+			return leftDate.Compare(rightDate) <= 0
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration <= rightDuration.Duration
+		}
+	case ">":
+		if leftIsDate && rightIsDate {
+			return leftDate.Compare(rightDate) > 0
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration > rightDuration.Duration
+		}
+	case ">=":
+		if leftIsDate && rightIsDate {
+			return leftDate.Compare(rightDate) >= 0
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration >= rightDuration.Duration
+		}
+	case "==":
+		if leftIsDate && rightIsDate {
+			return leftDate.Equals(rightDate)
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration == rightDuration.Duration
+		}
+	case "!=":
+		if leftIsDate && rightIsDate {
+			return !leftDate.Equals(rightDate)
+		}
+		if leftIsDuration && rightIsDuration {
+			return leftDuration.Duration != rightDuration.Duration
+		}
+	}
+	
+	return nil // No es operación de fecha/duración
 }

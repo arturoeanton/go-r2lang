@@ -41,6 +41,7 @@ func RunCode(filename string) {
 	r2libs.RegisterConcurrency(env)
 	r2libs.RegisterCollections(env)
 	r2libs.RegisterUnicode(env)
+	r2libs.RegisterDate(env)
 	parser := r2core.NewParser(code)
 	env.Run(parser)
 }
