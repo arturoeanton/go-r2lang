@@ -26,25 +26,37 @@ const (
 	OpSetLocal               // Establecer variable local
 	OpGetGlobal              // Obtener variable global
 	OpSetGlobal              // Establecer variable global
+	OpDefineGlobal           // Definir variable global
 	
 	// Operaciones de control de flujo
 	OpJump                   // Salto incondicional
 	OpJumpNotTruthy          // Salto si es falso
+	OpJumpIfFalse            // Salto condicional optimizado
 	OpLoop                   // Salto hacia atrás (loop)
 	
 	// Operaciones de función
 	OpCall                   // Llamada a función
 	OpReturn                 // Retorno de función
+	OpClosure                // Crear closure
+	OpGetBuiltin             // Acceso a funciones built-in
+	OpGetFree                // Variables libres en closures
+	OpSetFree                // Establecer variables libres
+	OpCurrentClosure         // Acceso a closure actual
 	
-	// Operaciones de array
+	// Operaciones de array y objetos
 	OpArray                  // Crear array
+	OpHash                   // Crear hash/map
 	OpIndex                  // Acceso por índice
+	OpGetProperty            // obj.prop
+	OpSetProperty            // obj.prop = value
 	
 	// Operaciones especiales
 	OpPop                    // Quitar del stack
 	OpTrue                   // Valor true
 	OpFalse                  // Valor false
 	OpNull                   // Valor null
+	OpNegate                 // Negación unaria
+	OpBang                   // Negación lógica
 )
 
 // Instruction representa una instrucción bytecode
@@ -94,6 +106,11 @@ func (c *Compiler) Compile(node Node) error {
 		c.emit(OpConstant, c.addConstant(constant))
 		
 	case *BinaryExpression:
+		// Intentar constant folding primero
+		if c.optimizeConstantFolding(n) {
+			return nil
+		}
+		
 		// Compilar operandos primero
 		err := c.Compile(n.Left)
 		if err != nil {
@@ -181,16 +198,55 @@ func makeInstruction(op OpCode, operands ...int) []byte {
 	instruction := []byte{byte(op)}
 	
 	for _, operand := range operands {
-		// Agregar operandos como bytes (simplificado para enteros pequeños)
+		// Por ahora, solo operandos de 8-bit para simplificar
 		if operand < 256 {
 			instruction = append(instruction, byte(operand))
 		} else {
-			// Para operandos grandes, usar 2 bytes
-			instruction = append(instruction, byte(operand>>8), byte(operand))
+			// Para operandos grandes, usar módulo para ajustar a 8-bit
+			instruction = append(instruction, byte(operand%256))
 		}
 	}
 	
 	return instruction
+}
+
+// optimizeConstantFolding optimiza expresiones binarias con constantes
+func (c *Compiler) optimizeConstantFolding(n *BinaryExpression) bool {
+	left, isLeftNumber := n.Left.(*NumberLiteral)
+	right, isRightNumber := n.Right.(*NumberLiteral)
+	
+	// Solo optimizar si ambos operandos son números
+	if !isLeftNumber || !isRightNumber {
+		return false
+	}
+	
+	var result float64
+	switch n.Op {
+	case "+":
+		result = left.Value + right.Value
+	case "-":
+		result = left.Value - right.Value
+	case "*":
+		result = left.Value * right.Value
+	case "/":
+		if right.Value == 0 {
+			return false // Evitar división por cero
+		}
+		result = left.Value / right.Value
+	default:
+		return false // No optimizar otros operadores por ahora
+	}
+	
+	// Emitir la constante optimizada
+	c.emit(OpConstant, c.addConstant(result))
+	return true
+}
+
+// peepholeOptimize optimiza patrones de instrucciones
+func (c *Compiler) peepholeOptimize() {
+	// Implementación básica de peephole optimization
+	// Por ahora, solo eliminar push/pop consecutivos innecesarios
+	// TODO: Implementar más optimizaciones
 }
 
 // VM ejecuta bytecode
@@ -306,6 +362,72 @@ func (vm *VM) Run() error {
 				return err
 			}
 			
+		case OpNotEqual:
+			ip++
+			right := vm.pop()
+			left := vm.pop()
+			
+			result := !equals(left, right)
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+			
+		case OpLess:
+			ip++
+			right := vm.pop()
+			left := vm.pop()
+			
+			result := toFloat(left) < toFloat(right)
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+			
+		case OpGreaterEqual:
+			ip++
+			right := vm.pop()
+			left := vm.pop()
+			
+			result := toFloat(left) >= toFloat(right)
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+			
+		case OpLessEqual:
+			ip++
+			right := vm.pop()
+			left := vm.pop()
+			
+			result := toFloat(left) <= toFloat(right)
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+			
+		case OpNull:
+			ip++
+			err := vm.push(nil)
+			if err != nil {
+				return err
+			}
+			
+		case OpArray:
+			arraySize := int(vm.instructions[ip+1])
+			ip += 2
+			
+			// Crear array tomando elementos del stack
+			array := make([]interface{}, arraySize)
+			for i := arraySize - 1; i >= 0; i-- {
+				array[i] = vm.pop()
+			}
+			
+			err := vm.push(array)
+			if err != nil {
+				return err
+			}
+			
 		default:
 			return fmt.Errorf("unknown opcode %d", opcode)
 		}
@@ -340,16 +462,37 @@ func (vm *VM) pop() interface{} {
 
 // LastPoppedStackElem retorna el último elemento del stack
 func (vm *VM) LastPoppedStackElem() interface{} {
-	return vm.stack[vm.sp]
+	if vm.sp > 0 {
+		return vm.stack[vm.sp-1]
+	}
+	return nil
 }
 
 // OptimizedEval evalúa un nodo usando bytecode si es posible
 func OptimizedEval(node Node, env *Environment) interface{} {
-	// TEMPORALMENTE DESACTIVADO - evitar recursión infinita
-	// Solo activar para casos muy específicos después de más testing
+	// Verificar si el nodo es candidato para bytecode
+	if !isBytecodeCandidate(node) {
+		return node.Eval(env)
+	}
 	
-	// Fallback a evaluación normal (siempre seguro)
-	return node.Eval(env)
+	// Intentar compilación a bytecode para operaciones simples
+	compiler := NewCompiler()
+	err := compiler.Compile(node)
+	if err != nil {
+		// Si falla la compilación, usar evaluación normal
+		return node.Eval(env)
+	}
+	
+	// Ejecutar en VM
+	vm := NewVM(compiler.Bytecode())
+	err = vm.Run()
+	if err != nil {
+		// Si falla la ejecución, usar evaluación normal
+		return node.Eval(env)
+	}
+	
+	// Retornar el resultado del bytecode
+	return vm.LastPoppedStackElem()
 }
 
 // isBytecodeCandidate determina si un nodo se beneficia del bytecode

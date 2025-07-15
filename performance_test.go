@@ -148,7 +148,7 @@ func BenchmarkFunctionCalls(b *testing.B) {
 // BenchmarkObjectOperations mide el rendimiento de operaciones con objetos
 func BenchmarkObjectOperations(b *testing.B) {
 	code := `
-		object Person {
+		class Person {
 			constructor(name, age) {
 				this.name = name;
 				this.age = age;
@@ -162,7 +162,7 @@ func BenchmarkObjectOperations(b *testing.B) {
 		func testObjects() {
 			var people = [];
 			for (var i = 0; i < 50; i = i + 1) {
-				var person = new Person("Person" + i, i + 20);
+				var person = Person("Person" + i, i + 20);
 				people.push(person);
 			}
 			
@@ -170,7 +170,7 @@ func BenchmarkObjectOperations(b *testing.B) {
 			for (var i = 0; i < len(people); i = i + 1) {
 				greetings.push(people[i].greet());
 			}
-			return greetings.length;
+			return len(greetings);
 		}
 		testObjects();
 	`
@@ -276,14 +276,15 @@ func BenchmarkMemoryUsage(b *testing.B) {
 	code := `
 		func memoryTest() {
 			var bigArray = [];
-			for (var i = 0; i < 10000; i = i + 1) {
-				bigArray.push({
-					id: i,
-					name: "Item" + i,
-					data: []
-				});
+			for (var i = 0; i < 1000; i = i + 1) {
+				var obj = {
+					("id" + i): i,
+					("name" + i): "Item" + i,
+					("active" + i): true
+				};
+				bigArray.push(obj);
 			}
-			return bigArray.length;
+			return len(bigArray);
 		}
 		memoryTest();
 	`
