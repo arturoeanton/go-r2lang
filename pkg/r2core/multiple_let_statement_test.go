@@ -190,7 +190,7 @@ func TestMultipleLetStatement_BackwardCompatibility(t *testing.T) {
 		{
 			"single declaration with expression",
 			"let result = 10 + 5 * 2;",
-			float64(30),
+			float64(20),
 		},
 	}
 
