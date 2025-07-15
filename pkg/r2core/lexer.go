@@ -243,7 +243,7 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
-		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":", "\n",
+		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":", "?", "\n",
 	}
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
