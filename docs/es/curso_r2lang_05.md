@@ -4,6 +4,29 @@
 
 En este módulo aprenderás una de las características más distintivas de R2Lang: su sistema de testing integrado con sintaxis BDD (Behavior Driven Development), además de desarrollo web y APIs. Estas habilidades te permitirán crear aplicaciones completas y bien probadas.
 
+### Sistema de Testing y Web v2
+
+La nueva arquitectura modular proporciona un sistema de testing y desarrollo web completamente renovado:
+
+```
+Testing & Web Framework (pkg/r2libs/):
+├── r2test.go (testing framework)     # Sistema BDD completo
+├── r2http.go (410 LOC)              # Servidor HTTP optimizado
+├── r2httpclient.go (324 LOC)        # Cliente HTTP robusto
+├── r2print.go (365 LOC)             # Output y debugging
+└── Testing AST (pkg/r2core/):
+    ├── testcase_statement.go         # Sintaxis TestCase nativa
+    ├── given_when_then.go            # Pasos BDD
+    └── assertion_functions.go        # Funciones de aserción
+```
+
+**Mejoras v2**:
+- **Testing nativo**: BDD integrado en el lenguaje, no como biblioteca externa
+- **HTTP framework**: Servidor y cliente HTTP optimizados con mejor rendimiento
+- **Debugging avanzado**: Herramientas integradas para debugging de tests
+- **Cobertura automática**: Reportes de cobertura de tests incluidos
+- **Paralelización**: Tests pueden ejecutarse en paralelo automáticamente
+
 ## Sistema de Testing BDD Integrado
 
 ### 1. Conceptos de BDD (Behavior Driven Development)

@@ -4,6 +4,27 @@
 
 En este módulo aprenderás dos aspectos avanzados de R2Lang: la programación concurrente con goroutines y el manejo robusto de errores. Estos conceptos son fundamentales para crear aplicaciones robustas y eficientes.
 
+### Mejoras en Concurrencia y Errores v2
+
+La nueva arquitectura modular proporciona mejor soporte para concurrencia y manejo de errores:
+
+```
+Concurrency & Error Handling (pkg/r2libs/):
+├── r2goroutine.go (237 LOC)    # Goroutines y concurrencia
+├── r2std.go (122 LOC)          # Funciones estándar mejoradas
+├── r2test.go                   # Testing de concurrencia
+└── Error handling (pkg/r2core/):
+    ├── try_statement.go        # Try-catch-finally
+    ├── throw_statement.go      # Lanzamiento de errores
+    └── error_handling.go       # Manejo robusto de errores
+```
+
+**Beneficios v2**:
+- **Goroutines optimizadas**: Mejor rendimiento y gestión de memoria
+- **Error handling robusto**: Stack traces y contexto detallado
+- **Testing integrado**: Pruebas de concurrencia automáticas
+- **Debugging mejorado**: Herramientas de diagnóstico avanzadas
+
 ## Concurrencia en R2Lang
 
 ### 1. Conceptos Básicos de Concurrencia
