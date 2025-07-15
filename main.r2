@@ -99,4 +99,41 @@ func main(){
     } else {
         print("Fecha 2 es menor o igual que Fecha 0");
     }
+
+
+    print("\n📝 1. Identificadores Unicode:");
+
+    // Español
+    let año = 2024;
+    let niño = "Antonio";
+    let señorita = "María José";
+
+    // Otros idiomas
+    let 身長 = 175;          // Japonés: altura
+    let имя = "Иван";        // Ruso: nombre
+    let اسم = "أحمد";        // Árabe: nombre
+    let όνομα = "Γιάννης";   // Griego: nombre
+    let prénoms = "Jean-François"; // Francés
+    print(`El año actual es: ${año}`);
+    print(`Niño: ${niño}, Señorita: ${señorita}`);
+    print(`身長 (altura): ${身長}cm`);
+    print(`Имя (nombre en ruso): ${имя}`);
+    print(`اسم (nombre en árabe): ${اسم}`);
+    print(`Όνομα (nombre en griego): ${όνομα}`);
+    print(`Prénoms français: ${prénoms}`);
+
+    // ========================================
+    // 2. STRINGS UNICODE Y ESCAPE SEQUENCES
+    // ========================================
+    print("\n🔤 2. Strings Unicode y Escape Sequences:");
+
+    let emoji_wave = "\U0001F44B";           // 👋
+    let emoji_rocket = "\U0001F680";         // 🚀
+    let emoji_earth = "\U0001F30D";          // 🌍
+    let spanish_chars = "\u00f1\u00e9\u00fa"; // ñéú
+
+    print(`Saludando: ${emoji_wave}`);
+    print(`Cohete: ${emoji_rocket}`);
+    print(`Tierra: ${emoji_earth}`);
+    print(`Caracteres españoles: ${spanish_chars}`);
 }
