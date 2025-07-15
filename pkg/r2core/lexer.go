@@ -12,14 +12,15 @@ import (
 // ============================================================
 
 const (
-	TOKEN_EOF    = "EOF"
-	TOKEN_NUMBER = "NUMBER"
-	TOKEN_STRING = "STRING"
-	TOKEN_IDENT  = "IDENT"
-	TOKEN_ARROW  = "ARROW"
-	TOKEN_SYMBOL = "SYMBOL"
-	TOKEN_IMPORT = "IMPORT"
-	TOKEN_AS     = "AS"
+	TOKEN_EOF            = "EOF"
+	TOKEN_NUMBER         = "NUMBER"
+	TOKEN_STRING         = "STRING"
+	TOKEN_TEMPLATE_STRING = "TEMPLATE_STRING"
+	TOKEN_IDENT          = "IDENT"
+	TOKEN_ARROW          = "ARROW"
+	TOKEN_SYMBOL         = "SYMBOL"
+	TOKEN_IMPORT         = "IMPORT"
+	TOKEN_AS             = "AS"
 
 	RETURN   = "return"
 	LET      = "let"
@@ -294,6 +295,10 @@ func (l *Lexer) parseNumberToken(ch byte) (Token, bool) {
 }
 
 func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
+	// Template String (backticks)
+	if ch == '`' {
+		return l.parseTemplateString(), true
+	}
 	// Cadena
 	if ch == '"' || ch == '\'' {
 		quote := ch
@@ -346,4 +351,97 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 		}
 	}
 	return Token{}, false
+}
+
+// parseTemplateString parses template strings with backticks and ${} interpolation
+func (l *Lexer) parseTemplateString() Token {
+	start := l.pos
+	l.nextch() // Skip opening backtick
+	
+	var parts []string
+	var currentPart strings.Builder
+	
+	for l.pos < l.length && l.input[l.pos] != '`' {
+		if l.input[l.pos] == '\\' && l.pos+1 < l.length {
+			// Handle escape sequences
+			l.nextch()
+			switch l.input[l.pos] {
+			case '`':
+				currentPart.WriteByte('`')
+			case '$':
+				currentPart.WriteByte('$')
+			case '\\':
+				currentPart.WriteByte('\\')
+			case 'n':
+				currentPart.WriteByte('\n')
+			case 't':
+				currentPart.WriteByte('\t')
+			case 'r':
+				currentPart.WriteByte('\r')
+			default:
+				currentPart.WriteByte('\\')
+				currentPart.WriteByte(l.input[l.pos])
+			}
+			l.nextch()
+		} else if l.input[l.pos] == '$' && l.pos+1 < l.length && l.input[l.pos+1] == '{' {
+			// Found interpolation ${...}
+			// Add current text part
+			if currentPart.Len() > 0 {
+				parts = append(parts, "TEXT:"+currentPart.String())
+				currentPart.Reset()
+			}
+			
+			// Skip ${
+			l.pos += 2
+			
+			// Find matching }
+			braceCount := 1
+			exprStart := l.pos
+			for l.pos < l.length && braceCount > 0 {
+				if l.input[l.pos] == '{' {
+					braceCount++
+				} else if l.input[l.pos] == '}' {
+					braceCount--
+				}
+				if braceCount > 0 {
+					l.nextch()
+				}
+			}
+			
+			if braceCount > 0 {
+				panic("Unclosed interpolation in template string")
+			}
+			
+			// Add expression part
+			expr := l.input[exprStart:l.pos]
+			parts = append(parts, "EXPR:"+expr)
+			l.nextch() // Skip closing }
+		} else {
+			currentPart.WriteByte(l.input[l.pos])
+			l.nextch()
+		}
+	}
+	
+	if l.pos >= l.length {
+		panic("Closing backtick of template string expected")
+	}
+	
+	// Add final text part if any
+	if currentPart.Len() > 0 {
+		parts = append(parts, "TEXT:"+currentPart.String())
+	}
+	
+	l.nextch() // Skip closing backtick
+	
+	// Encode parts as a single string value
+	var encoded strings.Builder
+	for i, part := range parts {
+		if i > 0 {
+			encoded.WriteString("\x00") // Use null separator
+		}
+		encoded.WriteString(part)
+	}
+	
+	l.currentToken = Token{Type: TOKEN_TEMPLATE_STRING, Value: encoded.String(), Line: l.line, Pos: start, Col: l.col}
+	return l.currentToken
 }

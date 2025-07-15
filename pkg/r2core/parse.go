@@ -529,6 +529,9 @@ func (p *Parser) parseFactor() Node {
 		p.nextToken()
 		return node
 
+	case TOKEN_TEMPLATE_STRING:
+		return p.parseTemplateString()
+
 	case TOKEN_IDENT:
 		// normal ident
 		idName := p.curTok.Value
@@ -648,20 +651,38 @@ func (p *Parser) parseArrayLiteral() Node {
 
 func (p *Parser) parseMapLiteral() Node {
 	p.nextToken() // "{"
-	pairs := make(map[string]Node)
+	var pairs []MapPair
 	if p.curTok.Value == "}" {
 		p.nextToken()
 		return &MapLiteral{Pairs: pairs}
 	}
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		var key string
+		var keyNode Node
 
+		// Soportar expresiones como claves
 		switch p.curTok.Type {
-		case TOKEN_STRING, TOKEN_IDENT:
-			key = p.curTok.Value
+		case TOKEN_STRING:
+			keyNode = &StringLiteral{Value: p.curTok.Value}
 			p.nextToken()
+		case TOKEN_IDENT:
+			keyNode = &StringLiteral{Value: p.curTok.Value}
+			p.nextToken()
+		case TOKEN_SYMBOL:
+			if p.curTok.Value == "(" {
+				// Permitir expresiones entre paréntesis como claves
+				p.nextToken() // consumir "("
+				keyNode = p.parseExpression()
+				if p.curTok.Value != ")" {
+					p.except("Expected ')' after key expression")
+				}
+				p.nextToken() // consumir ")"
+			} else {
+				// Permitir expresiones simples como claves
+				keyNode = p.parseExpression()
+			}
 		default:
-			p.except("Expected string or identifier as key in map-literal")
+			// Permitir expresiones simples como claves
+			keyNode = p.parseExpression()
 		}
 
 		if p.curTok.Value != ":" {
@@ -669,7 +690,8 @@ func (p *Parser) parseMapLiteral() Node {
 		}
 		p.nextToken()
 		valNode := p.parseExpression()
-		pairs[key] = valNode
+		
+		pairs = append(pairs, MapPair{Key: keyNode, Value: valNode})
 
 		if p.curTok.Value == "," {
 			p.nextToken()
@@ -684,6 +706,15 @@ func (p *Parser) parseMapLiteral() Node {
 	}
 	p.nextToken()
 	return &MapLiteral{Pairs: pairs}
+}
+
+// parseTemplateString parses a template string token into a TemplateString AST node
+func (p *Parser) parseTemplateString() Node {
+	encoded := p.curTok.Value
+	p.nextToken() // consume template string token
+	
+	parts := parseTemplateParts(encoded, p)
+	return &TemplateString{Parts: parts}
 }
 
 func (p *Parser) except(msgErr string) {

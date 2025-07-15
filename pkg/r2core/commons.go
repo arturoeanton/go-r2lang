@@ -162,19 +162,19 @@ func addValues(a, b interface{}) interface{} {
 		return append([]interface{}{a}, ab...)
 	}
 
-	// Si uno es string => concatenar (simple para strings pequeños)
+	// Si uno es string => concatenar (optimización mejorada)
 	if sa, ok := a.(string); ok {
-		sb := fmt.Sprint(b)
-		// Solo usar optimización para strings grandes o cuando realmente beneficie
-		if len(sa)+len(sb) > 100 {
+		sb := toStringOptimized(b)
+		// Usar optimización para strings medianos y grandes
+		if len(sa)+len(sb) > 32 {
 			return OptimizedStringConcat2(sa, sb)
 		}
 		return sa + sb
 	}
 	if sb, ok := b.(string); ok {
-		sa := fmt.Sprint(a)
-		// Solo usar optimización para strings grandes o cuando realmente beneficie  
-		if len(sa)+len(sb) > 100 {
+		sa := toStringOptimized(a)
+		// Usar optimización para strings medianos y grandes
+		if len(sa)+len(sb) > 32 {
 			return OptimizedStringConcat2(sa, sb)
 		}
 		return sa + sb
@@ -263,4 +263,55 @@ func isBinaryOp(op string) bool {
 		}
 	}
 	return false
+}
+
+// toString convierte cualquier valor a string
+func toString(val interface{}) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// Si es un número entero, no mostrar decimales
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%.0f", v)
+		}
+		return fmt.Sprintf("%g", v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// toStringOptimized convierte valores a string de manera optimizada para concatenación
+func toStringOptimized(val interface{}) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// Cache común para números pequeños enteros
+		if v >= 0 && v <= 100 && v == float64(int64(v)) {
+			// Usar cache para números comunes
+			return fmt.Sprintf("%.0f", v)
+		}
+		// Si es un número entero, no mostrar decimales
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%.0f", v)
+		}
+		return fmt.Sprintf("%g", v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
