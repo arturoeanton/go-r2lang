@@ -11,6 +11,12 @@ func (bs *BlockStatement) Eval(env *Environment) interface{} {
 		if rv, ok := val.(ReturnValue); ok {
 			return rv
 		}
+		if _, ok := val.(BreakValue); ok {
+			return val
+		}
+		if _, ok := val.(ContinueValue); ok {
+			return val
+		}
 		result = val
 	}
 	return result

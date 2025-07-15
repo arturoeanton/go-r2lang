@@ -42,10 +42,12 @@ const (
 	EXTENDS = "extends"
 	IMPORT  = "import"
 	AS      = "as"
-	TRY     = "try"
-	CATCH   = "catch"
-	FINALLY = "finally"
-	THROW   = "throw"
+	TRY      = "try"
+	CATCH    = "catch"
+	FINALLY  = "finally"
+	THROW    = "throw"
+	BREAK    = "break"
+	CONTINUE = "continue"
 
 	// Nuevos Tokens para la sintaxis de pruebas
 	TOKEN_TESTCASE = "TESTCASE"
@@ -53,6 +55,8 @@ const (
 	TOKEN_WHEN     = "WHEN"
 	TOKEN_THEN     = "THEN"
 	TOKEN_AND      = "AND"
+	TOKEN_BREAK    = "BREAK"
+	TOKEN_CONTINUE = "CONTINUE"
 )
 
 var (
@@ -361,6 +365,12 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case "testcase":
 			l.currentToken = Token{Type: TOKEN_TESTCASE, Value: "TestCase", Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(BREAK):
+			l.currentToken = Token{Type: TOKEN_BREAK, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(CONTINUE):
+			l.currentToken = Token{Type: TOKEN_CONTINUE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 			// ... otras palabras clave
 		default:

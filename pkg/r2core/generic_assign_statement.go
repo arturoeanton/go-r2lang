@@ -10,7 +10,7 @@ func (gas *GenericAssignStatement) Eval(env *Environment) interface{} {
 	val := gas.Right.Eval(env)
 	switch left := gas.Left.(type) {
 	case *Identifier:
-		env.Set(left.Name, val)
+		env.Update(left.Name, val)
 		return val
 	case *AccessExpression:
 		objVal := left.Object.Eval(env)

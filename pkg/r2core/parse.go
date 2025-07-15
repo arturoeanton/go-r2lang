@@ -143,6 +143,12 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == RETURN {
 		return p.parseReturnStatement()
 	}
+	if p.curTok.Value == BREAK {
+		return p.parseBreakStatement()
+	}
+	if p.curTok.Value == CONTINUE {
+		return p.parseContinueStatement()
+	}
 	if p.curTok.Value == LET || p.curTok.Value == VAR {
 		return p.parseLetStatement()
 	}
@@ -254,6 +260,22 @@ func (p *Parser) parseReturnStatement() Node {
 		p.nextToken()
 	}
 	return &ReturnStatement{Value: expr}
+}
+
+func (p *Parser) parseBreakStatement() Node {
+	p.nextToken() // consumir "break"
+	if p.curTok.Value == ";" {
+		p.nextToken()
+	}
+	return &BreakStatement{}
+}
+
+func (p *Parser) parseContinueStatement() Node {
+	p.nextToken() // consumir "continue"
+	if p.curTok.Value == ";" {
+		p.nextToken()
+	}
+	return &ContinueStatement{}
 }
 
 // let x = expr;

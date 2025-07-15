@@ -15,6 +15,30 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	} else {
 		newEnv = currentEnv
 	}
+	
+	// Detección de recursión infinita
+	limiter := newEnv.GetLimiter()
+	if limiter.Enabled {
+		// Verificar límite de profundidad de recursión
+		if limiter.CheckRecursionDepth() {
+			panic(NewRecursionError("max_depth", len(limiter.CallStack)))
+		}
+		
+		// Verificar timeout global
+		if limiter.CheckTimeLimit() {
+			panic(NewTimeoutError("function_timeout", newEnv.GetContext()))
+		}
+		
+		// Verificar context cancelation
+		if limiter.CheckContext() {
+			panic(NewTimeoutError("function_context_canceled", newEnv.GetContext()))
+		}
+		
+		// Entrar en función (incrementar stack)
+		limiter.EnterFunction(uf.code)
+		defer limiter.ExitFunction()
+	}
+	
 	if uf.IsMethod {
 		if uf.Env != nil {
 			if selfVal, ok := uf.Env.Get("self"); ok {

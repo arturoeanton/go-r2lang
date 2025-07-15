@@ -1,7 +1,7 @@
 # Reporte de Performance - R2Lang
-Fecha: 2025-07-15 04:17:22
-Sistema: linux arm64
-CPUs: 12
+Fecha: 2025-07-15 12:57:07
+Sistema: darwin arm64
+CPUs: 14
 Versión Go: go1.24.4
 
 ## Benchmarks Ejecutados
