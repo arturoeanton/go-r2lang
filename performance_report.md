@@ -1,5 +1,5 @@
 # Reporte de Performance - R2Lang
-Fecha: 2025-07-15 13:26:18
+Fecha: 2025-07-15 16:38:19
 Sistema: darwin arm64
 CPUs: 14
 Versión Go: go1.24.4

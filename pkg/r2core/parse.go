@@ -56,43 +56,6 @@ func (p *Parser) parseImportStatement() Node {
 	return &ImportStatement{Path: path, Alias: alias}
 }
 
-func (p *Parser) parseTestCase() Node {
-	p.nextToken() // Consumir 'TestCase'
-
-	if p.curTok.Type != TOKEN_STRING {
-		p.except("A string was expected for the test case name")
-	}
-	name := p.curTok.Value
-	p.nextToken()
-
-	if p.curTok.Value != "{" {
-		p.except("‘{’ was expected to start the test case body")
-	}
-	p.nextToken()
-
-	var steps []TestStep
-	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		var stepType string
-		switch p.curTok.Type {
-		case TOKEN_GIVEN, TOKEN_WHEN, TOKEN_THEN, TOKEN_AND:
-			stepType = p.curTok.Value
-			p.nextToken()
-		default:
-			p.except("‘Given’, ‘When’, ‘Then’, or ‘And’ was expected in the test case steps")
-		}
-		command := p.parseExpression()
-		steps = append(steps, TestStep{Type: stepType, Command: command})
-		if p.curTok.Value == ";" {
-			p.nextToken()
-		}
-	}
-	if p.curTok.Value != "}" {
-		p.except("‘}’ was expected at the end of the test case")
-	}
-	p.nextToken()
-	return &TestCase{Name: name, Steps: steps}
-}
-
 func (p *Parser) nextToken() {
 	p.prevTok = p.curTok
 	p.curTok = p.peekTok
@@ -126,10 +89,6 @@ func (p *Parser) parseStatement() Node {
 
 	if p.curTok.Value == IMPORT {
 		return p.parseImportStatement()
-	}
-
-	if p.curTok.Type == TOKEN_TESTCASE {
-		return p.parseTestCase()
 	}
 
 	if p.curTok.Value == TRY {

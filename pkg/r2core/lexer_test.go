@@ -181,15 +181,6 @@ func TestLexer_Keywords(t *testing.T) {
 	}{
 		{"import", TOKEN_IMPORT, "import"},
 		{"as", TOKEN_AS, "as"},
-		{"given", TOKEN_GIVEN, "Given"},
-		{"when", TOKEN_WHEN, "When"},
-		{"then", TOKEN_THEN, "Then"},
-		{"and", TOKEN_AND, "And"},
-		{"testcase", TOKEN_TESTCASE, "TestCase"},
-		{"GIVEN", TOKEN_GIVEN, "Given"},
-		{"WHEN", TOKEN_WHEN, "When"},
-		{"THEN", TOKEN_THEN, "Then"},
-		{"TestCase", TOKEN_TESTCASE, "TestCase"},
 	}
 
 	for _, test := range tests {
@@ -472,70 +463,6 @@ func TestLexer_CompleteExpression(t *testing.T) {
 		{Type: TOKEN_SYMBOL, Value: "-"},
 		{Type: TOKEN_NUMBER, Value: "1"},
 		{Type: TOKEN_SYMBOL, Value: ")"},
-		{Type: TOKEN_SYMBOL, Value: "\n"},
-		{Type: TOKEN_SYMBOL, Value: "}"},
-	}
-
-	lexer := NewLexer(input)
-	for i, expectedToken := range expected {
-		token := lexer.NextToken()
-		if token.Type != expectedToken.Type {
-			t.Errorf("Token %d: expected type %q, got %q", i, expectedToken.Type, token.Type)
-		}
-		if token.Value != expectedToken.Value {
-			t.Errorf("Token %d: expected value %q, got %q", i, expectedToken.Value, token.Value)
-		}
-	}
-}
-
-func TestLexer_BDDSyntax(t *testing.T) {
-	input := `TestCase "Addition Test" {
-		Given func() { return "setup" }
-		When func() { return "execute" }
-		Then func() { return "verify" }
-		And func() { return "cleanup" }
-	}`
-
-	expected := []Token{
-		{Type: TOKEN_TESTCASE, Value: "TestCase"},
-		{Type: TOKEN_STRING, Value: "Addition Test"},
-		{Type: TOKEN_SYMBOL, Value: "{"},
-		{Type: TOKEN_SYMBOL, Value: "\n"},
-		{Type: TOKEN_GIVEN, Value: "Given"},
-		{Type: TOKEN_IDENT, Value: "func"},
-		{Type: TOKEN_SYMBOL, Value: "("},
-		{Type: TOKEN_SYMBOL, Value: ")"},
-		{Type: TOKEN_SYMBOL, Value: "{"},
-		{Type: TOKEN_IDENT, Value: "return"},
-		{Type: TOKEN_STRING, Value: "setup"},
-		{Type: TOKEN_SYMBOL, Value: "}"},
-		{Type: TOKEN_SYMBOL, Value: "\n"},
-		{Type: TOKEN_WHEN, Value: "When"},
-		{Type: TOKEN_IDENT, Value: "func"},
-		{Type: TOKEN_SYMBOL, Value: "("},
-		{Type: TOKEN_SYMBOL, Value: ")"},
-		{Type: TOKEN_SYMBOL, Value: "{"},
-		{Type: TOKEN_IDENT, Value: "return"},
-		{Type: TOKEN_STRING, Value: "execute"},
-		{Type: TOKEN_SYMBOL, Value: "}"},
-		{Type: TOKEN_SYMBOL, Value: "\n"},
-		{Type: TOKEN_THEN, Value: "Then"},
-		{Type: TOKEN_IDENT, Value: "func"},
-		{Type: TOKEN_SYMBOL, Value: "("},
-		{Type: TOKEN_SYMBOL, Value: ")"},
-		{Type: TOKEN_SYMBOL, Value: "{"},
-		{Type: TOKEN_IDENT, Value: "return"},
-		{Type: TOKEN_STRING, Value: "verify"},
-		{Type: TOKEN_SYMBOL, Value: "}"},
-		{Type: TOKEN_SYMBOL, Value: "\n"},
-		{Type: TOKEN_AND, Value: "And"},
-		{Type: TOKEN_IDENT, Value: "func"},
-		{Type: TOKEN_SYMBOL, Value: "("},
-		{Type: TOKEN_SYMBOL, Value: ")"},
-		{Type: TOKEN_SYMBOL, Value: "{"},
-		{Type: TOKEN_IDENT, Value: "return"},
-		{Type: TOKEN_STRING, Value: "cleanup"},
-		{Type: TOKEN_SYMBOL, Value: "}"},
 		{Type: TOKEN_SYMBOL, Value: "\n"},
 		{Type: TOKEN_SYMBOL, Value: "}"},
 	}

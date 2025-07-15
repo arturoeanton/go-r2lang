@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="R2Lang Test Suite" tests="32" failures="0" errors="0" skipped="0" time="0.000122959" timestamp="2025-07-15T16:43:29-03:00">
+  <testsuite name="Advanced Test" package="r2lang.tests" tests="14" failures="0" errors="0" skipped="0" time="3.1874e-05" timestamp="2025-07-15T16:43:29-03:00" hostname="localhost">
+    <testcase name="should initialize with zero" classname="Advanced_Test" time="1.4291e-05"></testcase>
+    <testcase name="should add numbers" classname="Advanced_Test" time="2.375e-06"></testcase>
+    <testcase name="should subtract numbers" classname="Advanced_Test" time="1.375e-06"></testcase>
+    <testcase name="should handle chained operations" classname="Advanced_Test" time="1.167e-06"></testcase>
+    <testcase name="should create files" classname="Advanced_Test" time="2e-06"></testcase>
+    <testcase name="should read file contents" classname="Advanced_Test" time="2.125e-06"></testcase>
+    <testcase name="should handle promises" classname="Advanced_Test" time="1.292e-06"></testcase>
+    <testcase name="should timeout long operations" classname="Advanced_Test" time="1.083e-06"></testcase>
+    <testcase name="should work with maps" classname="Advanced_Test" time="1.292e-06"></testcase>
+    <testcase name="should handle nested structures" classname="Advanced_Test" time="9.58e-07"></testcase>
+    <testcase name="should handle empty values" classname="Advanced_Test" time="1e-06"></testcase>
+    <testcase name="should handle large numbers" classname="Advanced_Test" time="9.16e-07"></testcase>
+    <testcase name="should handle special characters" classname="Advanced_Test" time="1e-06"></testcase>
+    <testcase name="should complete operations quickly" classname="Advanced_Test" time="1e-06"></testcase>
+  </testsuite>
+  <testsuite name="Basic Test" package="r2lang.tests" tests="18" failures="0" errors="0" skipped="0" time="6.2249e-05" timestamp="2025-07-15T16:43:29-03:00" hostname="localhost" id="1">
+    <testcase name="should add two numbers correctly" classname="Basic_Test" time="1.667e-06"></testcase>
+    <testcase name="should subtract numbers correctly" classname="Basic_Test" time="1.25e-06"></testcase>
+    <testcase name="should multiply numbers correctly" classname="Basic_Test" time="1.25e-06"></testcase>
+    <testcase name="should concatenate strings" classname="Basic_Test" time="2.458e-06"></testcase>
+    <testcase name="should check string length" classname="Basic_Test" time="5.25e-06"></testcase>
+    <testcase name="should find substrings" classname="Basic_Test" time="1.167e-06"></testcase>
+    <testcase name="should create and access arrays" classname="Basic_Test" time="1.875e-06"></testcase>
+    <testcase name="should detect empty arrays" classname="Basic_Test" time="1.3459e-05"></testcase>
+    <testcase name="should detect non-empty arrays" classname="Basic_Test" time="4.75e-06"></testcase>
+    <testcase name="should handle true values" classname="Basic_Test" time="2.417e-06"></testcase>
+    <testcase name="should handle false values" classname="Basic_Test" time="2.625e-06"></testcase>
+    <testcase name="should handle null checks" classname="Basic_Test" time="1.833e-06"></testcase>
+    <testcase name="should define and call functions" classname="Basic_Test" time="1.292e-06"></testcase>
+    <testcase name="should handle variable scoping" classname="Basic_Test" time="1.041e-06"></testcase>
+    <testcase name="should catch expected errors" classname="Basic_Test" time="2.041e-06"></testcase>
+    <testcase name="should not panic for valid operations" classname="Basic_Test" time="1.35e-05"></testcase>
+    <testcase name="should compare numbers" classname="Basic_Test" time="1.583e-06"></testcase>
+    <testcase name="should handle inequality" classname="Basic_Test" time="2.791e-06"></testcase>
+  </testsuite>
+</testsuites>

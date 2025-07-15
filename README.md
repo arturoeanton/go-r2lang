@@ -21,7 +21,7 @@
 
 ---
 
-**R2Lang** is a dynamic, interpreted programming language written in Go. It's designed to be simple, intuitive, and powerful, with a syntax heavily inspired by JavaScript and first-class support for **Behavior-Driven Development (BDD)**.
+**R2Lang** is a dynamic, interpreted programming language written in Go. It's designed to be simple, intuitive, and powerful, with a syntax heavily inspired by JavaScript and first-class support for **comprehensive unit testing**.
 
 Whether you're writing automation scripts, building a web API, or creating a robust testing suite, R2Lang provides the tools you need in a clean and readable package.
 
@@ -29,7 +29,7 @@ Whether you're writing automation scripts, building a web API, or creating a rob
 
 | Feature                 | Description                                                                                                 | Example                                                              |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **🧪 Built-in BDD Testing** | Write tests as specifications with a native `TestCase` syntax. No external frameworks needed.               | `TestCase "User should log in" { Given ... When ... Then ... }`      |
+| **🧪 Built-in Unit Testing** | Comprehensive testing framework with `describe()` and `it()` syntax. No external frameworks needed.        | `describe("User Login", func() { it("should authenticate", func() { ... }) })`      |
 | **🚀 Simple & Familiar**    | If you know JavaScript, you'll feel right at home. This makes it incredibly easy to pick up and start coding. | `let message = "Hello, World!"; print(message);`                     |
 | **⚡ Concurrent**          | Leverage the power of Go's goroutines with a simple `r2()` function to run code in parallel.                | `r2(myFunction, "arg1");`                                            |
 | **🧱 Object-Oriented**     | Use classes, inheritance (`extends`), and `this` to structure your code in a clean, object-oriented way.    | `class User extends Person { ... }`                                  |
@@ -69,6 +69,170 @@ Whether you're writing automation scripts, building a web API, or creating a rob
     ./r2lang hello.r2
     # Output: Hello, R2Lang! 🚀
     ```
+
+---
+
+## 🧪 Advanced Unit Testing Framework
+
+R2Lang features a professional-grade testing framework with enterprise-level capabilities including **mocking**, **fixtures**, **coverage reporting**, and **test isolation**:
+
+### Basic Test Structure
+```r2
+import "r2test" as test;
+
+test.describe("Calculator", func() {
+    test.it("should add numbers correctly", func() {
+        let result = 2 + 3;
+        test.assert("addition").that(result).equals(5);
+    });
+    
+    test.it("should handle subtraction", func() {
+        let result = 10 - 4;
+        test.assert("subtraction").that(result).equals(6);
+    });
+});
+```
+
+### Test Lifecycle Hooks
+```r2
+test.describe("Database Tests", func() {
+    test.beforeAll(func() {
+        // Setup database connection
+    });
+    
+    test.beforeEach(func() {
+        // Reset test data before each test
+    });
+    
+    test.afterEach(func() {
+        // Cleanup after each test
+    });
+    
+    test.afterAll(func() {
+        // Close database connection
+    });
+    
+    test.it("should save user data", func() {
+        // Test implementation
+    });
+});
+```
+
+### Comprehensive Assertion Library
+- **Basic**: `.equals()`, `.isTrue()`, `.isFalse()`, `.isNull()`, `.isNotNull()`
+- **Types**: `.isNumber()`, `.isString()`, `.isBoolean()`, `.isArray()`, `.isObject()`
+- **Comparisons**: `.isGreaterThan()`, `.isLessThan()`, `.isGreaterThanOrEqual()`
+- **Strings**: `.contains()`, `.startsWith()`, `.endsWith()`, `.matches()`
+- **Collections**: `.hasProperty()`, `.hasLength()`, `.isEmpty()`, `.isNotEmpty()`
+- **Exceptions**: `.throws()`, `.doesNotThrow()`, `.withMessage()`
+
+### Mocking and Spying
+```r2
+import "r2test/mocking" as mock;
+
+test.describe("HTTP Service Tests", func() {
+    test.it("should mock API calls", func() {
+        let httpMock = mock.createMock("httpService");
+        httpMock.when("get", "/api/users").returns({users: []});
+        
+        let result = httpMock.call("get", "/api/users");
+        test.assert("API result").that(result.users).isArray();
+        test.assert("Mock called").that(httpMock.wasCalled("get")).isTrue();
+    });
+    
+    test.it("should spy on methods", func() {
+        let spy = mock.spyOn("userService.validate", userService.validate);
+        spy.callThrough();
+        
+        userService.validate("test@email.com");
+        
+        test.assert("Spy called").that(spy.wasCalledWith("test@email.com")).isTrue();
+    });
+});
+```
+
+### Fixture Management
+```r2
+import "r2test/fixtures" as fixtures;
+
+test.describe("Data Tests", func() {
+    test.it("should load JSON fixtures", func() {
+        let userData = fixtures.load("user_data.json");
+        test.assert("User name").that(userData.name).equals("John Doe");
+    });
+    
+    test.it("should create temporary fixtures", func() {
+        fixtures.createTemporary("test_data", {id: 1, name: "Test"});
+        let data = fixtures.getData("test_data");
+        test.assert("Temp data").that(data.id).equals(1);
+    });
+});
+```
+
+### Coverage Reporting
+```r2
+import "r2test/coverage" as coverage;
+import "r2test/reporters" as reporters;
+
+// Enable coverage collection
+coverage.enable();
+coverage.start();
+
+// Run tests and generate reports
+test.runTests();
+
+// Generate multiple report formats
+reporters.generateHTMLReport("./coverage/html");    // Interactive HTML report
+reporters.generateJSONReport("./coverage/data.json"); // Machine-readable JSON
+reporters.generateJUnitReport("./coverage/junit.xml"); // CI/CD integration
+
+// Check coverage thresholds
+let stats = coverage.getStats();
+if (stats.linePercentage < 80) {
+    throw "Coverage below 80% threshold";
+}
+```
+
+### Test Isolation
+```r2
+import "r2test/mocking" as mock;
+
+test.describe("Isolated Tests", func() {
+    test.it("should run in isolation", func() {
+        mock.runInIsolation("isolated test", func(context) {
+            let mockDb = context.createMock("database");
+            mockDb.when("save").returns(123);
+            
+            // Test runs in complete isolation
+            let result = mockDb.call("save", {data: "test"});
+            test.assert("Isolated result").that(result).equals(123);
+        });
+    });
+});
+```
+
+### Running Tests
+```bash
+# Run specific test files
+go run main.go examples/unit_testing/basic_test_example.r2
+go run main.go examples/unit_testing/mocking_example.r2
+go run main.go examples/unit_testing/coverage_example.r2
+
+# Run all tests in directory
+go run main.go -test ./tests/
+
+# Generate coverage reports
+go run main.go -test -coverage ./tests/
+```
+
+### Advanced Features
+- **Test Discovery**: Automatic test file detection with patterns
+- **Parallel Execution**: Run tests in parallel for faster execution
+- **Watch Mode**: Re-run tests when files change
+- **Custom Reporters**: Pluggable reporting system
+- **CI/CD Integration**: JUnit XML and JSON output for build systems
+
+For complete examples and advanced features, see [examples/unit_testing/](./examples/unit_testing/).
 
 ---
 
