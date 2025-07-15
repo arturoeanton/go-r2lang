@@ -59,7 +59,7 @@ func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
 	if optimized := fs.trySimpleLoopOptimization(env); optimized != nil {
 		return optimized
 	}
-	
+
 	// Ejecución normal para loops complejos
 	return fs.executeStandardLoop(env)
 }
@@ -68,7 +68,7 @@ func (fs *ForStatement) evalStandardFor(env *Environment) interface{} {
 func (fs *ForStatement) trySimpleLoopOptimization(env *Environment) interface{} {
 	// Solo optimizar loops muy específicos y seguros
 	// Por ejemplo: for (var i = 0; i < N; i++) { suma += i; }
-	
+
 	// TODO: Implementar detección de patrones simples
 	// Por ahora, no optimizar para mantener estabilidad
 	return nil

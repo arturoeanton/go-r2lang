@@ -259,60 +259,60 @@ func (p *Parser) parseReturnStatement() Node {
 // let x = expr;
 func (p *Parser) parseLetStatement() Node {
 	p.nextToken() // "let"
-	
+
 	var declarations []LetDeclaration
-	
+
 	// Parsear primera declaración
 	if p.curTok.Type != TOKEN_IDENT {
 		p.except("Variable name expected after 'let'/'var'")
 	}
-	
+
 	name := p.curTok.Value
 	p.nextToken()
-	
+
 	// Manejar caso especial para bucles for-in
 	if p.curTok.Value == IN {
 		return &LetStatement{Name: name, Value: nil}
 	}
-	
+
 	var value Node
 	if p.curTok.Value == "=" {
 		p.nextToken()
 		value = p.parseExpression()
 	}
-	
+
 	declarations = append(declarations, LetDeclaration{Name: name, Value: value})
-	
+
 	// Parsear declaraciones adicionales separadas por comas
 	for p.curTok.Value == "," {
 		p.nextToken() // consumir ","
-		
+
 		if p.curTok.Type != TOKEN_IDENT {
 			p.except("Variable name expected after ','")
 		}
-		
+
 		name = p.curTok.Value
 		p.nextToken()
-		
+
 		var value Node
 		if p.curTok.Value == "=" {
 			p.nextToken()
 			value = p.parseExpression()
 		}
-		
+
 		declarations = append(declarations, LetDeclaration{Name: name, Value: value})
 	}
-	
+
 	// Consumir punto y coma opcional
 	if p.curTok.Value == ";" {
 		p.nextToken()
 	}
-	
+
 	// Si solo hay una declaración, usar LetStatement simple para mantener compatibilidad
 	if len(declarations) == 1 {
 		return &LetStatement{Name: declarations[0].Name, Value: declarations[0].Value}
 	}
-	
+
 	// Si hay múltiples declaraciones, usar MultipleLetStatement
 	return &MultipleLetStatement{Declarations: declarations}
 }
@@ -530,7 +530,7 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 // parseExpression => parsea ternarios y binarios
 func (p *Parser) parseExpression() Node {
 	left := p.parseBinaryExpression()
-	
+
 	// Operador ternario tiene la precedencia más baja
 	if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "?" {
 		p.nextToken() // consumir "?"
@@ -542,7 +542,7 @@ func (p *Parser) parseExpression() Node {
 		falseExpr := p.parseExpression()
 		return &TernaryExpression{Condition: left, TrueExpr: trueExpr, FalseExpr: falseExpr}
 	}
-	
+
 	return left
 }
 
@@ -742,7 +742,7 @@ func (p *Parser) parseMapLiteral() Node {
 		}
 		p.nextToken()
 		valNode := p.parseExpression()
-		
+
 		pairs = append(pairs, MapPair{Key: keyNode, Value: valNode})
 
 		if p.curTok.Value == "," {
@@ -764,7 +764,7 @@ func (p *Parser) parseMapLiteral() Node {
 func (p *Parser) parseTemplateString() Node {
 	encoded := p.curTok.Value
 	p.nextToken() // consume template string token
-	
+
 	parts := parseTemplateParts(encoded, p)
 	return &TemplateString{Parts: parts}
 }

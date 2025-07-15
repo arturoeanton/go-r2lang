@@ -246,7 +246,7 @@ func TestBytecode_ConstantFolding(t *testing.T) {
 
 func TestBytecode_OptimizedEval(t *testing.T) {
 	env := NewEnvironment()
-	
+
 	tests := []struct {
 		name     string
 		node     Node

@@ -67,11 +67,11 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 	// Solo optimizar para literals numéricos directos
 	leftNum, leftOk := be.Left.(*NumberLiteral)
 	rightNum, rightOk := be.Right.(*NumberLiteral)
-	
+
 	if !leftOk || !rightOk {
 		return nil // No es fast-path candidate
 	}
-	
+
 	// Fast arithmetic para números literales
 	switch be.Op {
 	case "+":

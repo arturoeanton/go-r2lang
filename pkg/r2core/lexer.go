@@ -15,15 +15,15 @@ import (
 // ============================================================
 
 const (
-	TOKEN_EOF            = "EOF"
-	TOKEN_NUMBER         = "NUMBER"
-	TOKEN_STRING         = "STRING"
+	TOKEN_EOF             = "EOF"
+	TOKEN_NUMBER          = "NUMBER"
+	TOKEN_STRING          = "STRING"
 	TOKEN_TEMPLATE_STRING = "TEMPLATE_STRING"
-	TOKEN_IDENT          = "IDENT"
-	TOKEN_ARROW          = "ARROW"
-	TOKEN_SYMBOL         = "SYMBOL"
-	TOKEN_IMPORT         = "IMPORT"
-	TOKEN_AS             = "AS"
+	TOKEN_IDENT           = "IDENT"
+	TOKEN_ARROW           = "ARROW"
+	TOKEN_SYMBOL          = "SYMBOL"
+	TOKEN_IMPORT          = "IMPORT"
+	TOKEN_AS              = "AS"
 
 	RETURN   = "return"
 	LET      = "let"
@@ -103,6 +103,7 @@ func NewLexer(input string) *Lexer {
 func isWhitespace(ch byte) bool {
 	return ch == ' ' || ch == '	' || ch == ''
 }
+
 // isLetter ya no se usa - reemplazado por isValidIdentifierStart/Char
 func isLetter(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') ||
@@ -324,7 +325,7 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 		start := l.pos
 		l.pos += size
 		l.col += size
-		
+
 		for l.pos < l.length {
 			r, size := utf8.DecodeRuneInString(l.input[l.pos:])
 			if r == utf8.RuneError || !isValidIdentifierChar(r) {
@@ -369,10 +370,10 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 func (l *Lexer) parseTemplateString() Token {
 	start := l.pos
 	l.nextch() // Skip opening backtick
-	
+
 	var parts []string
 	var currentPart strings.Builder
-	
+
 	for l.pos < l.length && l.input[l.pos] != '`' {
 		if l.input[l.pos] == '\\' && l.pos+1 < l.length {
 			// Handle escape sequences
@@ -402,10 +403,10 @@ func (l *Lexer) parseTemplateString() Token {
 				parts = append(parts, "TEXT:"+currentPart.String())
 				currentPart.Reset()
 			}
-			
+
 			// Skip ${
 			l.pos += 2
-			
+
 			// Find matching }
 			braceCount := 1
 			exprStart := l.pos
@@ -419,11 +420,11 @@ func (l *Lexer) parseTemplateString() Token {
 					l.nextch()
 				}
 			}
-			
+
 			if braceCount > 0 {
 				panic("Unclosed interpolation in template string")
 			}
-			
+
 			// Add expression part
 			expr := l.input[exprStart:l.pos]
 			parts = append(parts, "EXPR:"+expr)
@@ -433,18 +434,18 @@ func (l *Lexer) parseTemplateString() Token {
 			l.nextch()
 		}
 	}
-	
+
 	if l.pos >= l.length {
 		panic("Closing backtick of template string expected")
 	}
-	
+
 	// Add final text part if any
 	if currentPart.Len() > 0 {
 		parts = append(parts, "TEXT:"+currentPart.String())
 	}
-	
+
 	l.nextch() // Skip closing backtick
-	
+
 	// Encode parts as a single string value
 	var encoded strings.Builder
 	for i, part := range parts {
@@ -453,7 +454,7 @@ func (l *Lexer) parseTemplateString() Token {
 		}
 		encoded.WriteString(part)
 	}
-	
+
 	l.currentToken = Token{Type: TOKEN_TEMPLATE_STRING, Value: encoded.String(), Line: l.line, Pos: start, Col: l.col}
 	return l.currentToken
 }
@@ -462,7 +463,7 @@ func (l *Lexer) parseTemplateString() Token {
 func (l *Lexer) readUnicodeString(delimiter byte) string {
 	var result strings.Builder
 	l.nextch() // saltar comilla inicial
-	
+
 	for l.pos < l.length && l.input[l.pos] != delimiter {
 		if l.input[l.pos] == '\\' {
 			// Manejar secuencias de escape
@@ -470,7 +471,7 @@ func (l *Lexer) readUnicodeString(delimiter byte) string {
 			if l.pos >= l.length {
 				panic("String termina con escape incompleto")
 			}
-			
+
 			escaped := l.handleEscape()
 			result.WriteString(escaped)
 		} else {
@@ -484,11 +485,11 @@ func (l *Lexer) readUnicodeString(delimiter byte) string {
 			l.col += size
 		}
 	}
-	
+
 	if l.pos >= l.length {
 		panic("String sin cerrar: falta comilla de cierre")
 	}
-	
+
 	l.nextch() // saltar comilla final
 	return result.String()
 }
@@ -498,10 +499,10 @@ func (l *Lexer) handleEscape() string {
 	if l.pos >= l.length {
 		panic("Escape incompleto al final del string")
 	}
-	
+
 	ch := l.input[l.pos]
 	l.nextch()
-	
+
 	switch ch {
 	case 'n':
 		return "\n"
@@ -535,26 +536,26 @@ func (l *Lexer) readUnicodeHex(digits int) string {
 	if l.pos+digits > l.length {
 		panic("Escape Unicode incompleto")
 	}
-	
+
 	hexStr := l.input[l.pos : l.pos+digits]
 	l.pos += digits
 	l.col += digits
-	
+
 	// Validar que todos son dígitos hex válidos
 	for _, ch := range hexStr {
 		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
 			panic("Código Unicode inválido: " + hexStr)
 		}
 	}
-	
+
 	codePoint, err := strconv.ParseInt(hexStr, 16, 32)
 	if err != nil {
 		panic("Código Unicode inválido: " + hexStr)
 	}
-	
+
 	if !utf8.ValidRune(rune(codePoint)) {
 		panic("Punto de código Unicode inválido: " + hexStr)
 	}
-	
+
 	return string(rune(codePoint))
 }

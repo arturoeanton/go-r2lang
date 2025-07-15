@@ -46,22 +46,22 @@ func TestTernaryExpression_BasicConditions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			if len(program.Statements) != 1 {
 				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
 			}
-			
+
 			stmt, ok := program.Statements[0].(*ExprStatement)
 			if !ok {
 				t.Fatalf("expected ExprStatement, got %T", program.Statements[0])
 			}
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := stmt.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -106,13 +106,13 @@ func TestTernaryExpression_WithVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -152,13 +152,13 @@ func TestTernaryExpression_NestedTernary(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -203,13 +203,13 @@ func TestTernaryExpression_WithNumbers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -249,13 +249,13 @@ func TestTernaryExpression_WithBooleans(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -290,18 +290,18 @@ func TestTernaryExpression_InTemplateLiterals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			resultStr, ok := result.(string)
 			if !ok {
 				t.Fatalf("expected string result, got %T: %v", result, result)
 			}
-			
+
 			if resultStr != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, resultStr)
 			}
@@ -339,10 +339,10 @@ func TestTernaryExpression_InTemplateLiterals(t *testing.T) {
 // 					t.Errorf("expected panic for input: %s", tt.input)
 // 				}
 // 			}()
-			
+
 // 			parser := NewParser(tt.input)
 // 			program := parser.ParseProgram()
-			
+
 // 			env := NewEnvironment()
 // 			env.Set("true", true)
 // 			env.Set("false", false)

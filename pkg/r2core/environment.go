@@ -16,7 +16,7 @@ type Environment struct {
 	imported map[string]bool
 	Dir      string
 	CurrenFx string
-	
+
 	// Cache optimizado para lookup frecuente
 	lookupCache   map[string]interface{}
 	lookupCacheMu sync.RWMutex

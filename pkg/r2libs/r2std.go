@@ -157,11 +157,11 @@ func RegisterStd(env *r2core.Environment) {
 		if !ok {
 			panic("eval: argument should be a string")
 		}
-		
+
 		// Crear un nuevo parser para el código dinámico
 		parser := r2core.NewParser(code)
 		program := parser.ParseProgram()
-		
+
 		// Evaluar en el contexto del entorno actual
 		return program.Eval(env)
 	}))

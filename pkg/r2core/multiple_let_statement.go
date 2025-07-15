@@ -14,7 +14,7 @@ type LetDeclaration struct {
 // Eval evalúa todas las declaraciones de variables
 func (mls *MultipleLetStatement) Eval(env *Environment) interface{} {
 	var lastValue interface{}
-	
+
 	for _, decl := range mls.Declarations {
 		if decl.Value != nil {
 			value := decl.Value.Eval(env)
@@ -25,6 +25,6 @@ func (mls *MultipleLetStatement) Eval(env *Environment) interface{} {
 			lastValue = nil
 		}
 	}
-	
+
 	return lastValue
 }

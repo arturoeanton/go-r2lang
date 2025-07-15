@@ -41,17 +41,17 @@ func TestMultipleLetStatement_BasicDeclarations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			if len(program.Statements) != 1 {
 				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
 			}
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			// Verificar que todas las variables esperadas están definidas
 			for name, expectedValue := range tt.expected {
 				actualValue, exists := env.Get(name)
@@ -59,7 +59,7 @@ func TestMultipleLetStatement_BasicDeclarations(t *testing.T) {
 					t.Errorf("variable %s not found in environment", name)
 					continue
 				}
-				
+
 				if actualValue != expectedValue {
 					t.Errorf("for variable %s: expected %v, got %v", name, expectedValue, actualValue)
 				}
@@ -100,20 +100,20 @@ func TestMultipleLetStatement_WithExpressions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			for name, expectedValue := range tt.expected {
 				actualValue, exists := env.Get(name)
 				if !exists {
 					t.Errorf("variable %s not found in environment", name)
 					continue
 				}
-				
+
 				if actualValue != expectedValue {
 					t.Errorf("for variable %s: expected %v, got %v", name, expectedValue, actualValue)
 				}
@@ -149,20 +149,20 @@ func TestMultipleLetStatement_WithDependencies(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			for name, expectedValue := range tt.expected {
 				actualValue, exists := env.Get(name)
 				if !exists {
 					t.Errorf("variable %s not found in environment", name)
 					continue
 				}
-				
+
 				if actualValue != expectedValue {
 					t.Errorf("for variable %s: expected %v, got %v", name, expectedValue, actualValue)
 				}
@@ -198,17 +198,17 @@ func TestMultipleLetStatement_BackwardCompatibility(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			if len(program.Statements) != 1 {
 				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
 			}
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			// Para declaraciones simples, verificar la primera variable definida
 			var varName string
 			if tt.name == "single declaration still works" {
@@ -218,13 +218,13 @@ func TestMultipleLetStatement_BackwardCompatibility(t *testing.T) {
 			} else if tt.name == "single declaration with expression" {
 				varName = "result"
 			}
-			
+
 			actualValue, exists := env.Get(varName)
 			if !exists {
 				t.Errorf("variable %s not found in environment", varName)
 				return
 			}
-			
+
 			if actualValue != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, actualValue)
 			}
@@ -254,20 +254,20 @@ func TestMultipleLetStatement_WithTernaryOperator(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			for name, expectedValue := range tt.expected {
 				actualValue, exists := env.Get(name)
 				if !exists {
 					t.Errorf("variable %s not found in environment", name)
 					continue
 				}
-				
+
 				if actualValue != expectedValue {
 					t.Errorf("for variable %s: expected %v, got %v", name, expectedValue, actualValue)
 				}
@@ -298,20 +298,20 @@ func TestMultipleLetStatement_WithTemplateLiterals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			program.Eval(env)
-			
+
 			for name, expectedValue := range tt.expected {
 				actualValue, exists := env.Get(name)
 				if !exists {
 					t.Errorf("variable %s not found in environment", name)
 					continue
 				}
-				
+
 				if actualValue != expectedValue {
 					t.Errorf("for variable %s: expected %v, got %v", name, expectedValue, actualValue)
 				}
@@ -342,13 +342,13 @@ func TestMultipleLetStatement_InFunctions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}

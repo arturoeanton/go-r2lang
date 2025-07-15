@@ -98,7 +98,7 @@ func OptimizedStringConcat2(a, b string) string {
 	// Para strings medianos, verificar cache
 	if len(a)+len(b) < 512 {
 		cacheKey := a + "\x00" + b // Usar null separator para evitar colisiones
-		
+
 		poolStringCacheMu.RLock()
 		if result, exists := stringConcatCache[cacheKey]; exists {
 			poolStringCacheMu.RUnlock()

@@ -41,18 +41,18 @@ func TestTemplateString_BasicInterpolation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			resultStr, ok := result.(string)
 			if !ok {
 				t.Fatalf("expected string result, got %T: %v", result, result)
 			}
-			
+
 			if resultStr != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, resultStr)
 			}
@@ -87,18 +87,18 @@ func TestTemplateString_MultilineSupport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			resultStr, ok := result.(string)
 			if !ok {
 				t.Fatalf("expected string result, got %T: %v", result, result)
 			}
-			
+
 			if resultStr != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, resultStr)
 			}
@@ -138,15 +138,15 @@ func TestTemplateString_EscapeSequences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			result := program.Eval(env)
-			
+
 			resultStr, ok := result.(string)
 			if !ok {
 				t.Fatalf("expected string result, got %T: %v", result, result)
 			}
-			
+
 			if resultStr != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, resultStr)
 			}
@@ -191,18 +191,18 @@ func TestTemplateString_ComplexExpressions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
 			result := program.Eval(env)
-			
+
 			resultStr, ok := result.(string)
 			if !ok {
 				t.Fatalf("expected string result, got %T: %v", result, result)
 			}
-			
+
 			if resultStr != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, resultStr)
 			}
@@ -242,21 +242,21 @@ func TestTemplateString_Performance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			env.Set("true", true)
 			env.Set("false", false)
 			env.Set("nil", nil)
-			
+
 			// Run multiple times to test performance
 			for i := 0; i < 100; i++ {
 				result := program.Eval(env)
-				
+
 				resultStr, ok := result.(string)
 				if !ok {
 					t.Fatalf("expected string result, got %T: %v", result, result)
 				}
-				
+
 				if resultStr != tt.expected {
 					t.Errorf("expected %q, got %q", tt.expected, resultStr)
 				}
@@ -291,10 +291,10 @@ func TestTemplateString_ErrorCases(t *testing.T) {
 					t.Errorf("expected panic for input: %s", tt.input)
 				}
 			}()
-			
+
 			parser := NewParser(tt.input)
 			program := parser.ParseProgram()
-			
+
 			env := NewEnvironment()
 			program.Eval(env)
 		})
@@ -333,19 +333,19 @@ func TestLexer_TemplateString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lexer := NewLexer(tt.input)
-			
+
 			for i, expected := range tt.expected {
 				token := lexer.NextToken()
-				
+
 				if token.Type != expected.Type {
 					t.Errorf("token %d: expected type %q, got %q", i, expected.Type, token.Type)
 				}
-				
+
 				if token.Value != expected.Value {
 					t.Errorf("token %d: expected value %q, got %q", i, expected.Value, token.Value)
 				}
 			}
-			
+
 			// Should end with EOF
 			eofToken := lexer.NextToken()
 			if eofToken.Type != TOKEN_EOF {

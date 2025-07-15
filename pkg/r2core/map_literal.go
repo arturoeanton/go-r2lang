@@ -13,7 +13,7 @@ func (ml *MapLiteral) Eval(env *Environment) interface{} {
 	m := make(map[string]interface{})
 	for _, pair := range ml.Pairs {
 		keyVal := pair.Key.Eval(env)
-		
+
 		// Convertir la clave a string
 		var keyStr string
 		switch k := keyVal.(type) {
@@ -24,7 +24,7 @@ func (ml *MapLiteral) Eval(env *Environment) interface{} {
 		default:
 			keyStr = toString(k)
 		}
-		
+
 		m[keyStr] = pair.Value.Eval(env)
 	}
 	return m

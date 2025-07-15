@@ -8,15 +8,15 @@ import (
 
 var (
 	// Cache para conversiones de string a float
-	stringToFloatCache map[string]float64
+	stringToFloatCache   map[string]float64
 	commonsStringCacheMu sync.RWMutex
 
 	// Cache para números pequeños comunes
 	intToFloatCache map[int]float64
-	
+
 	// Cache optimizado para números frecuentes
 	frequentNumberCache map[string]float64
-	frequentNumberMu sync.RWMutex
+	frequentNumberMu    sync.RWMutex
 )
 
 func init() {
@@ -24,14 +24,14 @@ func init() {
 	stringToFloatCache = make(map[string]float64)
 	intToFloatCache = make(map[int]float64)
 	frequentNumberCache = make(map[string]float64)
-	
+
 	// Pre-poblar cache con números comunes
 	for i := -1000; i <= 1000; i++ {
 		intToFloatCache[i] = float64(i)
 	}
-	
+
 	// Pre-poblar números frecuentes como strings
-	frequentNumbers := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", 
+	frequentNumbers := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 		"100", "1000", "-1", "-2", "-3", "0.5", "1.5", "2.5"}
 	for _, numStr := range frequentNumbers {
 		if f, err := strconv.ParseFloat(numStr, 64); err == nil {
@@ -65,7 +65,7 @@ func toFloat(val interface{}) float64 {
 			return cached
 		}
 		frequentNumberMu.RUnlock()
-		
+
 		// Buscar en cache general
 		commonsStringCacheMu.RLock()
 		if cached, ok := stringToFloatCache[v]; ok {
@@ -211,7 +211,7 @@ func divValues(a, b interface{}) interface{} {
 			return af / bf // Sin allocaciones extra
 		}
 	}
-	
+
 	den := toFloat(b)
 	if den == 0 {
 		panic("Division by zero")

@@ -10,7 +10,7 @@ type TernaryExpression struct {
 // Eval evalúa la expresión ternaria
 func (te *TernaryExpression) Eval(env *Environment) interface{} {
 	conditionValue := te.Condition.Eval(env)
-	
+
 	// Convertir a boolean
 	if toBool(conditionValue) {
 		return te.TrueExpr.Eval(env)

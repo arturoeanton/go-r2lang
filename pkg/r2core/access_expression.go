@@ -356,11 +356,11 @@ func evalArrayJoin(arr interfaceSlice) interface{} {
 			}
 			return result
 		}
-		
+
 		// StringBuilder para arrays grandes
 		sb := GetStringBuilder()
 		defer PutStringBuilder(sb)
-		
+
 		for i, v := range arr {
 			if i > 0 {
 				sb.WriteString(sep)

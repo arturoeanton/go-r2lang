@@ -21,12 +21,12 @@ func (ts *TemplateString) Eval(env *Environment) interface{} {
 	if len(ts.Parts) == 0 {
 		return ""
 	}
-	
+
 	// Optimization: single text part (no interpolation)
 	if len(ts.Parts) == 1 && !ts.Parts[0].IsExpression {
 		return ts.Parts[0].Content
 	}
-	
+
 	// Use optimized string concatenation for multiple parts
 	var parts []string
 	for _, part := range ts.Parts {
@@ -37,7 +37,7 @@ func (ts *TemplateString) Eval(env *Environment) interface{} {
 			parts = append(parts, part.Content)
 		}
 	}
-	
+
 	// Use existing optimization system
 	return OptimizedStringConcat(parts...)
 }
@@ -47,10 +47,10 @@ func parseTemplateParts(encoded string, parser *Parser) []TemplatePart {
 	if encoded == "" {
 		return []TemplatePart{{IsExpression: false, Content: ""}}
 	}
-	
+
 	parts := strings.Split(encoded, "\x00")
 	var templateParts []TemplatePart
-	
+
 	for _, part := range parts {
 		if strings.HasPrefix(part, "TEXT:") {
 			content := part[5:] // Remove "TEXT:" prefix
@@ -71,6 +71,6 @@ func parseTemplateParts(encoded string, parser *Parser) []TemplatePart {
 			}
 		}
 	}
-	
+
 	return templateParts
 }
