@@ -30,22 +30,22 @@ type ExecutionLimiter struct {
 
 // LoopContext representa el contexto de un bucle específico
 type LoopContext struct {
-	Type          string    // "while", "for", "for-in"
-	Iterations    int64     // Comienza en 0 cada bucle
-	MaxIterations int64     // Límite específico del bucle
+	Type          string // "while", "for", "for-in"
+	Iterations    int64  // Comienza en 0 cada bucle
+	MaxIterations int64  // Límite específico del bucle
 	StartTime     time.Time
 	Location      string
 }
 
 // InfiniteLoopError representa un error de loop infinito con contexto
 type InfiniteLoopError struct {
-	Type        string            // "while", "for", "recursion", "timeout"
-	Location    string            // Ubicación en el código
-	Iterations  int64             // Número de iteraciones
-	Duration    time.Duration     // Tiempo transcurrido
-	Suggestion  string            // Sugerencia de solución
-	Stats       map[string]interface{} // Estadísticas adicionales
-	Sentinel    error             // Error sentinel para identificación
+	Type       string                 // "while", "for", "recursion", "timeout"
+	Location   string                 // Ubicación en el código
+	Iterations int64                  // Número de iteraciones
+	Duration   time.Duration          // Tiempo transcurrido
+	Suggestion string                 // Sugerencia de solución
+	Stats      map[string]interface{} // Estadísticas adicionales
+	Sentinel   error                  // Error sentinel para identificación
 }
 
 func (ile *InfiniteLoopError) Error() string {
@@ -69,10 +69,10 @@ func (ile *InfiniteLoopError) Is(target error) bool {
 // NewExecutionLimiter crea un nuevo limitador con valores por defecto
 func NewExecutionLimiter() *ExecutionLimiter {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &ExecutionLimiter{
-		MaxIterations:     1000000,  // 1M iteraciones por defecto
-		MaxRecursionDepth: 1000,     // 1K niveles de recursión
+		MaxIterations:     1000000, // 1M iteraciones por defecto
+		MaxRecursionDepth: 1000,    // 1K niveles de recursión
 		MaxExecutionTime:  30 * time.Second,
 		Enabled:           true,
 		StartTime:         time.Now(),
@@ -85,7 +85,7 @@ func NewExecutionLimiter() *ExecutionLimiter {
 // NewExecutionLimiterWithTimeout crea un limitador con timeout específico
 func NewExecutionLimiterWithTimeout(timeout time.Duration) *ExecutionLimiter {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	
+
 	return &ExecutionLimiter{
 		MaxIterations:     1000000,
 		MaxRecursionDepth: 1000,
@@ -127,7 +127,7 @@ func (el *ExecutionLimiter) CheckContext() bool {
 	if !el.Enabled || el.Context == nil {
 		return false
 	}
-	
+
 	select {
 	case <-el.Context.Done():
 		return true
@@ -189,17 +189,17 @@ func NewInfiniteLoopError(loopType string, ctx *LoopContext) *InfiniteLoopError 
 		"recursion": "Añade un caso base que termine la recursión",
 		"timeout":   "Considera dividir el trabajo en partes más pequeñas",
 	}
-	
+
 	var iterations int64
 	var duration time.Duration
 	var location string
-	
+
 	if ctx != nil {
 		iterations = ctx.Iterations
 		duration = time.Since(ctx.StartTime)
 		location = ctx.Location
 	}
-	
+
 	return &InfiniteLoopError{
 		Type:       loopType,
 		Location:   location,
@@ -216,9 +216,9 @@ func NewInfiniteLoopError(loopType string, ctx *LoopContext) *InfiniteLoopError 
 // NewRecursionError crea un error de recursión infinita
 func NewRecursionError(errorType string, context interface{}) *InfiniteLoopError {
 	return &InfiniteLoopError{
-		Type:     "recursion",
-		Location: fmt.Sprintf("recursion depth: %v", context),
-		Sentinel: ErrRecursionLimit,
+		Type:       "recursion",
+		Location:   fmt.Sprintf("recursion depth: %v", context),
+		Sentinel:   ErrRecursionLimit,
 		Suggestion: "Añade un caso base que termine la recursión",
 		Stats: map[string]interface{}{
 			"recursion_type": errorType,
@@ -230,9 +230,9 @@ func NewRecursionError(errorType string, context interface{}) *InfiniteLoopError
 // NewTimeoutError crea un error de timeout
 func NewTimeoutError(timeoutType string, ctx context.Context) *InfiniteLoopError {
 	return &InfiniteLoopError{
-		Type:     "timeout",
-		Location: "global execution",
-		Sentinel: ErrTimeout,
+		Type:       "timeout",
+		Location:   "global execution",
+		Sentinel:   ErrTimeout,
 		Suggestion: "Considera dividir el trabajo en partes más pequeñas",
 		Stats: map[string]interface{}{
 			"timeout_type": timeoutType,
