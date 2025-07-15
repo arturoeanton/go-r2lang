@@ -120,27 +120,27 @@ func ParseDateLiteral(dateStr string) (*DateValue, error) {
 	if strings.HasPrefix(dateStr, "@") {
 		dateStr = dateStr[1:]
 	}
-	
+
 	// Remover comillas si están presentes
 	dateStr = strings.Trim(dateStr, "\"'")
-	
+
 	// Intentar diferentes formatos
 	formats := []string{
 		"2006-01-02",                    // @2024-12-25
-		"2006-01-02 15:04:05",          // @2024-12-25 14:30:00
-		"2006-01-02T15:04:05",          // @2024-12-25T14:30:00
-		"2006-01-02T15:04:05Z",         // @2024-12-25T14:30:00Z
-		"2006-01-02T15:04:05Z07:00",    // @2024-12-25T14:30:00-05:00
-		"2006-01-02T15:04:05.000Z",     // @2024-12-25T14:30:00.000Z
+		"2006-01-02 15:04:05",           // @2024-12-25 14:30:00
+		"2006-01-02T15:04:05",           // @2024-12-25T14:30:00
+		"2006-01-02T15:04:05Z",          // @2024-12-25T14:30:00Z
+		"2006-01-02T15:04:05Z07:00",     // @2024-12-25T14:30:00-05:00
+		"2006-01-02T15:04:05.000Z",      // @2024-12-25T14:30:00.000Z
 		"2006-01-02T15:04:05.000Z07:00", // @2024-12-25T14:30:00.000-05:00
 	}
-	
+
 	for _, format := range formats {
 		if t, err := time.Parse(format, dateStr); err == nil {
 			return NewDateValue(t), nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("unable to parse date: %s", dateStr)
 }
 
@@ -165,12 +165,12 @@ func ConvertToGoFormat(pattern string) string {
 		"SSS":  "000",
 		"Z":    "Z07:00",
 	}
-	
+
 	result := pattern
 	for pattern, goPattern := range replacements {
 		result = strings.ReplaceAll(result, pattern, goPattern)
 	}
-	
+
 	// Manejar nombres de meses y días
 	monthReplacements := map[string]string{
 		"MMMM": "January",
@@ -178,11 +178,11 @@ func ConvertToGoFormat(pattern string) string {
 		"dddd": "Monday",
 		"ddd":  "Mon",
 	}
-	
+
 	for pattern, goPattern := range monthReplacements {
 		result = strings.ReplaceAll(result, pattern, goPattern)
 	}
-	
+
 	return result
 }
 
@@ -222,7 +222,7 @@ func (dv *DateValue) ToTimezone(locationName string) (*DateValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return NewDateValueWithLocation(dv.Time, loc), nil
 }
 
