@@ -35,12 +35,38 @@ go version
 git clone https://github.com/arturoeanton/go-r2lang.git
 cd go-r2lang
 
-# 2. Compilar el intérprete
+# 2. Compilar el intérprete (Nueva arquitectura modular)
 go build -o r2lang main.go
 
 # 3. Verificar instalación
 ./r2lang --version
 ```
+
+### Arquitectura Modular v2
+
+R2Lang ha sido completamente reestructurado con una arquitectura modular que separa las responsabilidades:
+
+```
+R2Lang v2 Architecture:
+├── pkg/r2core/     # Núcleo del intérprete (2,590 LOC)
+│   ├── lexer.go    # Tokenización (330 LOC)
+│   ├── parse.go    # Parsing (678 LOC)
+│   ├── environment.go # Scoping (98 LOC)
+│   └── [27 archivos AST especializados]
+├── pkg/r2libs/     # Bibliotecas incorporadas (3,701 LOC)
+│   ├── r2http.go   # Servidor HTTP (410 LOC)
+│   ├── r2httpclient.go # Cliente HTTP (324 LOC)
+│   ├── r2string.go # Manipulación de strings (194 LOC)
+│   └── [15 bibliotecas más]
+├── pkg/r2lang/     # Coordinador de alto nivel (45 LOC)
+└── pkg/r2repl/     # REPL interactivo (185 LOC)
+```
+
+Esta nueva arquitectura elimina el anti-patrón "God Object" y proporciona:
+- **Mejor mantenibilidad**: Cada módulo tiene una responsabilidad específica
+- **Facilidad de testing**: Componentes independientes
+- **Desarrollo paralelo**: Múltiples desarrolladores pueden trabajar simultáneamente
+- **Calidad de código**: Pasamos de 6.2/10 a 8.5/10 en métricas de calidad
 
 ### Tu Primer Programa
 
@@ -55,10 +81,35 @@ func main() {
 Ejecútalo:
 
 ```bash
+# Ejecutar archivo específico
+go run main.go hola.r2
+
+# O usar el binario compilado
 ./r2lang hola.r2
 ```
 
 Deberías ver: `¡Hola, R2Lang!`
+
+### Comandos Básicos v2
+
+```bash
+# Ejecutar programas
+go run main.go archivo.r2        # Ejecutar archivo específico
+go run main.go                   # Ejecutar main.r2 (si existe)
+
+# Modo interactivo REPL
+go run main.go -repl             # REPL con output normal
+go run main.go -repl -no-output  # REPL sin output automático
+
+# Testing y desarrollo
+go test ./pkg/...                # Ejecutar todos los tests
+go test ./pkg/r2core/            # Tests del núcleo
+go test ./pkg/r2libs/            # Tests de bibliotecas
+
+# Ejemplos incluidos
+go run main.go examples/example01.r2
+go run main.go examples/example02.r2
+```
 
 ## Conceptos Fundamentales
 
