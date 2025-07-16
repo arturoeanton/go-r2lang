@@ -21,11 +21,11 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		result := connIdFunc("sqlite3", ":memory:")
-		
+
 		if result == nil {
 			t.Fatal("dbConnect should return a connection ID")
 		}
-		
+
 		connId := result.(string)
 		if connId == "" {
 			t.Fatal("dbConnect should return a non-empty connection ID")
@@ -38,7 +38,7 @@ func TestDatabaseFunctions(t *testing.T) {
 				t.Fatal("dbConnect should panic with invalid driver")
 			}
 		}()
-		
+
 		connIdFuncVal, _ := env.Get("dbConnect")
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connIdFunc("invalid_driver", ":memory:")
@@ -67,7 +67,7 @@ func TestDatabaseFunctions(t *testing.T) {
 			email TEXT UNIQUE,
 			age INTEGER
 		)`
-		
+
 		result := execFunc(connId, createTableSQL)
 		if result.(int64) != 0 {
 			t.Fatal("CREATE TABLE should affect 0 rows")
@@ -91,7 +91,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
 		selectSQL := "SELECT id, name, email, age FROM users ORDER BY id"
 		queryResult := queryFunc(connId, selectSQL)
-		
+
 		rows := queryResult.([]interface{})
 		if len(rows) != 3 {
 			t.Fatalf("Expected 3 rows, got %d", len(rows))
@@ -178,7 +178,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		getConnsFuncVal, _ := env.Get("dbGetConnections")
 		getConnsFunc := getConnsFuncVal.(r2core.BuiltinFunction)
 		connections := getConnsFunc().([]interface{})
-		
+
 		if len(connections) < 2 {
 			t.Fatalf("Expected at least 2 connections, got %d", len(connections))
 		}
@@ -194,13 +194,13 @@ func TestDatabaseFunctions(t *testing.T) {
 		// Test operations on non-existent connection
 		queryFuncVal, _ := env.Get("dbQuery")
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
-		
+
 		defer func() {
 			if r := recover(); r == nil {
 				t.Fatal("dbQuery should panic with invalid connection")
 			}
 		}()
-		
+
 		queryFunc("invalid_conn", "SELECT 1")
 	})
 
