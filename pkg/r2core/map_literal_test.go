@@ -25,6 +25,16 @@ func TestMapLiteral_BasicKeys(t *testing.T) {
 			`{"name": "Juan", age: 30, "active": true}`,
 			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true},
 		},
+		{
+			"number keys",
+			`{123: "numeric", 456: "another"}`,
+			map[string]interface{}{"123": "numeric", "456": "another"},
+		},
+		{
+			"boolean values with true/false keywords",
+			`{enabled: true, disabled: false}`,
+			map[string]interface{}{"enabled": true, "disabled": false},
+		},
 	}
 
 	for _, tt := range tests {
@@ -305,6 +315,64 @@ func TestToStringOptimized_Function(t *testing.T) {
 	}
 }
 
+func TestMapLiteral_ComputedKeys(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected map[string]interface{}
+	}{
+		{
+			"computed key with square brackets",
+			`{["computed" + "Key"]: "value"}`,
+			map[string]interface{}{"computedKey": "value"},
+		},
+		{
+			"computed key with expression",
+			`{[2 + 3]: "five"}`,
+			map[string]interface{}{"5": "five"},
+		},
+		{
+			"computed key with boolean",
+			`{[true]: "boolean key"}`,
+			map[string]interface{}{"true": "boolean key"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewParser(tt.input)
+			program := parser.ParseProgram()
+
+			env := NewEnvironment()
+			env.Set("true", true)
+			env.Set("false", false)
+			env.Set("nil", nil)
+			result := program.Eval(env)
+
+			resultMap, ok := result.(map[string]interface{})
+			if !ok {
+				t.Fatalf("expected map[string]interface{}, got %T", result)
+			}
+
+			if len(resultMap) != len(tt.expected) {
+				t.Errorf("expected %d keys, got %d", len(tt.expected), len(resultMap))
+			}
+
+			for key, expectedValue := range tt.expected {
+				actualValue, exists := resultMap[key]
+				if !exists {
+					t.Errorf("key %s not found in result", key)
+					continue
+				}
+
+				if actualValue != expectedValue {
+					t.Errorf("for key %s: expected %v, got %v", key, expectedValue, actualValue)
+				}
+			}
+		})
+	}
+}
+
 func TestMapLiteral_StringConcatOptimization(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -361,4 +429,137 @@ func TestMapLiteral_StringConcatOptimization(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMapLiteral_Multiline(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected map[string]interface{}
+	}{
+		{
+			"multiline after opening brace",
+			`{
+				name: "Juan",
+				age: 30,
+				active: true
+			}`,
+			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true},
+		},
+		{
+			"multiline after commas",
+			`{name: "Juan",
+			 age: 30,
+			 active: true}`,
+			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true},
+		},
+		{
+			"newlines instead of commas",
+			`{name: "Juan"
+			 age: 30
+			 active: true}`,
+			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true},
+		},
+		{
+			"mixed commas and newlines",
+			`{
+				name: "Juan",
+				age: 30
+				active: true,
+				city: "Madrid"
+			}`,
+			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true, "city": "Madrid"},
+		},
+		{
+			"empty lines in multiline map",
+			`{
+				name: "Juan",
+
+				age: 30,
+
+				active: true
+			}`,
+			map[string]interface{}{"name": "Juan", "age": float64(30), "active": true},
+		},
+		{
+			"nested multiline maps",
+			`{
+				user: {
+					name: "Juan",
+					age: 30
+				},
+				config: {
+					enabled: true
+					debug: false
+				}
+			}`,
+			map[string]interface{}{
+				"user":   map[string]interface{}{"name": "Juan", "age": float64(30)},
+				"config": map[string]interface{}{"enabled": true, "debug": false},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewParser(tt.input)
+			program := parser.ParseProgram()
+
+			if len(program.Statements) != 1 {
+				t.Fatalf("expected 1 statement, got %d", len(program.Statements))
+			}
+
+			stmt, ok := program.Statements[0].(*ExprStatement)
+			if !ok {
+				t.Fatalf("expected ExprStatement, got %T", program.Statements[0])
+			}
+
+			env := NewEnvironment()
+			env.Set("true", true)
+			env.Set("false", false)
+			env.Set("nil", nil)
+			result := stmt.Eval(env)
+
+			resultMap, ok := result.(map[string]interface{})
+			if !ok {
+				t.Fatalf("expected map[string]interface{}, got %T", result)
+			}
+
+			// Helper function to compare maps recursively
+			if !compareMapsRecursive(resultMap, tt.expected) {
+				t.Errorf("maps do not match.\nExpected: %+v\nGot: %+v", tt.expected, resultMap)
+			}
+		})
+	}
+}
+
+// Helper function to compare maps recursively
+func compareMapsRecursive(actual, expected map[string]interface{}) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+
+	for key, expectedValue := range expected {
+		actualValue, exists := actual[key]
+		if !exists {
+			return false
+		}
+
+		// Handle nested maps
+		if expectedMap, ok := expectedValue.(map[string]interface{}); ok {
+			if actualMap, ok := actualValue.(map[string]interface{}); ok {
+				if !compareMapsRecursive(actualMap, expectedMap) {
+					return false
+				}
+			} else {
+				return false
+			}
+		} else {
+			if actualValue != expectedValue {
+				return false
+			}
+		}
+	}
+
+	return true
 }

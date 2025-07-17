@@ -100,6 +100,51 @@ func TestBooleanLiteral_Eval(t *testing.T) {
 	}
 }
 
+func TestBooleanLiteralFromTokens(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"parse true", "true", true},
+		{"parse false", "false", false},
+		{"parse TRUE", "TRUE", true},
+		{"parse FALSE", "FALSE", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			parser := NewParser(test.input)
+			program := parser.ParseProgram()
+
+			if len(program.Statements) != 1 {
+				t.Fatalf("Expected 1 statement, got %d", len(program.Statements))
+			}
+
+			exprStmt, ok := program.Statements[0].(*ExprStatement)
+			if !ok {
+				t.Fatalf("Expected ExpressionStatement, got %T", program.Statements[0])
+			}
+
+			boolLit, ok := exprStmt.Expr.(*BooleanLiteral)
+			if !ok {
+				t.Fatalf("Expected BooleanLiteral, got %T", exprStmt.Expr)
+			}
+
+			if boolLit.Value != test.expected {
+				t.Errorf("Expected %t, got %t", test.expected, boolLit.Value)
+			}
+
+			// Test evaluation
+			env := NewEnvironment()
+			result := boolLit.Eval(env)
+			if result != test.expected {
+				t.Errorf("Eval: Expected %t, got %v", test.expected, result)
+			}
+		})
+	}
+}
+
 func TestArrayLiteral_Eval_Empty(t *testing.T) {
 	env := NewEnvironment()
 	al := &ArrayLiteral{Elements: []Node{}}

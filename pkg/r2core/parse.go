@@ -252,7 +252,7 @@ func (p *Parser) parseLetStatement() Node {
 	p.nextToken()
 
 	// Manejar caso especial para bucles for-in
-	if p.curTok.Value == IN {
+	if p.curTok.Value == IN || p.curTok.Value == "in" {
 		return &LetStatement{Name: name, Value: nil}
 	}
 
@@ -334,7 +334,15 @@ func (p *Parser) parseIfStatement() Node {
 	var alternative *BlockStatement
 	if p.curTok.Value == "else" {
 		p.nextToken()
-		alternative = p.parseBlockStatement()
+		// Check for "else if"
+		if p.curTok.Value == "if" {
+			// Parse "else if" as nested if statement
+			elseIfNode := p.parseIfStatement()
+			// Wrap the else-if in a block statement
+			alternative = &BlockStatement{Statements: []Node{elseIfNode}}
+		} else {
+			alternative = p.parseBlockStatement()
+		}
 	}
 	return &IfStatement{Condition: cond, Consequence: consequence, Alternative: alternative}
 }
@@ -362,7 +370,7 @@ func (p *Parser) parseForStatement() Node {
 	p.nextToken()
 
 	// Check for for-in loop
-	if p.peekTok.Value == IN {
+	if p.peekTok.Value == IN || p.peekTok.Value == "in" {
 		return p.parseForInStatement()
 	}
 
@@ -376,12 +384,19 @@ func (p *Parser) parseForInStatement() Node {
 	p.nextToken() // consume 'in'
 
 	collName := p.curTok.Value
-	exp := p.parseExpression()
-	for p.curTok.Value != "{" {
-		p.nextToken()
+	p.nextToken() // consume collection name
+
+	// Skip to ')'
+	if p.curTok.Value != ")" {
+		p.except("')' expected after for-in expression")
 	}
+	p.nextToken() // consume ')'
+
+	// Parse body
 	body := p.parseBlockStatement()
-	return &ForStatement{Init: exp, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
+	// Create a dummy init that sets the index variable
+	init := &LetStatement{Name: indexName, Value: &NumberLiteral{Value: 0}}
+	return &ForStatement{Init: init, Body: body, inFlag: true, inArray: collName, inIndexName: indexName}
 }
 
 func (p *Parser) parseStandardForStatement() Node {
@@ -549,7 +564,7 @@ func getPrecedence(op string) int {
 		return 3
 	case "+", "-":
 		return 4
-	case "*", "/":
+	case "*", "/", "%":
 		return 5
 	default:
 		return 0
@@ -588,6 +603,16 @@ func (p *Parser) parseFactor() Node {
 			p.except("Invalid date literal: " + p.curTok.Value + " - " + err.Error())
 		}
 		node := &DateLiteral{Value: dateValue}
+		p.nextToken()
+		return node
+
+	case TOKEN_TRUE:
+		node := &BooleanLiteral{Value: true}
+		p.nextToken()
+		return node
+
+	case TOKEN_FALSE:
+		node := &BooleanLiteral{Value: false}
 		p.nextToken()
 		return node
 
@@ -710,6 +735,12 @@ func (p *Parser) parseArrayLiteral() Node {
 
 func (p *Parser) parseMapLiteral() Node {
 	p.nextToken() // "{"
+
+	// Skip newlines after opening brace
+	for p.curTok.Value == "\n" {
+		p.nextToken()
+	}
+
 	var pairs []MapPair
 	if p.curTok.Value == "}" {
 		p.nextToken()
@@ -718,12 +749,17 @@ func (p *Parser) parseMapLiteral() Node {
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
 		var keyNode Node
 
-		// Soportar expresiones como claves
+		// Soportar expresiones como claves estilo JavaScript
 		switch p.curTok.Type {
 		case TOKEN_STRING:
 			keyNode = &StringLiteral{Value: p.curTok.Value}
 			p.nextToken()
 		case TOKEN_IDENT:
+			// En JavaScript: {foo: "bar"} equivale a {"foo": "bar"}
+			keyNode = &StringLiteral{Value: p.curTok.Value}
+			p.nextToken()
+		case TOKEN_NUMBER:
+			// En JavaScript: {123: "bar"} es válido
 			keyNode = &StringLiteral{Value: p.curTok.Value}
 			p.nextToken()
 		case TOKEN_SYMBOL:
@@ -735,6 +771,14 @@ func (p *Parser) parseMapLiteral() Node {
 					p.except("Expected ')' after key expression")
 				}
 				p.nextToken() // consumir ")"
+			} else if p.curTok.Value == "[" {
+				// Soporte para [expression]: value
+				p.nextToken() // consumir "["
+				keyNode = p.parseExpression()
+				if p.curTok.Value != "]" {
+					p.except("Expected ']' after computed key expression")
+				}
+				p.nextToken() // consumir "]"
 			} else {
 				// Permitir expresiones simples como claves
 				keyNode = p.parseExpression()
@@ -754,10 +798,19 @@ func (p *Parser) parseMapLiteral() Node {
 
 		if p.curTok.Value == "," {
 			p.nextToken()
+			// Skip newlines after comma
+			for p.curTok.Value == "\n" {
+				p.nextToken()
+			}
+		} else if p.curTok.Value == "\n" {
+			// Allow newlines instead of commas
+			for p.curTok.Value == "\n" {
+				p.nextToken()
+			}
 		} else if p.curTok.Value == "}" {
 			break
 		} else {
-			p.except("Expected ',' or '}' in map-literal")
+			p.except("Expected ',', newline, or '}' in map-literal")
 		}
 	}
 	if p.curTok.Value != "}" {

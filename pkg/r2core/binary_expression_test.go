@@ -88,6 +88,49 @@ func TestBinaryExpression_Arithmetic(t *testing.T) {
 			right:    &NumberLiteral{Value: 2},
 			expected: 3.5,
 		},
+		// Modulo
+		{
+			name:     "basic modulo",
+			left:     &NumberLiteral{Value: 10},
+			op:       "%",
+			right:    &NumberLiteral{Value: 3},
+			expected: 1.0,
+		},
+		{
+			name:     "modulo by larger number",
+			left:     &NumberLiteral{Value: 5},
+			op:       "%",
+			right:    &NumberLiteral{Value: 8},
+			expected: 5.0,
+		},
+		{
+			name:     "modulo by same number",
+			left:     &NumberLiteral{Value: 7},
+			op:       "%",
+			right:    &NumberLiteral{Value: 7},
+			expected: 0.0,
+		},
+		{
+			name:     "modulo with negative result",
+			left:     &NumberLiteral{Value: 17},
+			op:       "%",
+			right:    &NumberLiteral{Value: 5},
+			expected: 2.0,
+		},
+		{
+			name:     "modulo by 2 (even)",
+			left:     &NumberLiteral{Value: 8},
+			op:       "%",
+			right:    &NumberLiteral{Value: 2},
+			expected: 0.0,
+		},
+		{
+			name:     "modulo by 2 (odd)",
+			left:     &NumberLiteral{Value: 9},
+			op:       "%",
+			right:    &NumberLiteral{Value: 2},
+			expected: 1.0,
+		},
 	}
 
 	for _, test := range tests {
@@ -399,6 +442,26 @@ func TestBinaryExpression_DivisionByZero(t *testing.T) {
 			t.Error("Expected panic for division by zero")
 		} else if r != "Division by zero" {
 			t.Errorf("Expected 'Division by zero' panic, got %v", r)
+		}
+	}()
+
+	be.Eval(env)
+}
+
+func TestBinaryExpression_ModuloByZero(t *testing.T) {
+	env := NewEnvironment()
+
+	be := &BinaryExpression{
+		Left:  &NumberLiteral{Value: 10},
+		Op:    "%",
+		Right: &NumberLiteral{Value: 0},
+	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for modulo by zero")
+		} else if r != "Modulo by zero" {
+			t.Errorf("Expected 'Modulo by zero' panic, got %v", r)
 		}
 	}()
 
