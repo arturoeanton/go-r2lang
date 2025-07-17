@@ -24,13 +24,13 @@ func TestIOFunctions(t *testing.T) {
 	rmFileFunc := ioModule["rmFile"].(r2core.BuiltinFunction)
 	rmDirFunc := ioModule["rmDir"].(r2core.BuiltinFunction)
 	renameFileFunc := ioModule["renameFile"].(r2core.BuiltinFunction)
-	listdirFunc := ioModule["listdir"].(r2core.BuiltinFunction)
+	listdirFunc := ioModule["listDir"].(r2core.BuiltinFunction)
 	mkdirFunc := ioModule["mkdir"].(r2core.BuiltinFunction)
 	mkdirAllFunc := ioModule["mkdirAll"].(r2core.BuiltinFunction)
 	absPathFunc := ioModule["absPath"].(r2core.BuiltinFunction)
 	existsFunc := ioModule["exists"].(r2core.BuiltinFunction)
-	isdirFunc := ioModule["isdir"].(r2core.BuiltinFunction)
-	isfileFunc := ioModule["isfile"].(r2core.BuiltinFunction)
+	isdirFunc := ioModule["isDir"].(r2core.BuiltinFunction)
+	isfileFunc := ioModule["isFile"].(r2core.BuiltinFunction)
 
 	// Setup a temporary directory for tests
 	testDir := filepath.Join(os.TempDir(), "r2lang_io_test")
