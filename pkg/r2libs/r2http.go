@@ -49,212 +49,211 @@ func httpHandler(args []interface{}) interface{} {
 }
 
 func RegisterHTTP(env *r2core.Environment) {
-	// httpHandler(method, pattern, handlerName)
+	functions := map[string]r2core.BuiltinFunction{
+		"handler": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return httpHandler(args)
+		}),
 
-	env.Set("handler", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return httpHandler(args)
-	}))
-
-	// httpServe(addr)
-	env.Set("serve", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("serve needs 1 argument: (addr)")
-		}
-		addr, ok := args[0].(string)
-		if !ok {
-			panic("serve: argument should be a string")
-		}
-
-		// Definimos un único handler en Go para todas las rutas
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			// Leemos body (simple, para requests tipo POST/PUT)
-			var bodyStr string
-			if r.Method == "POST" || r.Method == "PUT" {
-				data, err := io.ReadAll(r.Body)
-				if err == nil {
-					bodyStr = string(data)
-				}
+		"serve": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("serve needs 1 argument: (addr)")
 			}
-			// Buscamos una ruta que coincida con r.Method y r.URL.Path
-			route, pathVars := matchRoute(r2Routes, r.Method, r.URL.Path)
-			if route == nil {
-				// No match
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "404 Not Found\n")
-				return
+			addr, ok := args[0].(string)
+			if !ok {
+				panic("serve: argument should be a string")
 			}
 
-			r2Handler := route.handlerfx
-
-			// Llamamos la función con [pathVars, method, bodyStr]
-			// pathVars lo podemos pasar como map[string]interface{}
-			// En R2, el usuario lo recibe como un "obj", o un diccionario nativo:
-			pathVarsMap := make(map[string]interface{})
-			for k, v := range pathVars {
-				pathVarsMap[k] = v
-			}
-			argsR2 := []interface{}{pathVarsMap, r.Method, bodyStr}
-			respVal := r2Handler.Call(argsR2...)
-
-			// Si la respuesta es string, la imprimimos, si no, la convertimos
-			respStr, okResp := respVal.(string)
-			if !okResp {
-				respCustom, okResp := respVal.(*r2core.ObjectInstance)
-				var data map[string]interface{}
-				if okResp {
-					data = respCustom.Env.GetStore()
-				} else {
-					data, ok = respVal.(map[string]interface{})
-					if !ok {
-						return
+			// Definimos un único handler en Go para todas las rutas
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				// Leemos body (simple, para requests tipo POST/PUT)
+				var bodyStr string
+				if r.Method == "POST" || r.Method == "PUT" {
+					data, err := io.ReadAll(r.Body)
+					if err == nil {
+						bodyStr = string(data)
 					}
 				}
-				header, ok := data["header"].(map[string]interface{})
-				if ok {
-					for k, v := range header {
-						w.Header().Set(k, v.(string))
-					}
-				}
-				status, ok := data["status"]
-				if ok {
-					w.WriteHeader(status.(int))
-				}
-				body, ok := data["body"]
-				if ok {
-					fmt.Fprint(w, body.(string))
+				// Buscamos una ruta que coincida con r.Method y r.URL.Path
+				route, pathVars := matchRoute(r2Routes, r.Method, r.URL.Path)
+				if route == nil {
+					// No match
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprintf(w, "404 Not Found\n")
 					return
 				}
-				fmt.Fprintf(w, "%v", respVal)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, respStr)
-		})
 
-		// Arrancamos el servidor (bloqueante)
-		fmt.Println("Listening on ", addr)
-		err := http.ListenAndServe(addr, nil)
-		if err != nil {
-			panic(fmt.Sprintf("serve: error in ListenAndServe: %v", err))
-		}
-		return nil
-	}))
+				r2Handler := route.handlerfx
 
-	// vars(map, key) -> retorna map[key] o nil si no existe
-	env.Set("vars", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 2 {
-			panic("vars necesita 2 argumentos: (map, key)")
-		}
-		// Verificamos tipos
-		theMap, ok1 := args[0].(map[string]interface{})
-		theKey, ok2 := args[1].(string)
-		if !ok1 || !ok2 {
-			panic("vars: primer argumento debe ser un map, segundo un string")
-		}
-		// Intentamos extraer
-		value, found := theMap[theKey]
-		if !found {
-			// Retornamos nil si no está la clave
-			return nil
-		}
-		return value
-	}))
-
-	env.Set("XML", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) != 2 {
-			panic("XML needs at least 2 arguments")
-		}
-		root, ok := args[0].(string)
-		if !ok {
-			panic("XML: argument must be a string")
-		}
-		objectInstance, ok := args[1].(*r2core.ObjectInstance)
-		var instance map[string]interface{}
-		if !ok {
-			instance, ok = args[1].(map[string]interface{})
-			if !ok {
-				panic("XML: argument must be an object or a map")
-			}
-		} else {
-			instance = objectInstance.Env.GetStore()
-		}
-
-		instanceClean := removeBehavior(instance)
-		// Convertimos a JSON
-		data, err := mapToXML(root, instanceClean)
-		if err != nil {
-			panic(fmt.Sprintf("XML: error in Marshal: %v", err))
-		}
-		return string(data)
-	}))
-
-	env.Set("HttpResponse", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("HttpResponse needs at least 1 argument")
-		}
-		status, ok := args[0].(float64)
-		posArgs := 1
-		if !ok {
-			status = 200
-			posArgs = 0
-		}
-		statusInt := int(status)
-		header := make(map[string]interface{})
-		body := ""
-
-		if len(args) > posArgs {
-			header, ok = args[posArgs].(map[string]interface{})
-			if !ok {
-				value, ok := args[posArgs].(string)
-				if ok {
-					if len(args) == (posArgs + 1) {
-						body = value
-						header = make(map[string]interface{})
-						header["Content-Type"] = DetectContentType(body).String()
-					} else {
-						header = make(map[string]interface{})
-						header["Content-Type"] = value
-					}
+				// Llamamos la función con [pathVars, method, bodyStr]
+				// pathVars lo podemos pasar como map[string]interface{}
+				// En R2, el usuario lo recibe como un "obj", o un diccionario nativo:
+				pathVarsMap := make(map[string]interface{})
+				for k, v := range pathVars {
+					pathVarsMap[k] = v
 				}
+				argsR2 := []interface{}{pathVarsMap, r.Method, bodyStr}
+				respVal := r2Handler.Call(argsR2...)
 
+				// Si la respuesta es string, la imprimimos, si no, la convertimos
+				respStr, okResp := respVal.(string)
+				if !okResp {
+					respCustom, okResp := respVal.(*r2core.ObjectInstance)
+					var data map[string]interface{}
+					if okResp {
+						data = respCustom.Env.GetStore()
+					} else {
+						data, ok = respVal.(map[string]interface{})
+						if !ok {
+							return
+						}
+					}
+					header, ok := data["header"].(map[string]interface{})
+					if ok {
+						for k, v := range header {
+							w.Header().Set(k, v.(string))
+						}
+					}
+					status, ok := data["status"]
+					if ok {
+						w.WriteHeader(status.(int))
+					}
+					body, ok := data["body"]
+					if ok {
+						fmt.Fprint(w, body.(string))
+						return
+					}
+					fmt.Fprintf(w, "%v", respVal)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprint(w, respStr)
+			})
+
+			// Arrancamos el servidor (bloqueante)
+			fmt.Println("Listening on ", addr)
+			err := http.ListenAndServe(addr, nil)
+			if err != nil {
+				panic(fmt.Sprintf("serve: error in ListenAndServe: %v", err))
 			}
-		}
-		if len(args) == (posArgs + 2) {
-			body, ok = args[posArgs+1].(string)
+			return nil
+		}),
+
+		"vars": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("vars necesita 2 argumentos: (map, key)")
+			}
+			// Verificamos tipos
+			theMap, ok1 := args[0].(map[string]interface{})
+			theKey, ok2 := args[1].(string)
+			if !ok1 || !ok2 {
+				panic("vars: primer argumento debe ser un map, segundo un string")
+			}
+			// Intentamos extraer
+			value, found := theMap[theKey]
+			if !found {
+				// Retornamos nil si no está la clave
+				return nil
+			}
+			return value
+		}),
+
+		"XML": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("XML needs at least 2 arguments")
+			}
+			root, ok := args[0].(string)
 			if !ok {
-				panic("HttpResponse: should be (status, header, body)")
+				panic("XML: argument must be a string")
 			}
-		}
-		return map[string]interface{}{
-			"status": statusInt,
-			"header": header,
-			"body":   body,
-		}
-	}))
-
-	env.Set("JSON", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("JSON needs at least 1 argument")
-		}
-		var instance map[string]interface{}
-		objectInstance, ok := args[0].(*r2core.ObjectInstance)
-		if !ok {
-			instance, ok = args[0].(map[string]interface{})
+			objectInstance, ok := args[1].(*r2core.ObjectInstance)
+			var instance map[string]interface{}
 			if !ok {
-				panic("JSON: argument must be an object or a map")
+				instance, ok = args[1].(map[string]interface{})
+				if !ok {
+					panic("XML: argument must be an object or a map")
+				}
+			} else {
+				instance = objectInstance.Env.GetStore()
 			}
-		} else {
-			instance = objectInstance.Env.GetStore()
-		}
-		instanceClean := removeBehavior(instance)
-		// Convertimos a JSON
-		data, err := json.Marshal(instanceClean)
-		if err != nil {
-			panic(fmt.Sprintf("JSON: error in Marshal: %v", err))
-		}
-		return string(data)
-	}))
 
+			instanceClean := removeBehavior(instance)
+			// Convertimos a JSON
+			data, err := mapToXML(root, instanceClean)
+			if err != nil {
+				panic(fmt.Sprintf("XML: error in Marshal: %v", err))
+			}
+			return string(data)
+		}),
+
+		"HttpResponse": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("HttpResponse needs at least 1 argument")
+			}
+			status, ok := args[0].(float64)
+			posArgs := 1
+			if !ok {
+				status = 200
+				posArgs = 0
+			}
+			statusInt := int(status)
+			header := make(map[string]interface{})
+			body := ""
+
+			if len(args) > posArgs {
+				header, ok = args[posArgs].(map[string]interface{})
+				if !ok {
+					value, ok := args[posArgs].(string)
+					if ok {
+						if len(args) == (posArgs + 1) {
+							body = value
+							header = make(map[string]interface{})
+							header["Content-Type"] = DetectContentType(body).String()
+						} else {
+							header = make(map[string]interface{})
+							header["Content-Type"] = value
+						}
+					}
+
+				}
+			}
+			if len(args) == (posArgs + 2) {
+				body, ok = args[posArgs+1].(string)
+				if !ok {
+					panic("HttpResponse: should be (status, header, body)")
+				}
+			}
+			return map[string]interface{}{
+				"status": statusInt,
+				"header": header,
+				"body":   body,
+			}
+		}),
+
+		"JSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("JSON needs at least 1 argument")
+			}
+			var instance map[string]interface{}
+			objectInstance, ok := args[0].(*r2core.ObjectInstance)
+			if !ok {
+				instance, ok = args[0].(map[string]interface{})
+				if !ok {
+					panic("JSON: argument must be an object or a map")
+				}
+			} else {
+				instance = objectInstance.Env.GetStore()
+			}
+			instanceClean := removeBehavior(instance)
+			// Convertimos a JSON
+			data, err := json.Marshal(instanceClean)
+			if err != nil {
+				panic(fmt.Sprintf("JSON: error in Marshal: %v", err))
+			}
+			return string(data)
+		}),
+	}
+
+	RegisterModule(env, "http", functions)
 }
 
 // mapToXML convierte un mapa a XML con un elemento raíz dinámico.

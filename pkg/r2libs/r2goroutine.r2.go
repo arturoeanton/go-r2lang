@@ -199,39 +199,38 @@ func builtinWaitAll(args ...interface{}) interface{} {
 // r2goroutine.go (continuación)
 
 func RegisterConcurrency(env *r2core.Environment) {
-	// Semáforos
-	env.Set("semaphore", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinSemaphore(args...)
-	}))
+	functions := map[string]r2core.BuiltinFunction{
+		"semaphore": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinSemaphore(args...)
+		}),
+		"acquire": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinAcquireSemaphore(args...)
+		}),
+		"release": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinReleaseSemaphore(args...)
+		}),
+		"monitor": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinMonitor(args...)
+		}),
+		"lock": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinLock(args...)
+		}),
+		"unlock": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinUnlock(args...)
+		}),
+		"wait": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinWait(args...)
+		}),
+		"signal": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinSignal(args...)
+		}),
+		"broadcast": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinBroadcast(args...)
+		}),
+		"waitAll": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return builtinWaitAll(args...)
+		}),
+	}
 
-	env.Set("acquire", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinAcquireSemaphore(args...)
-	}))
-
-	env.Set("release", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinReleaseSemaphore(args...)
-	}))
-
-	// Monitores
-	env.Set("monitor", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinMonitor(args...)
-	}))
-	env.Set("lock", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinLock(args...)
-	}))
-	env.Set("unlock", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinUnlock(args...)
-	}))
-	env.Set("wait", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinWait(args...)
-	}))
-	env.Set("signal", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinSignal(args...)
-	}))
-	env.Set("broadcast", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinBroadcast(args...)
-	}))
-	env.Set("waitAll", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		return builtinWaitAll(args...)
-	}))
+	RegisterModule(env, "goroutine", functions)
 }

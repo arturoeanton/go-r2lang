@@ -6,13 +6,13 @@
 // significa que R2Lang está funcionando correctamente en su mayoría.
 // ============================================================================
 
-print("🚀 INICIANDO GOLD TEST COMPREHENSIVO R2Lang 2025");
-print("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
+std.print("🚀 INICIANDO GOLD TEST COMPREHENSIVO R2Lang 2025");
+std.print("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
 
 // ============================================================================
 // 1. DECLARACIONES Y TIPOS BÁSICOS
 // ============================================================================
-print("\n1️⃣ DECLARACIONES Y TIPOS BÁSICOS");
+std.print("\n1️⃣ DECLARACIONES Y TIPOS BÁSICOS");
 
 // Variables básicas
 let x = 42;
@@ -23,25 +23,25 @@ let activo = true;
 var inactivo = false;
 let nulo = nil;
 
-print("✓ Variables básicas:");
-print("  let x =", x, "(tipo:", typeOf(x) + ")");
-print("  var y =", y, "(tipo:", typeOf(y) + ")");
-print("  let nombre =", nombre, "(tipo:", typeOf(nombre) + ")");
-print("  let activo =", activo, "(tipo:", typeOf(activo) + ")");
-print("  let nulo =", nulo, "(tipo:", typeOf(nulo) + ")");
+std.print("✓ Variables básicas:");
+std.print("  let x =", x, "(tipo:", std.typeOf(x) + ")");
+std.print("  var y =", y, "(tipo:", std.typeOf(y) + ")");
+std.print("  let nombre =", nombre, "(tipo:", std.typeOf(nombre) + ")");
+std.print("  let activo =", activo, "(tipo:", std.typeOf(activo) + ")");
+std.print("  let nulo =", nulo, "(tipo:", std.typeOf(nulo) + ")");
 
 // Declaraciones múltiples
 let a = 1, b = 2, c = 3;
 var d = 4, e = 5, f = 6;
 
-print("✓ Declaraciones múltiples:");
-print("  let a, b, c =", a, b, c);
-print("  var d, e, f =", d, e, f);
+std.print("✓ Declaraciones múltiples:");
+std.print("  let a, b, c =", a, b, c);
+std.print("  var d, e, f =", d, e, f);
 
 // ============================================================================
 // 2. OPERACIONES ARITMÉTICAS Y LÓGICAS
 // ============================================================================
-print("\n2️⃣ OPERACIONES ARITMÉTICAS Y LÓGICAS");
+std.print("\n2️⃣ OPERACIONES ARITMÉTICAS Y LÓGICAS");
 
 let num1 = 10;
 let num2 = 20;
@@ -51,12 +51,12 @@ let multiplicacion = num1 * num2;
 let division = num2 / num1;
 let modulo = num2 % num1;  // NUEVA CARACTERÍSTICA
 
-print("✓ Operaciones aritméticas:");
-print("  " + num1 + " + " + num2 + " =", suma);
-print("  " + num2 + " - " + num1 + " =", resta);
-print("  " + num1 + " * " + num2 + " =", multiplicacion);
-print("  " + num2 + " / " + num1 + " =", division);
-print("  " + num2 + " % " + num1 + " =", modulo, "🆕");
+std.print("✓ Operaciones aritméticas:");
+std.print("  " + num1 + " + " + num2 + " =", suma);
+std.print("  " + num2 + " - " + num1 + " =", resta);
+std.print("  " + num1 + " * " + num2 + " =", multiplicacion);
+std.print("  " + num2 + " / " + num1 + " =", division);
+std.print("  " + num2 + " % " + num1 + " =", modulo, "🆕");
 
 // Operaciones lógicas
 let verdadero = true;
@@ -64,9 +64,9 @@ let falso = false;
 let y_logico = verdadero && falso;
 let o_logico = verdadero || falso;
 
-print("✓ Operaciones lógicas:");
-print("  true && false =", y_logico);
-print("  true || false =", o_logico);
+std.print("✓ Operaciones lógicas:");
+std.print("  true && false =", y_logico);
+std.print("  true || false =", o_logico);
 
 // Operaciones de comparación
 let mayor = num2 > num1;
@@ -74,37 +74,37 @@ let menor = num1 < num2;
 let igual = num1 == num1;
 let diferente = num1 != num2;
 
-print("✓ Operaciones de comparación:");
-print("  " + num2 + " > " + num1 + " =", mayor);
-print("  " + num1 + " < " + num2 + " =", menor);
-print("  " + num1 + " == " + num1 + " =", igual);
-print("  " + num1 + " != " + num2 + " =", diferente);
+std.print("✓ Operaciones de comparación:");
+std.print("  " + num2 + " > " + num1 + " =", mayor);
+std.print("  " + num1 + " < " + num2 + " =", menor);
+std.print("  " + num1 + " == " + num1 + " =", igual);
+std.print("  " + num1 + " != " + num2 + " =", diferente);
 
 // ============================================================================
 // 3. ARRAYS AVANZADOS
 // ============================================================================
-print("\n3️⃣ ARRAYS AVANZADOS");
+std.print("\n3️⃣ ARRAYS AVANZADOS");
 
 let numeros = [1, 2, 3, 4, 5];
 let mixto = [1, "dos", true, nil, 5.5];
 let anidado = [[1, 2], [3, 4], [5, 6]];
 
-print("✓ Arrays diversos:");
-print("  Números:", numeros);
-print("  Mixto:", mixto);
-print("  Anidado:", anidado);
-print("  Longitud números:", len(numeros));
-print("  Acceso directo:", numeros[2]);
-print("  Acceso anidado:", anidado[1][0]);
+std.print("✓ Arrays diversos:");
+std.print("  Números:", numeros);
+std.print("  Mixto:", mixto);
+std.print("  Anidado:", anidado);
+std.print("  Longitud números:", std.len(numeros));
+std.print("  Acceso directo:", numeros[2]);
+std.print("  Acceso anidado:", anidado[1][0]);
 
 // Operaciones con arrays
 let concatenado = numeros + [6, 7, 8];
-print("  Concatenación:", concatenado);
+std.print("  Concatenación:", concatenado);
 
 // ============================================================================
 // 4. MAPAS MULTILINEA (NUEVA CARACTERÍSTICA)
 // ============================================================================
-print("\n4️⃣ MAPAS MULTILINEA 🆕");
+std.print("\n4️⃣ MAPAS MULTILINEA 🆕");
 
 // Mapa básico
 let persona = {"nombre": "Juan", "edad": 30};
@@ -147,18 +147,18 @@ let aplicacion = {
     }
 };
 
-print("✓ Mapas diversos:");
-print("  Básico:", persona);
-print("  Multilinea:", configuracion);
-print("  Longitud config:", len(configuracion));
-print("  Claves config:", keys(configuracion));
-print("  App nombre:", aplicacion.info.nombre);
-print("  DB timeout:", aplicacion.base_datos.credenciales.timeout);
+std.print("✓ Mapas diversos:");
+std.print("  Básico:", persona);
+std.print("  Multilinea:", configuracion);
+std.print("  Longitud config:", std.len(configuracion));
+std.print("  Claves config:", std.keys(configuracion));
+std.print("  App nombre:", aplicacion.info.nombre);
+std.print("  DB timeout:", aplicacion.base_datos.credenciales.timeout);
 
 // ============================================================================
 // 5. CONTROL DE FLUJO CON 'else if' (NUEVA CARACTERÍSTICA)
 // ============================================================================
-print("\n5️⃣ CONTROL DE FLUJO CON 'else if' 🆕");
+std.print("\n5️⃣ CONTROL DE FLUJO CON 'else if' 🆕");
 
 let puntuacion = 85;
 let calificacion = "";
@@ -175,8 +175,8 @@ if (puntuacion >= 90) {
     calificacion = "F";
 }
 
-print("✓ Condicionales else if:");
-print("  Puntuación:", puntuacion, "-> Calificación:", calificacion);
+std.print("✓ Condicionales else if:");
+std.print("  Puntuación:", puntuacion, "-> Calificación:", calificacion);
 
 // Test con módulo y else if
 let numero_test = 15;
@@ -194,36 +194,36 @@ if (numero_test % 15 == 0) {
     descripcion = "Impar";
 }
 
-print("  Número " + numero_test + ":", descripcion);
+std.print("  Número " + numero_test + ":", descripcion);
 
 // ============================================================================
 // 6. BUCLES Y ITERACIÓN
 // ============================================================================
-print("\n6️⃣ BUCLES Y ITERACIÓN");
+std.print("\n6️⃣ BUCLES Y ITERACIÓN");
 
 // While loop
-print("✓ While loop:");
+std.print("✓ While loop:");
 let contador = 0;
 while (contador < 3) {
-    print("  Iteración while:", contador);
+    std.print("  Iteración while:", contador);
     contador++;
 }
 
 // For loop tradicional
-print("✓ For loop tradicional:");
+std.print("✓ For loop tradicional:");
 for (let i = 0; i < 3; i++) {
-    print("  Iteración for:", i);
+    std.print("  Iteración for:", i);
 }
 
 // For-in con arrays
-print("✓ For-in con arrays:");
+std.print("✓ For-in con arrays:");
 let frutas = ["manzana", "banana", "naranja"];
 for (fruta in frutas) {
-    print("  Índice:", $k, "-> Fruta:", $v);
+    std.print("  Índice:", $k, "-> Fruta:", $v);
 }
 
-// For-in con mapas usando keys()
-print("✓ For-in con mapas:");
+// For-in con mapas usando std.keys()
+std.print("✓ For-in con mapas:");
 let colores = {
     rojo: "#FF0000",
     verde: "#00FF00"
@@ -231,14 +231,14 @@ let colores = {
     amarillo: "#FFFF00"
 };
 
-let claves_colores = keys(colores);
+let claves_colores = std.keys(colores);
 for (color in claves_colores) {
     let nombre_color = claves_colores[$k];
-    print("  Color:", nombre_color, "-> Código:", colores[nombre_color]);
+    std.print("  Color:", nombre_color, "-> Código:", colores[nombre_color]);
 }
 
 // Break y continue
-print("✓ Break y continue:");
+std.print("✓ Break y continue:");
 for (let i = 0; i < 10; i++) {
     if (i == 2) {
         continue;
@@ -246,13 +246,13 @@ for (let i = 0; i < 10; i++) {
     if (i == 5) {
         break;
     }
-    print("  Valor:", i);
+    std.print("  Valor:", i);
 }
 
 // ============================================================================
 // 7. FUNCIONES
 // ============================================================================
-print("\n7️⃣ FUNCIONES");
+std.print("\n7️⃣ FUNCIONES");
 
 // Función básica
 func sumar(a, b) {
@@ -293,26 +293,26 @@ func factorial(n) {
     }
 }
 
-print("✓ Funciones:");
-print("  sumar(15, 25) =", sumar(15, 25));
-print("  evaluarNumero(7) =", evaluarNumero(7));
-print("  evaluarNumero(8) =", evaluarNumero(8));
+std.print("✓ Funciones:");
+std.print("  sumar(15, 25) =", sumar(15, 25));
+std.print("  evaluarNumero(7) =", evaluarNumero(7));
+std.print("  evaluarNumero(8) =", evaluarNumero(8));
 
 let perfil = crearPerfil("Ana", 28);
-print("  Perfil creado:", perfil.usuario.nombre, "edad", perfil.usuario.edad);
+std.print("  Perfil creado:", perfil.usuario.nombre, "edad", perfil.usuario.edad);
 
-print("  factorial(5) =", factorial(5));
+std.print("  factorial(5) =", factorial(5));
 
 // Función anónima
 let multiplicar = func(x, y) {
     return x * y;
 };
-print("  Función anónima:", multiplicar(6, 7));
+std.print("  Función anónima:", multiplicar(6, 7));
 
 // ============================================================================
 // 8. CLASES Y OBJETOS
 // ============================================================================
-print("\n8️⃣ CLASES Y OBJETOS");
+std.print("\n8️⃣ CLASES Y OBJETOS");
 
 class Animal {
     let nombre;
@@ -345,107 +345,107 @@ class Perro extends Animal {
 let animal = Animal("Genérico", "animal");
 let perro = Perro("Firulais");
 
-print("✓ Clases y herencia:");
-print("  " + animal.describir());
-print("  " + animal.hablar());
-print("  " + perro.describir());
-print("  " + perro.hablar());
+std.print("✓ Clases y herencia:");
+std.print("  " + animal.describir());
+std.print("  " + animal.hablar());
+std.print("  " + perro.describir());
+std.print("  " + perro.hablar());
 
 // ============================================================================
 // 9. STRINGS Y TEMPLATES
 // ============================================================================
-print("\n9️⃣ STRINGS Y TEMPLATES");
+std.print("\n9️⃣ STRINGS Y TEMPLATES");
 
 let saludo = "Hola";
 let mundo = "Mundo";
 let concatenacion = saludo + " " + mundo + "!";
 
-print("✓ Strings:");
-print("  Concatenación:", concatenacion);
+std.print("✓ Strings:");
+std.print("  Concatenación:", concatenacion);
 
 // Template strings
 let edad_usuario = 25;
 let template = `El usuario tiene ${edad_usuario} años`;
-print("  Template string:", template);
+std.print("  Template string:", template);
 
 // String multilinea
 let multilinea = `Este es un string
 que abarca múltiples
 líneas con variables: ${edad_usuario}`;
-print("  String multilínea:", multilinea);
+std.print("  String multilínea:", multilinea);
 
 // Unicode
 let emoji = "🎉";
 let unicode = "Año: 2024 - España ñáéíóú";
-print("  Unicode y emoji:", emoji, unicode);
+std.print("  Unicode y emoji:", emoji, unicode);
 
 // ============================================================================
 // 10. FECHAS
 // ============================================================================
-print("\n🔟 FECHAS");
+std.print("\n🔟 FECHAS");
 
 let fecha_simple = @2024-12-25;
 let fecha_completa = @"2024-12-25T10:30:00";
 
-print("✓ Fechas:");
-print("  Fecha simple:", fecha_simple);
-print("  Fecha completa:", fecha_completa);
+std.print("✓ Fechas:");
+std.print("  Fecha simple:", fecha_simple);
+std.print("  Fecha completa:", fecha_completa);
 
 // ============================================================================
 // 11. OPERADOR TERNARIO
 // ============================================================================
-print("\n1️⃣1️⃣ OPERADOR TERNARIO");
+std.print("\n1️⃣1️⃣ OPERADOR TERNARIO");
 
 let edad_test = 20;
 let estado = edad_test >= 18 ? "adulto" : "menor";
 let mensaje_edad = edad_test >= 65 ? "senior" : (edad_test >= 18 ? "adulto" : "menor");
 
-print("✓ Operador ternario:");
-print("  Edad", edad_test, "es:", estado);
-print("  Clasificación:", mensaje_edad);
+std.print("✓ Operador ternario:");
+std.print("  Edad", edad_test, "es:", estado);
+std.print("  Clasificación:", mensaje_edad);
 
 // ============================================================================
 // 12. FUNCIONES BUILT-IN Y UTILIDADES
 // ============================================================================
-print("\n1️⃣2️⃣ FUNCIONES BUILT-IN");
+std.print("\n1️⃣2️⃣ FUNCIONES BUILT-IN");
 
 let test_array = [1, 2, 3, "cuatro", true];
 let test_map = {a: 1, b: 2, c: 3, d: 4};
 
-print("✓ Funciones built-in:");
-print("  len(array) =", len(test_array));
-print("  len(map) =", len(test_map));
-print("  keys(map) =", keys(test_map));
-print("  typeOf(42) =", typeOf(42));
-print("  typeOf('hello') =", typeOf("hello"));
-print("  typeOf(true) =", typeOf(true));
+std.print("✓ Funciones built-in:");
+std.print("  std.len(array) =", std.len(test_array));
+std.print("  std.len(map) =", std.len(test_map));
+std.print("  std.keys(map) =", std.keys(test_map));
+std.print("  std.typeOf(42) =", std.typeOf(42));
+std.print("  std.typeOf('hello') =", std.typeOf("hello"));
+std.print("  std.typeOf(true) =", std.typeOf(true));
 
 // parseInt
 let numero_string = "123";
-let numero_convertido = parseInt(numero_string);
-print("  parseInt('123') =", numero_convertido, "(tipo:", typeOf(numero_convertido) + ")");
+let numero_convertido = std.parseInt(numero_string);
+std.print("  std.parseInt('123') =", numero_convertido, "(tipo:", std.typeOf(numero_convertido) + ")");
 
 // ============================================================================
 // 13. MANEJO DE ERRORES
 // ============================================================================
-print("\n1️⃣3️⃣ MANEJO DE ERRORES");
+std.print("\n1️⃣3️⃣ MANEJO DE ERRORES");
 
-print("✓ Try-catch:");
+std.print("✓ Try-catch:");
 try {
     let resultado = 10 / 0;  // Esto podría causar error
-    print("  División exitosa:", resultado);
+    std.print("  División exitosa:", resultado);
 } catch (error) {
-    print("  Error capturado:", error);
+    std.print("  Error capturado:", error);
 } finally {
-    print("  Bloque finally ejecutado");
+    std.print("  Bloque finally ejecutado");
 }
 
 // ============================================================================
 // 14. INTEGRACIÓN COMPLETA - CASO REAL
 // ============================================================================
-print("\n1️⃣4️⃣ INTEGRACIÓN COMPLETA - CASO REAL");
+std.print("\n1️⃣4️⃣ INTEGRACIÓN COMPLETA - CASO REAL");
 
-print("✓ Sistema de gestión de productos:");
+std.print("✓ Sistema de gestión de productos:");
 
 // Base de datos simulada con mapas multilinea
 let base_productos = {
@@ -491,11 +491,11 @@ func analizarProductos(productos) {
     let total_valor = 0;
     let productos_activos = 0;
     
-    let categorias = keys(productos);
+    let categorias = std.keys(productos);
     for (cat in categorias) {
         let categoria = categorias[$k];
         let items = productos[categoria];
-        let items_keys = keys(items);
+        let items_keys = std.keys(items);
         
         for (item in items_keys) {
             let producto_nombre = items_keys[$k];
@@ -521,7 +521,7 @@ func analizarProductos(productos) {
             }
             
             let estado = producto.activo ? "activo" : "inactivo";
-            print("  " + producto_nombre + ": $" + producto.precio + " (" + clasificacion + ", " + estado + ")");
+            std.print("  " + producto_nombre + ": $" + producto.precio + " (" + clasificacion + ", " + estado + ")");
         }
     }
     
@@ -533,76 +533,76 @@ func analizarProductos(productos) {
 }
 
 let resumen = analizarProductos(base_productos);
-print("  Resumen: " + resumen.total + " productos totales, " + resumen.activos + " activos");
-print("  Valor total inventario activo: $" + resumen.valor_total);
+std.print("  Resumen: " + resumen.total + " productos totales, " + resumen.activos + " activos");
+std.print("  Valor total inventario activo: $" + resumen.valor_total);
 
 // ============================================================================
 // 15. TESTS DE CASOS LÍMITE
 // ============================================================================
-print("\n1️⃣5️⃣ TESTS DE CASOS LÍMITE");
+std.print("\n1️⃣5️⃣ TESTS DE CASOS LÍMITE");
 
-print("✓ Casos límite:");
+std.print("✓ Casos límite:");
 
 // Operaciones con cero
-print("  10 % 1 =", 10 % 1);
-print("  División: 100 / 4 =", 100 / 4);
+std.print("  10 % 1 =", 10 % 1);
+std.print("  División: 100 / 4 =", 100 / 4);
 
 // Arrays vacíos y mapas vacíos
 let array_vacio = [];
 let mapa_vacio = {};
-print("  Array vacío length:", len(array_vacio));
-print("  Mapa vacío length:", len(mapa_vacio));
-print("  Mapa vacío keys:", keys(mapa_vacio));
+std.print("  Array vacío length:", std.len(array_vacio));
+std.print("  Mapa vacío length:", std.len(mapa_vacio));
+std.print("  Mapa vacío keys:", std.keys(mapa_vacio));
 
 // Comparaciones con nil
 let valor_nil = nil;
 let es_nil = valor_nil == nil;
-print("  nil == nil:", es_nil);
+std.print("  nil == nil:", es_nil);
 
 // Strings vacíos
 let string_vacio = "";
-print("  String vacío length:", len(string_vacio));
+std.print("  String vacío length:", std.len(string_vacio));
 
 // ============================================================================
 // RESUMEN FINAL COMPLETO
 // ============================================================================
-print("\n" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
-print("🎉 GOLD TEST COMPREHENSIVO COMPLETADO EXITOSAMENTE!");
-print("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
+std.print("\n" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
+std.print("🎉 GOLD TEST COMPREHENSIVO COMPLETADO EXITOSAMENTE!");
+std.print("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
 
-print("\n✅ CARACTERÍSTICAS BÁSICAS VALIDADAS:");
-print("   ✓ Declaraciones let/var y tipos básicos");
-print("   ✓ Operaciones aritméticas, lógicas y de comparación");
-print("   ✓ Arrays simples, mixtos y anidados");
-print("   ✓ Mapas básicos y acceso a propiedades");
-print("   ✓ Control de flujo (if/else, while, for)");
-print("   ✓ Funciones (básicas, recursivas, anónimas)");
-print("   ✓ Clases, objetos y herencia");
-print("   ✓ Strings, templates y Unicode");
-print("   ✓ Fechas y literales de fecha");
-print("   ✓ Operador ternario");
-print("   ✓ Funciones built-in (len, keys, typeOf, parseInt)");
-print("   ✓ Manejo de errores (try/catch/finally)");
-print("   ✓ For-in loops con $k/$v");
+std.print("\n✅ CARACTERÍSTICAS BÁSICAS VALIDADAS:");
+std.print("   ✓ Declaraciones let/var y tipos básicos");
+std.print("   ✓ Operaciones aritméticas, lógicas y de comparación");
+std.print("   ✓ Arrays simples, mixtos y anidados");
+std.print("   ✓ Mapas básicos y acceso a propiedades");
+std.print("   ✓ Control de flujo (if/else, while, for)");
+std.print("   ✓ Funciones (básicas, recursivas, anónimas)");
+std.print("   ✓ Clases, objetos y herencia");
+std.print("   ✓ Strings, templates y Unicode");
+std.print("   ✓ Fechas y literales de fecha");
+std.print("   ✓ Operador ternario");
+std.print("   ✓ Funciones built-in (len, keys, typeOf, parseInt)");
+std.print("   ✓ Manejo de errores (try/catch/finally)");
+std.print("   ✓ For-in loops con $k/$v");
 
-print("\n🆕 NUEVAS CARACTERÍSTICAS 2025 VALIDADAS:");
-print("   ✅ Mapas multilinea con sintaxis mejorada");
-print("   ✅ Separadores mixtos (comas + newlines)");
-print("   ✅ Mapas anidados multilinea complejos");
-print("   ✅ Sintaxis 'else if' para mejor legibilidad");
-print("   ✅ Cadenas complejas de 'else if'");
-print("   ✅ Operador módulo '%' en múltiples contextos");
-print("   ✅ Integración FizzBuzz con else if + módulo");
+std.print("\n🆕 NUEVAS CARACTERÍSTICAS 2025 VALIDADAS:");
+std.print("   ✅ Mapas multilinea con sintaxis mejorada");
+std.print("   ✅ Separadores mixtos (comas + newlines)");
+std.print("   ✅ Mapas anidados multilinea complejos");
+std.print("   ✅ Sintaxis 'else if' para mejor legibilidad");
+std.print("   ✅ Cadenas complejas de 'else if'");
+std.print("   ✅ Operador módulo '%' en múltiples contextos");
+std.print("   ✅ Integración FizzBuzz con else if + módulo");
 
-print("\n🔄 INTEGRACIÓN Y CASOS REALES:");
-print("   ✅ Sistema completo de gestión de productos");
-print("   ✅ Todas las características trabajando juntas");
-print("   ✅ Casos límite y edge cases");
-print("   ✅ Compatibilidad total con código existente");
+std.print("\n🔄 INTEGRACIÓN Y CASOS REALES:");
+std.print("   ✅ Sistema completo de gestión de productos");
+std.print("   ✅ Todas las características trabajando juntas");
+std.print("   ✅ Casos límite y edge cases");
+std.print("   ✅ Compatibilidad total con código existente");
 
-print("\n🚀 R2LANG 2025 - TOTALMENTE FUNCIONAL");
-print("   Si este test se ejecuta sin errores, R2Lang está");
-print("   funcionando correctamente en TODAS sus características.");
+std.print("\n🚀 R2LANG 2025 - TOTALMENTE FUNCIONAL");
+std.print("   Si este test se ejecuta sin errores, R2Lang está");
+std.print("   funcionando correctamente en TODAS sus características.");
 
-print("\nTotal de características probadas: 50+");
-print("Estado: 🟢 TODOS LOS TESTS PASARON");
+std.print("\nTotal de características probadas: 50+");
+std.print("Estado: 🟢 TODOS LOS TESTS PASARON");

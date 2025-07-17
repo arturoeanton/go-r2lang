@@ -560,7 +560,7 @@ func BenchmarkLexer_ComplexCode(b *testing.B) {
 		return n * factorial(n - 1)
 	}
 	let result = factorial(10)
-	print("Result: " + result)
+	std.print("Result: " + result)
 	`
 	for i := 0; i < b.N; i++ {
 		lexer := NewLexer(input)
