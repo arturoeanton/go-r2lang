@@ -7,13 +7,10 @@ import (
 )
 
 func RegisterDate(env *r2core.Environment) {
-	// Get static methods from createDateObject
-	staticMethods := createDateObject()
-	
-	functions := map[string]interface{}{
+	functions := map[string]r2core.BuiltinFunction{
 		"Date": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) == 0 {
-				return &r2core.DateValue{Time: time.Now()}
+				return createDateObject()
 			}
 			if len(args) == 1 {
 				if str, ok := args[0].(string); ok {
@@ -32,11 +29,21 @@ func RegisterDate(env *r2core.Environment) {
 			}
 			return createDateFromArgs(args...)
 		}),
-	}
-	
-	// Add all static methods to the module
-	for name, method := range staticMethods {
-		functions[name] = method
+		"format": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				return nil
+			}
+			date, ok := args[0].(*r2core.DateValue)
+			if !ok {
+				return nil
+			}
+			format, ok := args[1].(string)
+			if !ok {
+				return nil
+			}
+			goFormat := r2core.ConvertToGoFormat(format)
+			return date.Time.Format(goFormat)
+		}),
 	}
 
 	RegisterModule(env, "date", functions)
@@ -73,6 +80,29 @@ func createDateFromArgs(args ...interface{}) *r2core.DateValue {
 
 func createDateObject() map[string]interface{} {
 	obj := make(map[string]interface{})
+
+	// Constructor function for creating new DateValue instances
+	obj["create"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) == 0 {
+			return &r2core.DateValue{Time: time.Now()}
+		}
+		if len(args) == 1 {
+			if str, ok := args[0].(string); ok {
+				t, err := time.Parse(time.RFC3339, str)
+				if err != nil {
+					t, err = time.Parse("2006-01-02", str)
+					if err != nil {
+						return nil
+					}
+				}
+				return &r2core.DateValue{Time: t}
+			}
+			if ts, ok := args[0].(float64); ok {
+				return &r2core.DateValue{Time: time.Unix(int64(ts/1000), int64(ts)%1000*1000000)}
+			}
+		}
+		return createDateFromArgs(args...)
+	})
 
 	obj["now"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		return float64(time.Now().UnixMilli())

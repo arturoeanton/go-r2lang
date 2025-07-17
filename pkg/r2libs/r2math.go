@@ -237,7 +237,7 @@ func RegisterMath(env *r2core.Environment) {
 					return arrayMax(arr)
 				}
 			}
-			
+
 			max := toFloat(args[0])
 			for _, arg := range args[1:] {
 				val := toFloat(arg)
@@ -257,7 +257,7 @@ func RegisterMath(env *r2core.Environment) {
 					return arrayMin(arr)
 				}
 			}
-			
+
 			min := toFloat(args[0])
 			for _, arg := range args[1:] {
 				val := toFloat(arg)
@@ -275,7 +275,7 @@ func RegisterMath(env *r2core.Environment) {
 			value := toFloat(args[0])
 			min := toFloat(args[1])
 			max := toFloat(args[2])
-			
+
 			if value < min {
 				return min
 			}
@@ -644,12 +644,33 @@ func RegisterMath(env *r2core.Environment) {
 		}),
 	}
 
+	// Add constants to the functions map as values
+	constants := map[string]interface{}{
+		"PI":       math.Pi,
+		"E":        math.E,
+		"PHI":      (1.0 + math.Sqrt(5.0)) / 2.0, // Golden ratio
+		"SQRT2":    math.Sqrt2,
+		"SQRT_E":   math.SqrtE,
+		"SQRT_PI":  math.SqrtPi,
+		"SQRT_PHI": math.SqrtPhi,
+		"LN2":      math.Ln2,
+		"LN10":     math.Ln10,
+		"LOG2E":    math.Log2E,
+	}
+
 	RegisterModule(env, "math", functions)
 
-	// Register constants
+	// Register constants within the math module
+	mathModuleObj, _ := env.Get("math")
+	mathModule := mathModuleObj.(map[string]interface{})
+	for name, value := range constants {
+		mathModule[name] = value
+	}
+
+	// Register constants globally as well for backwards compatibility
 	env.Set("PI", math.Pi)
 	env.Set("E", math.E)
-	env.Set("PHI", (1.0 + math.Sqrt(5.0)) / 2.0) // Golden ratio
+	env.Set("PHI", (1.0+math.Sqrt(5.0))/2.0) // Golden ratio
 	env.Set("SQRT2", math.Sqrt2)
 	env.Set("SQRT_E", math.SqrtE)
 	env.Set("SQRT_PI", math.SqrtPi)
@@ -658,7 +679,7 @@ func RegisterMath(env *r2core.Environment) {
 	env.Set("LN10", math.Ln10)
 	env.Set("LOG2E", math.Log2E)
 	env.Set("LOG10E", math.Log10E)
-	
+
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
 }
@@ -709,14 +730,14 @@ func arrayMedian(arr []interface{}) float64 {
 	if len(arr) == 0 {
 		return 0
 	}
-	
+
 	vals := make([]float64, len(arr))
 	for i, val := range arr {
 		vals[i] = toFloat(val)
 	}
-	
+
 	sort.Float64s(vals)
-	
+
 	n := len(vals)
 	if n%2 == 0 {
 		return (vals[n/2-1] + vals[n/2]) / 2
@@ -728,13 +749,13 @@ func arrayMode(arr []interface{}) float64 {
 	if len(arr) == 0 {
 		return 0
 	}
-	
+
 	counts := make(map[float64]int)
 	for _, val := range arr {
 		v := toFloat(val)
 		counts[v]++
 	}
-	
+
 	maxCount := 0
 	var mode float64
 	for val, count := range counts {
@@ -743,7 +764,7 @@ func arrayMode(arr []interface{}) float64 {
 			mode = val
 		}
 	}
-	
+
 	return mode
 }
 
@@ -751,15 +772,15 @@ func arrayVariance(arr []interface{}) float64 {
 	if len(arr) == 0 {
 		return 0
 	}
-	
+
 	mean := arrayMean(arr)
 	sum := 0.0
-	
+
 	for _, val := range arr {
 		diff := toFloat(val) - mean
 		sum += diff * diff
 	}
-	
+
 	return sum / float64(len(arr))
 }
 
@@ -767,19 +788,19 @@ func arrayPercentile(arr []interface{}, p float64) float64 {
 	if len(arr) == 0 {
 		return 0
 	}
-	
+
 	vals := make([]float64, len(arr))
 	for i, val := range arr {
 		vals[i] = toFloat(val)
 	}
-	
+
 	sort.Float64s(vals)
-	
+
 	index := p * float64(len(vals)-1)
 	if index == float64(int(index)) {
 		return vals[int(index)]
 	}
-	
+
 	lower := vals[int(index)]
 	upper := vals[int(index)+1]
 	return lower + (upper-lower)*(index-float64(int(index)))
@@ -789,28 +810,28 @@ func arrayCorrelation(arr1, arr2 []interface{}) float64 {
 	if len(arr1) != len(arr2) || len(arr1) == 0 {
 		return 0
 	}
-	
+
 	mean1 := arrayMean(arr1)
 	mean2 := arrayMean(arr2)
-	
+
 	numerator := 0.0
 	sum1 := 0.0
 	sum2 := 0.0
-	
+
 	for i := 0; i < len(arr1); i++ {
 		diff1 := toFloat(arr1[i]) - mean1
 		diff2 := toFloat(arr2[i]) - mean2
-		
+
 		numerator += diff1 * diff2
 		sum1 += diff1 * diff1
 		sum2 += diff2 * diff2
 	}
-	
+
 	denominator := math.Sqrt(sum1 * sum2)
 	if denominator == 0 {
 		return 0
 	}
-	
+
 	return numerator / denominator
 }
 
@@ -818,15 +839,15 @@ func arrayCovariance(arr1, arr2 []interface{}) float64 {
 	if len(arr1) != len(arr2) || len(arr1) == 0 {
 		return 0
 	}
-	
+
 	mean1 := arrayMean(arr1)
 	mean2 := arrayMean(arr2)
-	
+
 	sum := 0.0
 	for i := 0; i < len(arr1); i++ {
 		sum += (toFloat(arr1[i]) - mean1) * (toFloat(arr2[i]) - mean2)
 	}
-	
+
 	return sum / float64(len(arr1))
 }
 
@@ -834,10 +855,10 @@ func arrayZScore(arr []interface{}) []interface{} {
 	if len(arr) == 0 {
 		return []interface{}{}
 	}
-	
+
 	mean := arrayMean(arr)
 	stdDev := math.Sqrt(arrayVariance(arr))
-	
+
 	result := make([]interface{}, len(arr))
 	for i, val := range arr {
 		if stdDev == 0 {
@@ -846,7 +867,7 @@ func arrayZScore(arr []interface{}) []interface{} {
 			result[i] = (toFloat(val) - mean) / stdDev
 		}
 	}
-	
+
 	return result
 }
 
@@ -854,10 +875,10 @@ func arrayNormalize(arr []interface{}) []interface{} {
 	if len(arr) == 0 {
 		return []interface{}{}
 	}
-	
+
 	min := arrayMin(arr)
 	max := arrayMax(arr)
-	
+
 	result := make([]interface{}, len(arr))
 	for i, val := range arr {
 		if max == min {
@@ -866,7 +887,7 @@ func arrayNormalize(arr []interface{}) []interface{} {
 			result[i] = (toFloat(val) - min) / (max - min)
 		}
 	}
-	
+
 	return result
 }
 
@@ -874,7 +895,7 @@ func arrayRandomSample(arr []interface{}, count int) []interface{} {
 	if count >= len(arr) {
 		return arrayShuffle(arr)
 	}
-	
+
 	shuffled := arrayShuffle(arr)
 	return shuffled[:count]
 }
@@ -882,12 +903,12 @@ func arrayRandomSample(arr []interface{}, count int) []interface{} {
 func arrayShuffle(arr []interface{}) []interface{} {
 	result := make([]interface{}, len(arr))
 	copy(result, arr)
-	
+
 	for i := len(result) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		result[i], result[j] = result[j], result[i]
 	}
-	
+
 	return result
 }
 

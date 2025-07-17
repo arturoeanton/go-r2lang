@@ -108,7 +108,7 @@ func RegisterIO(env *r2core.Environment) {
 			if !ok2 {
 				panic("writeFileBytes: second argument must be array")
 			}
-			
+
 			data := make([]byte, len(bytesArray))
 			for i, b := range bytesArray {
 				if num, ok := b.(float64); ok {
@@ -117,14 +117,14 @@ func RegisterIO(env *r2core.Environment) {
 					panic("writeFileBytes: array must contain numbers")
 				}
 			}
-			
+
 			permissions := os.FileMode(0644)
 			if len(args) > 2 {
 				if perm, ok := args[2].(float64); ok {
 					permissions = os.FileMode(perm)
 				}
 			}
-			
+
 			err := os.WriteFile(path, data, permissions)
 			if err != nil {
 				panic(fmt.Sprintf("writeFileBytes: error writing '%s': %v", path, err))
@@ -144,7 +144,7 @@ func RegisterIO(env *r2core.Environment) {
 			if !ok2 {
 				panic("writeLines: second argument must be array")
 			}
-			
+
 			var lines []string
 			for _, line := range linesArray {
 				if str, ok := line.(string); ok {
@@ -153,7 +153,7 @@ func RegisterIO(env *r2core.Environment) {
 					lines = append(lines, fmt.Sprintf("%v", line))
 				}
 			}
-			
+
 			content := strings.Join(lines, "\n")
 			permissions := os.FileMode(0644)
 			if len(args) > 2 {
@@ -161,7 +161,7 @@ func RegisterIO(env *r2core.Environment) {
 					permissions = os.FileMode(perm)
 				}
 			}
-			
+
 			err := os.WriteFile(path, []byte(content), permissions)
 			if err != nil {
 				panic(fmt.Sprintf("writeLines: error writing '%s': %v", path, err))
@@ -321,11 +321,11 @@ func RegisterIO(env *r2core.Environment) {
 					continue
 				}
 				fileInfo := map[string]interface{}{
-					"name":     f.Name(),
-					"size":     float64(info.Size()),
-					"isDir":    info.IsDir(),
-					"mode":     float64(info.Mode()),
-					"modTime":  info.ModTime().Format(time.RFC3339),
+					"name":    f.Name(),
+					"size":    float64(info.Size()),
+					"isDir":   info.IsDir(),
+					"mode":    float64(info.Mode()),
+					"modTime": info.ModTime().Format(time.RFC3339),
 				}
 				result = append(result, fileInfo)
 			}
@@ -554,24 +554,24 @@ func RegisterIO(env *r2core.Environment) {
 			if !ok {
 				panic("walk: path must be string")
 			}
-			
+
 			var result []interface{}
 			err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
 				fileInfo := map[string]interface{}{
-					"path":     path,
-					"name":     info.Name(),
-					"size":     float64(info.Size()),
-					"isDir":    info.IsDir(),
-					"mode":     float64(info.Mode()),
-					"modTime":  info.ModTime().Format(time.RFC3339),
+					"path":    path,
+					"name":    info.Name(),
+					"size":    float64(info.Size()),
+					"isDir":   info.IsDir(),
+					"mode":    float64(info.Mode()),
+					"modTime": info.ModTime().Format(time.RFC3339),
 				}
 				result = append(result, fileInfo)
 				return nil
 			})
-			
+
 			if err != nil {
 				panic(fmt.Sprintf("walk: error walking '%s': %v", root, err))
 			}
@@ -606,7 +606,7 @@ func RegisterIO(env *r2core.Environment) {
 			if !ok1 || !ok2 {
 				panic("findFiles: (root, pattern) must be strings")
 			}
-			
+
 			var result []interface{}
 			err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
@@ -623,7 +623,7 @@ func RegisterIO(env *r2core.Environment) {
 				}
 				return nil
 			})
-			
+
 			if err != nil {
 				panic(fmt.Sprintf("findFiles: error searching in '%s': %v", root, err))
 			}
@@ -638,7 +638,7 @@ func RegisterIO(env *r2core.Environment) {
 			if !ok {
 				panic("sortFiles: first argument must be array")
 			}
-			
+
 			var files []string
 			for _, f := range filesArray {
 				if str, ok := f.(string); ok {
@@ -647,14 +647,14 @@ func RegisterIO(env *r2core.Environment) {
 					panic("sortFiles: array must contain strings")
 				}
 			}
-			
+
 			sortBy := "name"
 			if len(args) > 1 {
 				if s, ok := args[1].(string); ok {
 					sortBy = s
 				}
 			}
-			
+
 			switch sortBy {
 			case "size":
 				sort.Slice(files, func(i, j int) bool {
@@ -677,7 +677,7 @@ func RegisterIO(env *r2core.Environment) {
 			default:
 				sort.Strings(files)
 			}
-			
+
 			result := make([]interface{}, len(files))
 			for i, f := range files {
 				result[i] = f
@@ -692,7 +692,7 @@ func RegisterIO(env *r2core.Environment) {
 		"tempFile": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			dir := ""
 			pattern := "temp*"
-			
+
 			if len(args) > 0 {
 				if d, ok := args[0].(string); ok {
 					dir = d
@@ -703,13 +703,13 @@ func RegisterIO(env *r2core.Environment) {
 					pattern = p
 				}
 			}
-			
+
 			file, err := os.CreateTemp(dir, pattern)
 			if err != nil {
 				panic(fmt.Sprintf("tempFile: error creating temp file: %v", err))
 			}
 			defer file.Close()
-			
+
 			return file.Name()
 		}),
 
