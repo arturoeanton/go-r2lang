@@ -10,8 +10,11 @@ import (
 func TestDateNow(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	nowFunc := dateObj.(map[string]interface{})["now"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	nowFunc := dateObj["now"].(r2core.BuiltinFunction)
 	result := nowFunc()
 	dateValue, ok := result.(*r2core.DateValue)
 	if !ok {
@@ -25,8 +28,11 @@ func TestDateNow(t *testing.T) {
 func TestDateCreate(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	createFunc := dateObj.(map[string]interface{})["create"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
 	args := []interface{}{
 		float64(2024),
 		float64(7),
@@ -45,9 +51,12 @@ func TestDateCreate(t *testing.T) {
 func TestDateFormat(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	createFunc := dateObj.(map[string]interface{})["create"].(r2core.BuiltinFunction)
-	formatFunc := dateObj.(map[string]interface{})["format"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	formatFunc := dateObj["format"].(r2core.BuiltinFunction)
 	args := []interface{}{
 		float64(2024),
 		float64(7),
@@ -71,8 +80,11 @@ func TestDateFormat(t *testing.T) {
 func TestDateTimezone(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	timezoneFunc := dateObj.(map[string]interface{})["timezone"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	timezoneFunc := dateObj["timezone"].(r2core.BuiltinFunction)
 	args := []interface{}{
 		"America/New_York",
 		float64(2024),
@@ -95,9 +107,12 @@ func TestDateTimezone(t *testing.T) {
 func TestDateToTimezone(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	createFunc := dateObj.(map[string]interface{})["create"].(r2core.BuiltinFunction)
-	toTimezoneFunc := dateObj.(map[string]interface{})["toTimezone"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	toTimezoneFunc := dateObj["toTimezone"].(r2core.BuiltinFunction)
 	args := []interface{}{
 		float64(2024),
 		float64(7),

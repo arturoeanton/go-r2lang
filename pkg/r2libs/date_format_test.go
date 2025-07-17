@@ -41,9 +41,12 @@ func TestConvertToGoFormat(t *testing.T) {
 func TestDateFormatComprehensive(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	createFunc := dateObj.(map[string]interface{})["create"].(r2core.BuiltinFunction)
-	formatFunc := dateObj.(map[string]interface{})["format"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	formatFunc := dateObj["format"].(r2core.BuiltinFunction)
 
 	// Test date: 2024-07-15 14:30:25
 	args := []interface{}{
@@ -94,9 +97,12 @@ func TestDateFormatComprehensive(t *testing.T) {
 func TestDateFormatEdgeCases(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterDate(env)
-	dateObj, _ := env.Get("Date")
-	createFunc := dateObj.(map[string]interface{})["create"].(r2core.BuiltinFunction)
-	formatFunc := dateObj.(map[string]interface{})["format"].(r2core.BuiltinFunction)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	formatFunc := dateObj["format"].(r2core.BuiltinFunction)
 
 	// Test various years including edge cases
 	testYears := []int{2024, 2025, 2020, 2000, 1999, 2030}

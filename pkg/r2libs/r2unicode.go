@@ -13,36 +13,31 @@ import (
 )
 
 func RegisterUnicode(env *r2core.Environment) {
-	// Funciones básicas de string Unicode
-	env.Set("ulen", r2core.BuiltinFunction(unicodeLength))
-	env.Set("usubstr", r2core.BuiltinFunction(unicodeSubstring))
-	env.Set("uupper", r2core.BuiltinFunction(unicodeUpper))
-	env.Set("ulower", r2core.BuiltinFunction(unicodeLower))
-	env.Set("utitle", r2core.BuiltinFunction(unicodeTitle))
-	env.Set("ureverse", r2core.BuiltinFunction(unicodeReverse))
+	functions := map[string]r2core.BuiltinFunction{
+		"ulen":          r2core.BuiltinFunction(unicodeLength),
+		"usubstr":       r2core.BuiltinFunction(unicodeSubstring),
+		"uupper":        r2core.BuiltinFunction(unicodeUpper),
+		"ulower":        r2core.BuiltinFunction(unicodeLower),
+		"utitle":        r2core.BuiltinFunction(unicodeTitle),
+		"ureverse":      r2core.BuiltinFunction(unicodeReverse),
+		"unormalize":    r2core.BuiltinFunction(unicodeNormalize),
+		"ucompare":      r2core.BuiltinFunction(unicodeCompare),
+		"uisvalid":      r2core.BuiltinFunction(isValidUTF8),
+		"ucharcode":     r2core.BuiltinFunction(getCharCode),
+		"ufromcode":     r2core.BuiltinFunction(fromCharCode),
+		"uisLetter":     r2core.BuiltinFunction(isLetter),
+		"uisDigit":      r2core.BuiltinFunction(isDigit),
+		"uisSpace":      r2core.BuiltinFunction(isSpace),
+		"uisPunct":      r2core.BuiltinFunction(isPunct),
+		"uisUpper":      r2core.BuiltinFunction(isUpper),
+		"uisLower":      r2core.BuiltinFunction(isLower),
+		"ugetCategory":  r2core.BuiltinFunction(getCategory),
+		"uregex":        r2core.BuiltinFunction(unicodeRegex),
+		"uregexMatch":   r2core.BuiltinFunction(unicodeRegexMatch),
+		"uregexReplace": r2core.BuiltinFunction(unicodeRegexReplace),
+	}
 
-	// Normalización Unicode
-	env.Set("unormalize", r2core.BuiltinFunction(unicodeNormalize))
-	env.Set("ucompare", r2core.BuiltinFunction(unicodeCompare))
-
-	// Validación y utilidades
-	env.Set("uisvalid", r2core.BuiltinFunction(isValidUTF8))
-	env.Set("ucharcode", r2core.BuiltinFunction(getCharCode))
-	env.Set("ufromcode", r2core.BuiltinFunction(fromCharCode))
-
-	// Clasificación de caracteres
-	env.Set("uisLetter", r2core.BuiltinFunction(isLetter))
-	env.Set("uisDigit", r2core.BuiltinFunction(isDigit))
-	env.Set("uisSpace", r2core.BuiltinFunction(isSpace))
-	env.Set("uisPunct", r2core.BuiltinFunction(isPunct))
-	env.Set("uisUpper", r2core.BuiltinFunction(isUpper))
-	env.Set("uisLower", r2core.BuiltinFunction(isLower))
-	env.Set("ugetCategory", r2core.BuiltinFunction(getCategory))
-
-	// Expresiones regulares Unicode
-	env.Set("uregex", r2core.BuiltinFunction(unicodeRegex))
-	env.Set("uregexMatch", r2core.BuiltinFunction(unicodeRegexMatch))
-	env.Set("uregexReplace", r2core.BuiltinFunction(unicodeRegexReplace))
+	RegisterModule(env, "unicode", functions)
 }
 
 // ============================================================

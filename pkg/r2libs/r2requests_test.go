@@ -187,7 +187,12 @@ func TestGlobalGet(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test GET request
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -220,7 +225,12 @@ func TestGlobalPost(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test POST request
-	postFuncVal, ok := env.Get("post")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	postFuncVal, ok := requestModule["post"]
 	if !ok {
 		t.Fatal("post function not found")
 	}
@@ -248,7 +258,12 @@ func TestGlobalPut(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test PUT request
-	putFuncVal, ok := env.Get("put")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	putFuncVal, ok := requestModule["put"]
 	if !ok {
 		t.Fatal("put function not found")
 	}
@@ -276,7 +291,12 @@ func TestGlobalDelete(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test DELETE request
-	deleteFuncVal, ok := env.Get("delete")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	deleteFuncVal, ok := requestModule["delete"]
 	if !ok {
 		t.Fatal("delete function not found")
 	}
@@ -304,7 +324,12 @@ func TestRequestWithParameters(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test GET request with parameters
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -341,7 +366,12 @@ func TestRequestWithJSON(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test POST request with JSON data
-	postFuncVal, ok := env.Get("post")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	postFuncVal, ok := requestModule["post"]
 	if !ok {
 		t.Fatal("post function not found")
 	}
@@ -379,7 +409,12 @@ func TestSession(t *testing.T) {
 	RegisterRequests(env)
 
 	// Create session
-	sessionFuncVal, ok := env.Get("session")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	sessionFuncVal, ok := requestModule["session"]
 	if !ok {
 		t.Fatal("session function not found")
 	}
@@ -415,7 +450,12 @@ func TestErrorHandling(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test 404 error
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -446,7 +486,12 @@ func TestURLEncoding(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test URL encoding
-	encodeFuncVal, ok := env.Get("urlencode")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	encodeFuncVal, ok := requestModule["urlencode"]
 	if !ok {
 		t.Fatal("urlencode function not found")
 	}
@@ -458,7 +503,7 @@ func TestURLEncoding(t *testing.T) {
 	}
 
 	// Test URL decoding
-	decodeFuncVal, ok := env.Get("urldecode")
+	decodeFuncVal, ok := requestModule["urldecode"]
 	if !ok {
 		t.Fatal("urldecode function not found")
 	}
@@ -478,7 +523,12 @@ func TestResponseFields(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test response fields
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -527,7 +577,12 @@ func TestTimeout(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test timeout
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -566,7 +621,12 @@ func TestAuthenticatedRequest(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test authenticated request
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -599,7 +659,12 @@ func TestHeadOptions(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test HEAD request
-	headFuncVal, ok := env.Get("head")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	headFuncVal, ok := requestModule["head"]
 	if !ok {
 		t.Fatal("head function not found")
 	}
@@ -615,7 +680,7 @@ func TestHeadOptions(t *testing.T) {
 	}
 
 	// Test OPTIONS request
-	optionsFuncVal, ok := env.Get("options")
+	optionsFuncVal, ok := requestModule["options"]
 	if !ok {
 		t.Fatal("options function not found")
 	}
@@ -650,7 +715,12 @@ func TestFileUpload(t *testing.T) {
 	tmpFile.Close()
 
 	// Test file upload
-	postFuncVal, ok := env.Get("post")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	postFuncVal, ok := requestModule["post"]
 	if !ok {
 		t.Fatal("post function not found")
 	}
@@ -719,7 +789,12 @@ func TestProxy(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test request through proxy
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -764,7 +839,12 @@ func TestRetries(t *testing.T) {
 	RegisterRequests(env)
 
 	// Test request with retries
-	getFuncVal, ok := env.Get("get")
+	requestModuleObj, ok := env.Get("request")
+	if !ok {
+		t.Fatal("request module not found")
+	}
+	requestModule := requestModuleObj.(map[string]interface{})
+	getFuncVal, ok := requestModule["get"]
 	if !ok {
 		t.Fatal("get function not found")
 	}
@@ -846,7 +926,12 @@ func TestCookieJarAutomatic(t *testing.T) {
 
 	// Test with session functions (should already handle cookies)
 	t.Run("SessionFunctionsCookieHandling", func(t *testing.T) {
-		sessionFuncVal, ok := env.Get("session")
+		requestModuleObj, ok := env.Get("request")
+		if !ok {
+			t.Fatal("request module not found")
+		}
+		requestModule := requestModuleObj.(map[string]interface{})
+		sessionFuncVal, ok := requestModule["session"]
 		if !ok {
 			t.Fatal("session function not found")
 		}

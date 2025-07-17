@@ -15,7 +15,12 @@ func TestDatabaseFunctions(t *testing.T) {
 	// Test database connection
 	t.Run("TestDBConnect", func(t *testing.T) {
 		// Test SQLite connection (in-memory)
-		connIdFuncVal, ok := env.Get("dbConnect")
+		dbModuleObj, ok := env.Get("db")
+		if !ok {
+			t.Fatal("db module not found")
+		}
+		dbModule := dbModuleObj.(map[string]interface{})
+		connIdFuncVal, ok := dbModule["dbConnect"]
 		if !ok {
 			t.Fatal("dbConnect function not found")
 		}
@@ -39,19 +44,23 @@ func TestDatabaseFunctions(t *testing.T) {
 			}
 		}()
 
-		connIdFuncVal, _ := env.Get("dbConnect")
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
+		connIdFuncVal, _ := dbModule["dbConnect"]
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connIdFunc("invalid_driver", ":memory:")
 	})
 
 	t.Run("TestDBOperations", func(t *testing.T) {
 		// Connect to SQLite
-		connIdFuncVal, _ := env.Get("dbConnect")
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
+		connIdFuncVal, _ := dbModule["dbConnect"]
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connId := connIdFunc("sqlite3", ":memory:").(string)
 
 		// Test dbPing
-		pingFuncVal, _ := env.Get("dbPing")
+		pingFuncVal, _ := dbModule["dbPing"]
 		pingFunc := pingFuncVal.(r2core.BuiltinFunction)
 		pingResult := pingFunc(connId)
 		if pingResult != true {
@@ -59,7 +68,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 
 		// Test table creation
-		execFuncVal, _ := env.Get("dbExec")
+		execFuncVal, _ := dbModule["dbExec"]
 		execFunc := execFuncVal.(r2core.BuiltinFunction)
 		createTableSQL := `CREATE TABLE users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +83,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 
 		// Test insert with dbLastInsertId
-		lastInsertIdFuncVal, _ := env.Get("dbLastInsertId")
+		lastInsertIdFuncVal, _ := dbModule["dbLastInsertId"]
 		lastInsertIdFunc := lastInsertIdFuncVal.(r2core.BuiltinFunction)
 		insertSQL := "INSERT INTO users (name, email, age) VALUES (?, ?, ?)"
 		lastId := lastInsertIdFunc(connId, insertSQL, "John Doe", "john@example.com", 30)
@@ -87,7 +96,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		execFunc(connId, insertSQL, "Bob Johnson", "bob@example.com", 35)
 
 		// Test query
-		queryFuncVal, _ := env.Get("dbQuery")
+		queryFuncVal, _ := dbModule["dbQuery"]
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
 		selectSQL := "SELECT id, name, email, age FROM users ORDER BY id"
 		queryResult := queryFunc(connId, selectSQL)
@@ -150,7 +159,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 
 		// Test dbClose
-		closeFuncVal, _ := env.Get("dbClose")
+		closeFuncVal, _ := dbModule["dbClose"]
 		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
 		closeResult := closeFunc(connId)
 		if closeResult != true {
@@ -159,8 +168,10 @@ func TestDatabaseFunctions(t *testing.T) {
 	})
 
 	t.Run("TestDBUtilities", func(t *testing.T) {
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
 		// Test dbEscape
-		escapeFuncVal, _ := env.Get("dbEscape")
+		escapeFuncVal, _ := dbModule["dbEscape"]
 		escapeFunc := escapeFuncVal.(r2core.BuiltinFunction)
 		testString := "O'Connor's Data"
 		escaped := escapeFunc(testString)
@@ -170,12 +181,12 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 
 		// Test dbGetConnections with active connections
-		connIdFuncVal, _ := env.Get("dbConnect")
+		connIdFuncVal, _ := dbModule["dbConnect"]
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connId1 := connIdFunc("sqlite3", ":memory:").(string)
 		connId2 := connIdFunc("sqlite3", ":memory:").(string)
 
-		getConnsFuncVal, _ := env.Get("dbGetConnections")
+		getConnsFuncVal, _ := dbModule["dbGetConnections"]
 		getConnsFunc := getConnsFuncVal.(r2core.BuiltinFunction)
 		connections := getConnsFunc().([]interface{})
 
@@ -184,15 +195,17 @@ func TestDatabaseFunctions(t *testing.T) {
 		}
 
 		// Clean up
-		closeFuncVal, _ := env.Get("dbClose")
+		closeFuncVal, _ := dbModule["dbClose"]
 		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
 		closeFunc(connId1)
 		closeFunc(connId2)
 	})
 
 	t.Run("TestDBErrors", func(t *testing.T) {
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
 		// Test operations on non-existent connection
-		queryFuncVal, _ := env.Get("dbQuery")
+		queryFuncVal, _ := dbModule["dbQuery"]
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
 
 		defer func() {
@@ -205,17 +218,19 @@ func TestDatabaseFunctions(t *testing.T) {
 	})
 
 	t.Run("TestDBFileOperations", func(t *testing.T) {
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
 		// Test with a file-based SQLite database
 		testDB := "/tmp/test_r2lang.db"
 		defer os.Remove(testDB) // Clean up after test
 
-		connIdFuncVal, _ := env.Get("dbConnect")
+		connIdFuncVal, _ := dbModule["dbConnect"]
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connId := connIdFunc("sqlite3", testDB).(string)
 
-		execFuncVal, _ := env.Get("dbExec")
+		execFuncVal, _ := dbModule["dbExec"]
 		execFunc := execFuncVal.(r2core.BuiltinFunction)
-		queryFuncVal, _ := env.Get("dbQuery")
+		queryFuncVal, _ := dbModule["dbQuery"]
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
 
 		// Create and populate table
@@ -234,7 +249,7 @@ func TestDatabaseFunctions(t *testing.T) {
 			t.Fatalf("Expected 'test_value', got %v", row["value"])
 		}
 
-		closeFuncVal, _ := env.Get("dbClose")
+		closeFuncVal, _ := dbModule["dbClose"]
 		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
 		closeFunc(connId)
 
@@ -245,13 +260,15 @@ func TestDatabaseFunctions(t *testing.T) {
 	})
 
 	t.Run("TestDBTypesAndConversions", func(t *testing.T) {
-		connIdFuncVal, _ := env.Get("dbConnect")
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
+		connIdFuncVal, _ := dbModule["dbConnect"]
 		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
 		connId := connIdFunc("sqlite3", ":memory:").(string)
 
-		execFuncVal, _ := env.Get("dbExec")
+		execFuncVal, _ := dbModule["dbExec"]
 		execFunc := execFuncVal.(r2core.BuiltinFunction)
-		queryFuncVal, _ := env.Get("dbQuery")
+		queryFuncVal, _ := dbModule["dbQuery"]
 		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
 
 		// Create table with different data types
@@ -285,7 +302,7 @@ func TestDatabaseFunctions(t *testing.T) {
 			t.Fatalf("Expected text_val 'hello world', got %v", row["text_val"])
 		}
 
-		closeFuncVal, _ := env.Get("dbClose")
+		closeFuncVal, _ := dbModule["dbClose"]
 		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
 		closeFunc(connId)
 	})

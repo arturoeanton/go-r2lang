@@ -144,84 +144,85 @@ type WSDLElement struct {
 
 // RegisterSOAP registers SOAP functions in R2Lang environment
 func RegisterSOAP(env *r2core.Environment) {
-	// Create SOAP client from WSDL with optional custom headers
-	env.Set("soapClient", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("soapClient requires (wsdlURL, [customHeaders])")
-		}
-
-		wsdlURL, ok := args[0].(string)
-		if !ok {
-			panic("soapClient: wsdlURL must be a string")
-		}
-
-		// Parse optional custom headers
-		var customHeaders map[string]interface{}
-		if len(args) > 1 {
-			if headers, ok := args[1].(map[string]interface{}); ok {
-				customHeaders = headers
-			} else {
-				panic("soapClient: customHeaders must be a map")
+	functions := map[string]r2core.BuiltinFunction{
+		"soapClient": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("soapClient requires (wsdlURL, [customHeaders])")
 			}
-		}
 
-		client, err := createSOAPClient(wsdlURL, customHeaders)
-		if err != nil {
-			// Provide more detailed error information
-			errorMsg := fmt.Sprintf("soapClient: failed to create client from '%s'", wsdlURL)
-			if strings.Contains(err.Error(), "connection reset") {
-				errorMsg += " - Network connectivity issue. The WSDL service may be unavailable or blocking requests."
-			} else if strings.Contains(err.Error(), "no such host") {
-				errorMsg += " - DNS resolution failed. Check the URL and internet connectivity."
-			} else if strings.Contains(err.Error(), "timeout") {
-				errorMsg += " - Request timeout. The service may be slow or overloaded."
+			wsdlURL, ok := args[0].(string)
+			if !ok {
+				panic("soapClient: wsdlURL must be a string")
 			}
-			errorMsg += fmt.Sprintf(" Error: %v", err)
-			panic(errorMsg)
-		}
 
-		return soapClientToMap(client)
-	}))
+			// Parse optional custom headers
+			var customHeaders map[string]interface{}
+			if len(args) > 1 {
+				if headers, ok := args[1].(map[string]interface{}); ok {
+					customHeaders = headers
+				} else {
+					panic("soapClient: customHeaders must be a map")
+				}
+			}
 
-	// Create simple SOAP envelope
-	env.Set("soapEnvelope", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 3 {
-			panic("soapEnvelope requires (namespace, methodName, bodyContent)")
-		}
+			client, err := createSOAPClient(wsdlURL, customHeaders)
+			if err != nil {
+				// Provide more detailed error information
+				errorMsg := fmt.Sprintf("soapClient: failed to create client from '%s'", wsdlURL)
+				if strings.Contains(err.Error(), "connection reset") {
+					errorMsg += " - Network connectivity issue. The WSDL service may be unavailable or blocking requests."
+				} else if strings.Contains(err.Error(), "no such host") {
+					errorMsg += " - DNS resolution failed. Check the URL and internet connectivity."
+				} else if strings.Contains(err.Error(), "timeout") {
+					errorMsg += " - Request timeout. The service may be slow or overloaded."
+				}
+				errorMsg += fmt.Sprintf(" Error: %v", err)
+				panic(errorMsg)
+			}
 
-		namespace, ok1 := args[0].(string)
-		methodName, ok2 := args[1].(string)
-		bodyContent, ok3 := args[2].(string)
+			return soapClientToMap(client)
+		}),
 
-		if !ok1 || !ok2 || !ok3 {
-			panic("soapEnvelope: all parameters must be strings")
-		}
+		"soapEnvelope": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 3 {
+				panic("soapEnvelope requires (namespace, methodName, bodyContent)")
+			}
 
-		envelope := createSOAPEnvelope(namespace, methodName, bodyContent)
-		return envelope
-	}))
+			namespace, ok1 := args[0].(string)
+			methodName, ok2 := args[1].(string)
+			bodyContent, ok3 := args[2].(string)
 
-	// Send raw SOAP request
-	env.Set("soapRequest", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 3 {
-			panic("soapRequest requires (url, soapAction, envelope)")
-		}
+			if !ok1 || !ok2 || !ok3 {
+				panic("soapEnvelope: all parameters must be strings")
+			}
 
-		url, ok1 := args[0].(string)
-		soapAction, ok2 := args[1].(string)
-		envelope, ok3 := args[2].(string)
+			envelope := createSOAPEnvelope(namespace, methodName, bodyContent)
+			return envelope
+		}),
 
-		if !ok1 || !ok2 || !ok3 {
-			panic("soapRequest: all parameters must be strings")
-		}
+		"soapRequest": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 3 {
+				panic("soapRequest requires (url, soapAction, envelope)")
+			}
 
-		response, err := sendSOAPRequest(url, soapAction, envelope)
-		if err != nil {
-			panic(fmt.Sprintf("soapRequest: %v", err))
-		}
+			url, ok1 := args[0].(string)
+			soapAction, ok2 := args[1].(string)
+			envelope, ok3 := args[2].(string)
 
-		return response
-	}))
+			if !ok1 || !ok2 || !ok3 {
+				panic("soapRequest: all parameters must be strings")
+			}
+
+			response, err := sendSOAPRequest(url, soapAction, envelope)
+			if err != nil {
+				panic(fmt.Sprintf("soapRequest: %v", err))
+			}
+
+			return response
+		}),
+	}
+
+	RegisterModule(env, "soap", functions)
 }
 
 // createSOAPClient creates a new SOAP client from WSDL URL with optional custom headers

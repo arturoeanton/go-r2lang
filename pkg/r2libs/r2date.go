@@ -7,7 +7,13 @@ import (
 )
 
 func RegisterDate(env *r2core.Environment) {
-	env.Set("Date", createDateObject())
+	functions := map[string]r2core.BuiltinFunction{
+		"Date": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			return createDateObject()
+		}),
+	}
+
+	RegisterModule(env, "date", functions)
 }
 
 func createDateObject() map[string]interface{} {

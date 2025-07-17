@@ -71,7 +71,7 @@ func BenchmarkArrayOperations(b *testing.B) {
 			}
 			
 			let sum = 0;
-			for (let i = 0; i < len(arr); i = i + 1) {
+			for (let i = 0; i < std.len(arr); i = i + 1) {
 				sum = sum + arr[i];
 			}
 			return sum;
@@ -168,10 +168,10 @@ func BenchmarkObjectOperations(b *testing.B) {
 			}
 			
 			let greetings = [];
-			for (let i = 0; i < len(people); i = i + 1) {
+			for (let i = 0; i < std.len(people); i = i + 1) {
 				greetings.push(people[i].greet());
 			}
-			return len(greetings);
+			return std.len(greetings);
 		}
 		testObjects();
 	`
@@ -284,7 +284,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 				obj1["active" + i] = true;
 				bigArray.push(obj1);
 			}
-			return len(bigArray);
+			return std.len(bigArray);
 		}
 		memoryTest();
 	`

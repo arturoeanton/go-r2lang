@@ -14,37 +14,37 @@ func TestEvalFunction_Simple(t *testing.T) {
 	}{
 		{
 			"simple arithmetic",
-			"eval(\"5 + 3\")",
+			"std.eval(\"5 + 3\")",
 			float64(8),
 		},
 		{
 			"string concatenation",
-			"eval(\"'Hello' + ' World'\")",
+			"std.eval(\"'Hello' + ' World'\")",
 			"Hello World",
 		},
 		{
 			"boolean expression",
-			"eval(\"10 > 5\")",
+			"std.eval(\"10 > 5\")",
 			true,
 		},
 		{
 			"variable access",
-			"let x = 10; eval(\"x + 5\")",
+			"let x = 10; std.eval(\"x + 5\")",
 			float64(15),
 		},
 		{
 			"dynamic variable creation",
-			"eval(\"let y = 42\"); y",
+			"std.eval(\"let y = 42\"); y",
 			float64(42),
 		},
 		{
 			"ternary in eval",
-			"eval(\"5 > 3 ? 100 : 200\")",
+			"std.eval(\"5 > 3 ? 100 : 200\")",
 			float64(100),
 		},
 		{
 			"multiple variables in eval",
-			"let a = 5, b = 3; eval(\"a * b\")",
+			"let a = 5, b = 3; std.eval(\"a * b\")",
 			float64(15),
 		},
 	}
@@ -76,11 +76,11 @@ func TestEvalFunction_Errors(t *testing.T) {
 	}{
 		{
 			"no arguments",
-			"eval()",
+			"std.eval()",
 		},
 		{
 			"non-string argument",
-			"eval(123)",
+			"std.eval(123)",
 		},
 	}
 

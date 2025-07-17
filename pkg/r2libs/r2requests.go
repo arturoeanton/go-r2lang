@@ -66,21 +66,21 @@ type BasicAuth struct {
 
 func RegisterRequests(env *r2core.Environment) {
 	initGlobalCookieJar()
-	// Global request functions
-	env.Set("get", r2core.BuiltinFunction(globalGet))
-	env.Set("post", r2core.BuiltinFunction(globalPost))
-	env.Set("put", r2core.BuiltinFunction(globalPut))
-	env.Set("delete", r2core.BuiltinFunction(globalDelete))
-	env.Set("patch", r2core.BuiltinFunction(globalPatch))
-	env.Set("head", r2core.BuiltinFunction(globalHead))
-	env.Set("options", r2core.BuiltinFunction(globalOptions))
 
-	// Session creation
-	env.Set("session", r2core.BuiltinFunction(createSession))
+	functions := map[string]r2core.BuiltinFunction{
+		"get":       r2core.BuiltinFunction(globalGet),
+		"post":      r2core.BuiltinFunction(globalPost),
+		"put":       r2core.BuiltinFunction(globalPut),
+		"delete":    r2core.BuiltinFunction(globalDelete),
+		"patch":     r2core.BuiltinFunction(globalPatch),
+		"head":      r2core.BuiltinFunction(globalHead),
+		"options":   r2core.BuiltinFunction(globalOptions),
+		"session":   r2core.BuiltinFunction(createSession),
+		"urlencode": r2core.BuiltinFunction(urlEncode),
+		"urldecode": r2core.BuiltinFunction(urlDecode),
+	}
 
-	// Utility functions
-	env.Set("urlencode", r2core.BuiltinFunction(urlEncode))
-	env.Set("urldecode", r2core.BuiltinFunction(urlDecode))
+	RegisterModule(env, "request", functions)
 }
 
 // Global request functions that create a new session for each request

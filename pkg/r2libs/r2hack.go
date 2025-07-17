@@ -26,32 +26,27 @@ import (
 // Enfoque didáctico, no pretende ser una suite de hacking real.
 
 func RegisterHack(env *r2core.Environment) {
-	hackFunctions := []struct {
-		Name string
-		Func r2core.BuiltinFunction
-	}{
-		{"hashMD5", hashMD5},
-		{"hashSHA1", hashSHA1},
-		{"hashSHA256", hashSHA256},
-		{"base64Encode", base64Encode},
-		{"base64Decode", base64Decode},
-		{"portScan", portScan},
-		{"whois", whois},
-		{"hexdump", hexdump},
-		{"hmacSHA256", hmacSHA256},
-		{"aesEncrypt", aesEncrypt},
-		{"aesDecrypt", aesDecrypt},
-		{"dnsLookup", dnsLookup},
-		{"dnsLookupAddr", dnsLookupAddr},
-		{"simplePing", simplePing},
-		{"quickRSA", quickRSA},
-		{"rsaEncrypt", rsaEncrypt},
-		{"rsaDecrypt", rsaDecrypt},
+	functions := map[string]r2core.BuiltinFunction{
+		"hashMD5":       hashMD5,
+		"hashSHA1":      hashSHA1,
+		"hashSHA256":    hashSHA256,
+		"base64Encode":  base64Encode,
+		"base64Decode":  base64Decode,
+		"portScan":      portScan,
+		"whois":         whois,
+		"hexdump":       hexdump,
+		"hmacSHA256":    hmacSHA256,
+		"aesEncrypt":    aesEncrypt,
+		"aesDecrypt":    aesDecrypt,
+		"dnsLookup":     dnsLookup,
+		"dnsLookupAddr": dnsLookupAddr,
+		"simplePing":    simplePing,
+		"quickRSA":      quickRSA,
+		"rsaEncrypt":    rsaEncrypt,
+		"rsaDecrypt":    rsaDecrypt,
 	}
 
-	for _, f := range hackFunctions {
-		env.Set(f.Name, f.Func)
-	}
+	RegisterModule(env, "hack", functions)
 }
 
 var hashMD5 = r2core.BuiltinFunction(func(args ...interface{}) interface{} {

@@ -15,214 +15,188 @@ import (
 // r2httpclient.go: Funciones nativas de HTTP y JSON/XML en R2
 
 func RegisterHTTPClient(env *r2core.Environment) {
+	functions := map[string]r2core.BuiltinFunction{
+		"clientHttpGet": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("clientHttpGet necesita (url)")
+			}
+			url, ok := args[0].(string)
+			if !ok {
+				panic("clientHttpGet: url debe ser string")
+			}
+			resp, err := http.Get(url)
+			if err != nil {
+				panic(fmt.Sprintf("clientHttpGet: error en GET '%s': %v", url, err))
+			}
+			defer resp.Body.Close()
+			data, err := io.ReadAll(resp.Body)
+			if err != nil {
+				panic(fmt.Sprintf("clientHttpGet: error al leer body: %v", err))
+			}
+			return string(data)
+		}),
 
-	//========================================
-	// 1) httpGet(url) => string (body)
-	//========================================
-	env.Set("clientHttpGet", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("clientHttpGet necesita (url)")
-		}
-		url, ok := args[0].(string)
-		if !ok {
-			panic("clientHttpGet: url debe ser string")
-		}
-		resp, err := http.Get(url)
-		if err != nil {
-			panic(fmt.Sprintf("clientHttpGet: error en GET '%s': %v", url, err))
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(fmt.Sprintf("clientHttpGet: error al leer body: %v", err))
-		}
-		return string(data)
-	}))
+		"clientHttpPost": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("clientHttpPost necesita (url, bodyString)")
+			}
+			url, ok1 := args[0].(string)
+			bodyStr, ok2 := args[1].(string)
+			if !ok1 || !ok2 {
+				panic("clientHttpPost: (url, bodyString) deben ser strings")
+			}
 
-	//========================================
-	// 2) httpPost(url, bodyString) => string (respuesta)
-	//========================================
-	env.Set("clientHttpPost", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 2 {
-			panic("clientHttpPost necesita (url, bodyString)")
-		}
-		url, ok1 := args[0].(string)
-		bodyStr, ok2 := args[1].(string)
-		if !ok1 || !ok2 {
-			panic("clientHttpPost: (url, bodyString) deben ser strings")
-		}
+			resp, err := http.Post(url, "text/plain", bytes.NewBufferString(bodyStr))
+			if err != nil {
+				panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
+			}
+			defer resp.Body.Close()
+			data, err := io.ReadAll(resp.Body)
+			if err != nil {
+				panic(fmt.Sprintf("clientHttpPost: error al leer body: %v", err))
+			}
+			return string(data)
+		}),
 
-		resp, err := http.Post(url, "text/plain", bytes.NewBufferString(bodyStr))
-		if err != nil {
-			panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(fmt.Sprintf("clientHttpPost: error al leer body: %v", err))
-		}
-		return string(data)
-	}))
+		"parseJSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("parseJSON necesita (jsonString)")
+			}
+			js, ok := args[0].(string)
+			if !ok {
+				panic("parseJSON: argumento debe ser string JSON")
+			}
+			var result interface{}
+			err := json.Unmarshal([]byte(js), &result)
+			if err != nil {
+				panic(fmt.Sprintf("parseJSON: error al parsear JSON: %v", err))
+			}
+			// result puede ser map[string]interface{} o []interface{}
+			return result
+		}),
 
-	//========================================
-	// 3) parseJSON(jsonString) => map/array (R2)
-	//    Convierte un string JSON a un map[string]interface{} o []interface{}
-	//========================================
-	env.Set("parseJSON", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("parseJSON necesita (jsonString)")
-		}
-		js, ok := args[0].(string)
-		if !ok {
-			panic("parseJSON: argumento debe ser string JSON")
-		}
-		var result interface{}
-		err := json.Unmarshal([]byte(js), &result)
-		if err != nil {
-			panic(fmt.Sprintf("parseJSON: error al parsear JSON: %v", err))
-		}
-		// result puede ser map[string]interface{} o []interface{}
-		return result
-	}))
+		"stringifyJSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("stringifyJSON necesita (value)")
+			}
+			val := args[0]
+			// val debería ser un map[string]interface{} o []interface{} (o algo anidable)
+			data, err := json.Marshal(val)
+			if err != nil {
+				panic(fmt.Sprintf("stringifyJSON: error al serializar: %v", err))
+			}
+			return string(data)
+		}),
 
-	//========================================
-	// 4) stringifyJSON(value) => string
-	//    Convierte un map/array nativo R2 a string JSON
-	//========================================
-	env.Set("stringifyJSON", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("stringifyJSON necesita (value)")
-		}
-		val := args[0]
-		// val debería ser un map[string]interface{} o []interface{} (o algo anidable)
-		data, err := json.Marshal(val)
-		if err != nil {
-			panic(fmt.Sprintf("stringifyJSON: error al serializar: %v", err))
-		}
-		return string(data)
-	}))
+		"clientHttpGetJSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("httpGetJSON necesita (url)")
+			}
+			url, ok := args[0].(string)
+			if !ok {
+				panic("httpGetJSON: url debe ser string")
+			}
+			resp, err := http.Get(url)
+			if err != nil {
+				panic(fmt.Sprintf("httpGetJSON: error en GET '%s': %v", url, err))
+			}
+			defer resp.Body.Close()
+			data, err := io.ReadAll(resp.Body)
+			if err != nil {
+				panic(fmt.Sprintf("httpGetJSON: error al leer body: %v", err))
+			}
+			var result interface{}
+			if err := json.Unmarshal(data, &result); err != nil {
+				panic(fmt.Sprintf("httpGetJSON: error al parsear JSON: %v", err))
+			}
+			return result
+		}),
 
-	//========================================
-	// 5) httpGetJSON(url) => map/array R2
-	//    Hace GET y parsea JSON automáticamente
-	//========================================
-	env.Set("clientHttpGetJSON", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("httpGetJSON necesita (url)")
-		}
-		url, ok := args[0].(string)
-		if !ok {
-			panic("httpGetJSON: url debe ser string")
-		}
-		resp, err := http.Get(url)
-		if err != nil {
-			panic(fmt.Sprintf("httpGetJSON: error en GET '%s': %v", url, err))
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(fmt.Sprintf("httpGetJSON: error al leer body: %v", err))
-		}
-		var result interface{}
-		if err := json.Unmarshal(data, &result); err != nil {
-			panic(fmt.Sprintf("httpGetJSON: error al parsear JSON: %v", err))
-		}
-		return result
-	}))
+		"clientHttpPostJSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("httpPostJSON necesita (url, value)")
+			}
+			url, ok1 := args[0].(string)
+			val := args[1] // supuestamente map/array
+			if !ok1 {
+				panic("httpPostJSON: url debe ser string")
+			}
 
-	//========================================
-	// 6) httpPostJSON(url, value) => map/array R2
-	//    Serializa 'value' a JSON, POST, y parsea la respuesta como JSON
-	//========================================
-	env.Set("clientHttpPostJSON", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 2 {
-			panic("httpPostJSON necesita (url, value)")
-		}
-		url, ok1 := args[0].(string)
-		val := args[1] // supuestamente map/array
-		if !ok1 {
-			panic("httpPostJSON: url debe ser string")
-		}
+			// Serializamos 'val' a JSON
+			jsData, err := json.Marshal(val)
+			if err != nil {
+				panic(fmt.Sprintf("httpPostJSON: error al serializar: %v", err))
+			}
 
-		// Serializamos 'val' a JSON
-		jsData, err := json.Marshal(val)
-		if err != nil {
-			panic(fmt.Sprintf("httpPostJSON: error al serializar: %v", err))
-		}
+			resp, err := http.Post(url, "application/json", bytes.NewReader(jsData))
+			if err != nil {
+				panic(fmt.Sprintf("httpPostJSON: error en POST '%s': %v", url, err))
+			}
+			defer resp.Body.Close()
+			respData, err := io.ReadAll(resp.Body)
+			if err != nil {
+				panic(fmt.Sprintf("httpPostJSON: error al leer respuesta: %v", err))
+			}
 
-		resp, err := http.Post(url, "application/json", bytes.NewReader(jsData))
-		if err != nil {
-			panic(fmt.Sprintf("httpPostJSON: error en POST '%s': %v", url, err))
-		}
-		defer resp.Body.Close()
-		respData, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(fmt.Sprintf("httpPostJSON: error al leer respuesta: %v", err))
-		}
+			var result interface{}
+			if err := json.Unmarshal(respData, &result); err != nil {
+				panic(fmt.Sprintf("httpPostJSON: error al parsear respuesta JSON: %v", err))
+			}
+			return result
+		}),
 
-		var result interface{}
-		if err := json.Unmarshal(respData, &result); err != nil {
-			panic(fmt.Sprintf("httpPostJSON: error al parsear respuesta JSON: %v", err))
-		}
-		return result
-	}))
+		"parseXML": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("parseXML necesita (xmlString)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("parseXML: argumento debe ser string con XML")
+			}
+			var root xmlNode
+			err := xml.Unmarshal([]byte(s), &root)
+			if err != nil {
+				panic(fmt.Sprintf("parseXML: error al parsear XML: %v", err))
+			}
+			// Convertimos xmlNode -> map[string]interface{}
+			return xmlNodeToMap(&root)
+		}),
 
-	//========================================
-	// 7) parseXML(xmlString) => map/array (muy simplificado)
-	//========================================
-	env.Set("parseXML", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("parseXML necesita (xmlString)")
-		}
-		s, ok := args[0].(string)
-		if !ok {
-			panic("parseXML: argumento debe ser string con XML")
-		}
-		var root xmlNode
-		err := xml.Unmarshal([]byte(s), &root)
-		if err != nil {
-			panic(fmt.Sprintf("parseXML: error al parsear XML: %v", err))
-		}
-		// Convertimos xmlNode -> map[string]interface{}
-		return xmlNodeToMap(&root)
-	}))
+		"stringifyXML": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("stringifyXML necesita (value)")
+			}
+			valMap, ok := args[0].(map[string]interface{})
+			if !ok {
+				panic("stringifyXML: se esperaba un map[string]interface{}")
+			}
+			// Podrías tener un "root" con subvalores, etc.
+			// Aquí supongo que el map tiene 1 root key
+			if len(valMap) != 1 {
+				panic("stringifyXML: se espera un map con un root key")
+			}
 
-	//========================================
-	// 8) stringifyXML(value) => string
-	//    Convierte un map[string]interface{} en un XML muy básico
-	//========================================
-	env.Set("stringifyXML", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if len(args) < 1 {
-			panic("stringifyXML necesita (value)")
-		}
-		valMap, ok := args[0].(map[string]interface{})
-		if !ok {
-			panic("stringifyXML: se esperaba un map[string]interface{}")
-		}
-		// Podrías tener un "root" con subvalores, etc.
-		// Aquí supongo que el map tiene 1 root key
-		if len(valMap) != 1 {
-			panic("stringifyXML: se espera un map con un root key")
-		}
+			// Tomamos la primera key como root
+			var rootKey string
+			var rootVal interface{}
+			for k, v := range valMap {
+				rootKey = k
+				rootVal = v
+				break
+			}
+			// Construimos un xmlNode
+			node := mapToXMLNode(rootKey, rootVal)
+			out, err := xml.MarshalIndent(node, "", "  ")
+			if err != nil {
+				panic(fmt.Sprintf("stringifyXML: error al serializar: %v", err))
+			}
+			// xml.Marshal produce <xmlNode> algo ... </xmlNode>
+			// Si queremos algo más refinado, habría que personalizar.
+			return string(out)
+		}),
+	}
 
-		// Tomamos la primera key como root
-		var rootKey string
-		var rootVal interface{}
-		for k, v := range valMap {
-			rootKey = k
-			rootVal = v
-			break
-		}
-		// Construimos un xmlNode
-		node := mapToXMLNode(rootKey, rootVal)
-		out, err := xml.MarshalIndent(node, "", "  ")
-		if err != nil {
-			panic(fmt.Sprintf("stringifyXML: error al serializar: %v", err))
-		}
-		// xml.Marshal produce <xmlNode> algo ... </xmlNode>
-		// Si queremos algo más refinado, habría que personalizar.
-		return string(out)
-	}))
+	RegisterModule(env, "httpclient", functions)
 }
 
 //===========================================================

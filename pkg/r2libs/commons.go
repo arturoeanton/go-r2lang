@@ -1,6 +1,7 @@
 package r2libs
 
 import (
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 	"strconv"
 )
 
@@ -72,4 +73,13 @@ func equals(a, b interface{}) bool {
 		return b == nil
 	}
 	return false
+}
+
+// RegisterModule registers a module with its functions under a namespace
+func RegisterModule(env *r2core.Environment, moduleName string, functions map[string]r2core.BuiltinFunction) {
+	module := make(map[string]interface{})
+	for name, fn := range functions {
+		module[name] = fn
+	}
+	env.Set(moduleName, module)
 }
