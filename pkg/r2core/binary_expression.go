@@ -50,6 +50,8 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 		return mulValues(lv, rv)
 	case "/":
 		return divValues(lv, rv)
+	case "%":
+		return modValues(lv, rv)
 	case "<":
 		return toFloat(lv) < toFloat(rv)
 	case ">":
@@ -90,6 +92,11 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 			panic("Division by zero")
 		}
 		return leftNum.Value / rightNum.Value
+	case "%":
+		if rightNum.Value == 0 {
+			panic("Modulo by zero")
+		}
+		return float64(int(leftNum.Value) % int(rightNum.Value))
 	case "<":
 		return leftNum.Value < rightNum.Value
 	case ">":

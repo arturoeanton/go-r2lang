@@ -30,8 +30,10 @@ func RegisterStd(env *r2core.Environment) {
 			return float64(len(v))
 		case []interface{}:
 			return float64(len(v))
+		case map[string]interface{}:
+			return float64(len(v))
 		default:
-			panic("len: Expected string or []interface{}")
+			panic("len: Expected string, []interface{}, or map[string]interface{}")
 		}
 	}))
 
@@ -164,6 +166,23 @@ func RegisterStd(env *r2core.Environment) {
 
 		// Evaluar en el contexto del entorno actual
 		return program.Eval(env)
+	}))
+
+	env.Set("keys", r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("keys needs 1 argument (map)")
+		}
+		mapVal, ok := args[0].(map[string]interface{})
+		if !ok {
+			panic("keys: argument should be a map")
+		}
+
+		// Crear array con todas las claves
+		keys := make([]interface{}, 0, len(mapVal))
+		for key := range mapVal {
+			keys = append(keys, key)
+		}
+		return keys
 	}))
 
 }

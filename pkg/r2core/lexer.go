@@ -48,10 +48,14 @@ const (
 	THROW    = "throw"
 	BREAK    = "break"
 	CONTINUE = "continue"
+	TRUE     = "true"
+	FALSE    = "false"
 
 	// Testing framework tokens - will be replaced with new system
 	TOKEN_BREAK    = "BREAK"
 	TOKEN_CONTINUE = "CONTINUE"
+	TOKEN_TRUE     = "TRUE"
+	TOKEN_FALSE    = "FALSE"
 )
 
 var (
@@ -257,7 +261,7 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
-		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", ".", ":", "?", "\n",
+		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", "%", ".", ":", "?", "\n",
 	}
 	for _, s := range singleCharSymbols {
 		if string(ch) == s {
@@ -280,6 +284,23 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 		l.nextch()
 		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "=", Line: l.line, Pos: l.pos, Col: l.col}
 		return l.currentToken, true
+	}
+
+	// Operadores lógicos
+	if ch == '&' {
+		if l.pos+1 < l.length && l.input[l.pos+1] == '&' {
+			l.pos += 2
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "&&", Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		}
+	}
+
+	if ch == '|' {
+		if l.pos+1 < l.length && l.input[l.pos+1] == '|' {
+			l.pos += 2
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "||", Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		}
 	}
 
 	// Operadores relacionales
@@ -351,6 +372,12 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case strings.ToLower(CONTINUE):
 			l.currentToken = Token{Type: TOKEN_CONTINUE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(TRUE):
+			l.currentToken = Token{Type: TOKEN_TRUE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(FALSE):
+			l.currentToken = Token{Type: TOKEN_FALSE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 			// ... otras palabras clave
 		default:

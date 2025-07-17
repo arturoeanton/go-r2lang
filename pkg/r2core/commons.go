@@ -220,6 +220,24 @@ func divValues(a, b interface{}) interface{} {
 	return toFloat(a) / den
 }
 
+func modValues(a, b interface{}) interface{} {
+	// Fast path: evitar conversiones si ya son float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			if bf == 0 {
+				panic("Modulo by zero")
+			}
+			return float64(int(af) % int(bf))
+		}
+	}
+
+	den := toFloat(b)
+	if den == 0 {
+		panic("Modulo by zero")
+	}
+	return float64(int(toFloat(a)) % int(den))
+}
+
 // Asignación en map/array
 func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *Environment) interface{} {
 	leftVal := idxExpr.Left.Eval(env)
@@ -256,7 +274,7 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 }
 
 func isBinaryOp(op string) bool {
-	ops := []string{"+", "-", "*", "/", "<", ">", "<=", ">=", "==", "!=", "&&", "||"}
+	ops := []string{"+", "-", "*", "/", "%", "<", ">", "<=", ">=", "==", "!=", "&&", "||"}
 	for _, o := range ops {
 		if op == o {
 			return true
