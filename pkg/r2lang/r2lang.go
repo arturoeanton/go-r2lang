@@ -30,6 +30,7 @@ func RunCode(filename string) {
 	r2libs.RegisterStd(env)
 	r2libs.RegisterIO(env)
 	r2libs.RegisterHTTPClient(env)
+	r2libs.RegisterRequests(env)
 	r2libs.RegisterString(env)
 	r2libs.RegisterMath(env)
 	r2libs.RegisterRand(env)
@@ -43,6 +44,7 @@ func RunCode(filename string) {
 	r2libs.RegisterUnicode(env)
 	r2libs.RegisterDate(env)
 	r2libs.RegisterDB(env)
+	r2libs.RegisterSOAP(env)
 	parser := r2core.NewParser(code)
 	env.Run(parser)
 }

@@ -35,6 +35,10 @@ export function activate(context: vscode.ExtensionContext) {
         runIndividualTest(testName, filePath);
     });
 
+    const runInReplCommand = vscode.commands.registerCommand('r2lang.runInRepl', () => {
+        runInRepl();
+    });
+
     // Register providers
     const documentFormattingProvider = vscode.languages.registerDocumentFormattingEditProvider(
         'r2lang',
@@ -55,6 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
         runCurrentTestCommand,
         runTestsWithCoverageCommand,
         runIndividualTestCommand,
+        runInReplCommand,
         documentFormattingProvider,
         hoverProvider,
         codeLensProvider
@@ -94,6 +99,21 @@ function runR2LangFile() {
     document.save().then(() => {
         const terminal = vscode.window.createTerminal('R2Lang');
         terminal.show();
+        
+        // Try to find project root with main.go
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder) {
+            const projectRoot = workspaceFolder.uri.fsPath;
+            const mainGoPath = path.join(projectRoot, 'main.go');
+            
+            if (fs.existsSync(mainGoPath)) {
+                // Use go run main.go if main.go exists
+                terminal.sendText(`cd "${projectRoot}" && go run main.go "${filePath}"`);
+                return;
+            }
+        }
+        
+        // Fallback to configured executable
         terminal.sendText(`"${executablePath}" "${filePath}"`);
     });
 }
@@ -124,7 +144,22 @@ function runR2LangSelection() {
     
     const terminal = vscode.window.createTerminal('R2Lang Selection');
     terminal.show();
-    terminal.sendText(`"${executablePath}" "${tempFilePath}"`);
+    
+    // Try to find project root with main.go
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+        const projectRoot = workspaceFolder.uri.fsPath;
+        const mainGoPath = path.join(projectRoot, 'main.go');
+        
+        if (fs.existsSync(mainGoPath)) {
+            // Use go run main.go if main.go exists
+            terminal.sendText(`cd "${projectRoot}" && go run main.go "${tempFilePath}"`);
+        } else {
+            terminal.sendText(`"${executablePath}" "${tempFilePath}"`);
+        }
+    } else {
+        terminal.sendText(`"${executablePath}" "${tempFilePath}"`);
+    }
     
     // Clean up temp file after a delay
     setTimeout(() => {
@@ -142,6 +177,21 @@ function openR2LangRepl() {
     
     const terminal = vscode.window.createTerminal('R2Lang REPL');
     terminal.show();
+    
+    // Try to find project root with main.go for REPL
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+        const projectRoot = workspaceFolder.uri.fsPath;
+        const mainGoPath = path.join(projectRoot, 'main.go');
+        
+        if (fs.existsSync(mainGoPath)) {
+            // Use go run main.go -repl if main.go exists
+            terminal.sendText(`cd "${projectRoot}" && go run main.go -repl`);
+            return;
+        }
+    }
+    
+    // Fallback to configured REPL executable
     terminal.sendText(`"${replExecutablePath}"`);
 }
 
@@ -415,4 +465,128 @@ class R2LangTestCodeLensProvider implements vscode.CodeLensProvider {
         
         return codeLenses;
     }
+}
+
+function runInRepl() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showErrorMessage('No active editor found');
+        return;
+    }
+
+    const document = editor.document;
+    const selection = editor.selection;
+    
+    // Get either selected text or current line
+    let codeToRun = '';
+    if (!selection.isEmpty) {
+        codeToRun = document.getText(selection);
+    } else {
+        const currentLine = document.lineAt(editor.selection.active);
+        codeToRun = currentLine.text;
+        
+        // If current line is empty or just whitespace, try to find the current function
+        if (!codeToRun.trim()) {
+            const functionCode = getCurrentFunction(document, editor.selection.active);
+            if (functionCode) {
+                codeToRun = functionCode;
+            }
+        }
+    }
+    
+    if (!codeToRun.trim()) {
+        vscode.window.showErrorMessage('No code to run. Select code or position cursor on a function.');
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('r2lang');
+    const replExecutablePath = config.get<string>('replExecutablePath', 'r2repl');
+    
+    const terminal = vscode.window.createTerminal('R2Lang REPL');
+    terminal.show();
+    
+    // Try to find project root with main.go for REPL
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+        const projectRoot = workspaceFolder.uri.fsPath;
+        const mainGoPath = path.join(projectRoot, 'main.go');
+        
+        if (fs.existsSync(mainGoPath)) {
+            // Use go run main.go -repl if main.go exists
+            terminal.sendText(`cd "${projectRoot}" && go run main.go -repl -no-output`);
+            // Wait a moment for REPL to start, then send code
+            setTimeout(() => {
+                codeToRun.split('\n').forEach(line => {
+                    if (line.trim()) {
+                        terminal.sendText(line);
+                    }
+                });
+            }, 1000);
+            return;
+        }
+    }
+    
+    // Fallback to configured REPL executable
+    terminal.sendText(`"${replExecutablePath}"`);
+    setTimeout(() => {
+        codeToRun.split('\n').forEach(line => {
+            if (line.trim()) {
+                terminal.sendText(line);
+            }
+        });
+    }, 1000);
+}
+
+function getCurrentFunction(document: vscode.TextDocument, position: vscode.Position): string | null {
+    const text = document.getText();
+    const lines = text.split('\n');
+    const currentLineIndex = position.line;
+    
+    // Look backwards for function declaration
+    let functionStart = -1;
+    for (let i = currentLineIndex; i >= 0; i--) {
+        const line = lines[i];
+        if (line.match(/^\s*func\s+\w+\s*\(/)) {
+            functionStart = i;
+            break;
+        }
+    }
+    
+    if (functionStart === -1) {
+        return null;
+    }
+    
+    // Look forwards for function end (matching braces)
+    let braceCount = 0;
+    let functionEnd = -1;
+    let inFunction = false;
+    
+    for (let i = functionStart; i < lines.length; i++) {
+        const line = lines[i];
+        
+        for (const char of line) {
+            if (char === '{') {
+                braceCount++;
+                inFunction = true;
+            } else if (char === '}') {
+                braceCount--;
+                if (inFunction && braceCount === 0) {
+                    functionEnd = i;
+                    break;
+                }
+            }
+        }
+        
+        if (functionEnd !== -1) {
+            break;
+        }
+    }
+    
+    if (functionEnd === -1) {
+        return null;
+    }
+    
+    // Extract function lines
+    const functionLines = lines.slice(functionStart, functionEnd + 1);
+    return functionLines.join('\n');
 }
