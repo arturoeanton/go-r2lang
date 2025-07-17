@@ -104,6 +104,12 @@
         "title": "Run Tests with Coverage",
         "category": "R2Lang",
         "icon": "$(graph)"
+      },
+      {
+        "command": "r2lang.runInRepl",
+        "title": "Run in REPL",
+        "category": "R2Lang",
+        "icon": "$(debug-console)"
       }
     ],
     "menus": {
@@ -149,6 +155,11 @@
           "when": "resourceExtname == .r2",
           "command": "r2lang.runTestsWithCoverage",
           "group": "r2lang@6"
+        },
+        {
+          "when": "resourceExtname == .r2",
+          "command": "r2lang.runInRepl",
+          "group": "r2lang@7"
         }
       ],
       "commandPalette": [
@@ -169,6 +180,10 @@
         },
         {
           "command": "r2lang.runTestsWithCoverage"
+        },
+        {
+          "command": "r2lang.runInRepl",
+          "when": "resourceExtname == .r2"
         }
       ]
     },
@@ -207,6 +222,12 @@
         "command": "r2lang.runTestsWithCoverage",
         "key": "ctrl+shift+f6",
         "mac": "cmd+shift+f6",
+        "when": "resourceExtname == .r2"
+      },
+      {
+        "command": "r2lang.runInRepl",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
         "when": "resourceExtname == .r2"
       }
     ],
