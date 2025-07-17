@@ -44,20 +44,18 @@ func TestDateFormatComprehensive(t *testing.T) {
 	dateModuleObj, _ := env.Get("date")
 	dateModule := dateModuleObj.(map[string]interface{})
 	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
-	dateObj := DateFunc().(map[string]interface{})
-	createFunc := dateObj["create"].(r2core.BuiltinFunction)
-	formatFunc := dateObj["format"].(r2core.BuiltinFunction)
+	formatFunc := dateModule["format"].(r2core.BuiltinFunction)
 
 	// Test date: 2024-07-15 14:30:25
 	args := []interface{}{
 		float64(2024),
-		float64(7),
+		float64(6), // JavaScript month (0-based)
 		float64(15),
 		float64(14),
 		float64(30),
 		float64(25),
 	}
-	dateValue := createFunc(args...).(*r2core.DateValue)
+	dateValue := DateFunc(args...).(*r2core.DateValue)
 
 	testCases := []struct {
 		format   string
@@ -100,9 +98,7 @@ func TestDateFormatEdgeCases(t *testing.T) {
 	dateModuleObj, _ := env.Get("date")
 	dateModule := dateModuleObj.(map[string]interface{})
 	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
-	dateObj := DateFunc().(map[string]interface{})
-	createFunc := dateObj["create"].(r2core.BuiltinFunction)
-	formatFunc := dateObj["format"].(r2core.BuiltinFunction)
+	formatFunc := dateModule["format"].(r2core.BuiltinFunction)
 
 	// Test various years including edge cases
 	testYears := []int{2024, 2025, 2020, 2000, 1999, 2030}
@@ -111,10 +107,10 @@ func TestDateFormatEdgeCases(t *testing.T) {
 		t.Run(fmt.Sprintf("Year_%d", year), func(t *testing.T) {
 			args := []interface{}{
 				float64(year),
-				float64(1),
+				float64(0), // JavaScript month (0-based)
 				float64(1),
 			}
-			dateValue := createFunc(args...).(*r2core.DateValue)
+			dateValue := DateFunc(args...).(*r2core.DateValue)
 
 			formatArgs := []interface{}{
 				dateValue,

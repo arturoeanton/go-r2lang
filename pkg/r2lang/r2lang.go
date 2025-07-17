@@ -45,6 +45,8 @@ func RunCode(filename string) {
 	r2libs.RegisterDate(env)
 	r2libs.RegisterDB(env)
 	r2libs.RegisterSOAP(env)
+	r2libs.RegisterJSON(env)
+	r2libs.RegisterConsole(env)
 	parser := r2core.NewParser(code)
 	env.Run(parser)
 }

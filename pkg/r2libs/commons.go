@@ -1,8 +1,9 @@
 package r2libs
 
 import (
-	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 	"strconv"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 func toFloat(val interface{}) float64 {

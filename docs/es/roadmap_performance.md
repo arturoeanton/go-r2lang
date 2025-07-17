@@ -1,4 +1,4 @@
-# Roadmap de Performance - R2Lang
+sw# Roadmap de Performance - R2Lang
 
 ## Resumen Ejecutivo
 
@@ -396,7 +396,7 @@ Implementar un sistema de compilación a bytecode para evitar la evaluación dir
 // pkg/r2bytecode/compiler.go
 package r2bytecode
 
-import "github.com/arturoeliasanton/go-r2lang/pkg/r2core"
+import "github.com/arturoeanton/go-r2lang/pkg/r2core"
 
 type Compiler struct {
     constants   []interface{}
