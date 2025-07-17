@@ -6,13 +6,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
+
+var (
+	globalCookieJar     *cookiejar.Jar
+	globalCookieJarOnce sync.Once
+)
+
+func initGlobalCookieJar() {
+	globalCookieJarOnce.Do(func() {
+		jar, _ := cookiejar.New(nil)
+		globalCookieJar = jar
+	})
+}
 
 // r2requests.go: Python requests-like HTTP client library for R2Lang
 
@@ -30,13 +47,15 @@ type Response struct {
 
 // Session represents an HTTP session for reusing connections and settings
 type Session struct {
-	Client  *http.Client
-	Headers map[string]string
-	Cookies map[string]string
-	Auth    *BasicAuth
-	Timeout time.Duration
-	Verify  bool
-	BaseURL string
+	Client     *http.Client
+	Headers    map[string]string
+	Auth       *BasicAuth
+	Timeout    time.Duration
+	Verify     bool
+	BaseURL    string
+	Proxies    map[string]string
+	MaxRetries int
+	RetryDelay time.Duration
 }
 
 // BasicAuth represents HTTP Basic Authentication
@@ -46,6 +65,7 @@ type BasicAuth struct {
 }
 
 func RegisterRequests(env *r2core.Environment) {
+	initGlobalCookieJar()
 	// Global request functions
 	env.Set("get", r2core.BuiltinFunction(globalGet))
 	env.Set("post", r2core.BuiltinFunction(globalPost))
@@ -105,11 +125,13 @@ func makeRequest(method string, args ...interface{}) interface{} {
 
 	// Create temporary session
 	session := &Session{
-		Client:  &http.Client{Timeout: 30 * time.Second},
-		Headers: make(map[string]string),
-		Cookies: make(map[string]string),
-		Timeout: 30 * time.Second,
-		Verify:  true,
+		Client:     &http.Client{Jar: globalCookieJar, Timeout: 30 * time.Second},
+		Headers:    make(map[string]string),
+		Timeout:    30 * time.Second,
+		Verify:     true,
+		Proxies:    make(map[string]string),
+		MaxRetries: 0,
+		RetryDelay: time.Second,
 	}
 
 	// Parse optional parameters
@@ -125,12 +147,15 @@ func makeRequest(method string, args ...interface{}) interface{} {
 
 // createSession creates a new Session object
 func createSession(args ...interface{}) interface{} {
+	jar, _ := cookiejar.New(nil)
 	session := &Session{
-		Client:  &http.Client{Timeout: 30 * time.Second},
-		Headers: make(map[string]string),
-		Cookies: make(map[string]string),
-		Timeout: 30 * time.Second,
-		Verify:  true,
+		Client:     &http.Client{Jar: jar, Timeout: 30 * time.Second},
+		Headers:    make(map[string]string),
+		Timeout:    30 * time.Second,
+		Verify:     true,
+		Proxies:    make(map[string]string),
+		MaxRetries: 0,
+		RetryDelay: time.Second,
 	}
 
 	// Return session as a map with methods
@@ -223,45 +248,68 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 		reqURL = strings.TrimSuffix(s.BaseURL, "/") + "/" + strings.TrimPrefix(reqURL, "/")
 	}
 
-	// Prepare request body
-	var body io.Reader
-	contentType := "application/json"
+	// Prepare request body data. We need to be able to re-read this for retries.
+	var bodyBytes []byte
+	var contentType string
 
 	if params != nil {
-		// Handle data parameter
-		if data, exists := params["data"]; exists {
-			switch d := data.(type) {
-			case string:
-				body = strings.NewReader(d)
-				contentType = "text/plain"
-			case map[string]interface{}:
-				jsonData, err := json.Marshal(d)
-				if err != nil {
-					panic(fmt.Sprintf("Failed to encode JSON data: %v", err))
+		if files, exists := params["files"]; exists {
+			if filesMap, ok := files.(map[string]interface{}); ok {
+				var b bytes.Buffer
+				writer := multipart.NewWriter(&b)
+				for key, value := range filesMap {
+					if filePath, ok := value.(string); ok {
+						file, err := os.Open(filePath)
+						if err != nil {
+							panic(fmt.Sprintf("Failed to open file: %v", err))
+						}
+						defer file.Close()
+						part, err := writer.CreateFormFile(key, filepath.Base(filePath))
+						if err != nil {
+							panic(fmt.Sprintf("Failed to create form file: %v", err))
+						}
+						_, err = io.Copy(part, file)
+						if err != nil {
+							panic(fmt.Sprintf("Failed to copy file content: %v", err))
+						}
+					}
 				}
-				body = bytes.NewReader(jsonData)
-				contentType = "application/json"
-			default:
-				jsonData, err := json.Marshal(d)
-				if err != nil {
-					panic(fmt.Sprintf("Failed to encode data: %v", err))
+				if data, exists := params["data"]; exists {
+					if dataMap, ok := data.(map[string]interface{}); ok {
+						for key, value := range dataMap {
+							_ = writer.WriteField(key, fmt.Sprint(value))
+						}
+					}
 				}
-				body = bytes.NewReader(jsonData)
+				writer.Close()
+				bodyBytes = b.Bytes()
+				contentType = writer.FormDataContentType()
+			}
+		} else {
+			contentType = "application/json" // Default
+			if data, exists := params["data"]; exists {
+				switch d := data.(type) {
+				case string:
+					bodyBytes = []byte(d)
+					contentType = "text/plain"
+				default:
+					jsonData, err := json.Marshal(d)
+					if err != nil {
+						panic(fmt.Sprintf("Failed to encode data: %v", err))
+					}
+					bodyBytes = jsonData
+				}
+			}
+			if jsonData, exists := params["json"]; exists {
+				data, err := json.Marshal(jsonData)
+				if err != nil {
+					panic(fmt.Sprintf("Failed to encode JSON: %v", err))
+				}
+				bodyBytes = data
 				contentType = "application/json"
 			}
 		}
 
-		// Handle json parameter
-		if jsonData, exists := params["json"]; exists {
-			data, err := json.Marshal(jsonData)
-			if err != nil {
-				panic(fmt.Sprintf("Failed to encode JSON: %v", err))
-			}
-			body = bytes.NewReader(data)
-			contentType = "application/json"
-		}
-
-		// Handle URL parameters
 		if urlParams, exists := params["params"]; exists {
 			if paramMap, ok := urlParams.(map[string]interface{}); ok {
 				values := url.Values{}
@@ -275,81 +323,113 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 				}
 			}
 		}
+		if proxies, exists := params["proxies"]; exists {
+			if proxiesMap, ok := proxies.(map[string]interface{}); ok {
+				proxyURL, err := getProxy(proxiesMap)
+				if err != nil {
+					panic(fmt.Sprintf("Invalid proxy configuration: %v", err))
+				}
+				if proxyURL != nil {
+					s.Client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+				}
+			}
+		}
+		if retries, exists := params["retries"]; exists {
+			if retriesMap, ok := retries.(map[string]interface{}); ok {
+				if max, ok := retriesMap["max"].(float64); ok {
+					s.MaxRetries = int(max)
+				}
+				if delay, ok := retriesMap["delay"].(float64); ok {
+					s.RetryDelay = time.Duration(delay) * time.Second
+				}
+			}
+		}
 	}
 
-	// Create request
-	ctx := context.Background()
-	if s.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, s.Timeout)
-		defer cancel()
-	}
+	var resp *http.Response
+	var err error
 
-	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create request: %v", err))
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", contentType)
-	for k, v := range s.Headers {
-		req.Header.Set(k, v)
-	}
-
-	// Handle headers from params
-	if params != nil {
-		if headers, exists := params["headers"]; exists {
-			if headerMap, ok := headers.(map[string]interface{}); ok {
-				for k, v := range headerMap {
-					req.Header.Set(k, fmt.Sprint(v))
+	for i := 0; i <= s.MaxRetries; i++ {
+		ctx := context.Background()
+		if s.Timeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, s.Timeout)
+			defer cancel()
+		}
+		if params != nil {
+			if timeout, exists := params["timeout"]; exists {
+				if timeoutVal, ok := timeout.(float64); ok {
+					duration := time.Duration(timeoutVal) * time.Second
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, duration)
+					defer cancel()
 				}
 			}
 		}
 
-		// Handle timeout
-		if timeout, exists := params["timeout"]; exists {
-			if timeoutVal, ok := timeout.(float64); ok {
-				duration := time.Duration(timeoutVal) * time.Second
-				ctx, cancel := context.WithTimeout(ctx, duration)
-				defer cancel()
-				req = req.WithContext(ctx)
+		var bodyReader io.Reader
+		if bodyBytes != nil {
+			bodyReader = bytes.NewReader(bodyBytes)
+		}
+
+		req, reqErr := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
+		if reqErr != nil {
+			panic(fmt.Sprintf("Failed to create request: %v", reqErr))
+		}
+
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		for k, v := range s.Headers {
+			req.Header.Set(k, v)
+		}
+		if params != nil {
+			if headers, exists := params["headers"]; exists {
+				if headerMap, ok := headers.(map[string]interface{}); ok {
+					for k, v := range headerMap {
+						req.Header.Set(k, fmt.Sprint(v))
+					}
+				}
 			}
+		}
+
+		if s.Auth != nil {
+			req.SetBasicAuth(s.Auth.Username, s.Auth.Password)
+		}
+		if params != nil {
+			if auth, exists := params["auth"]; exists {
+				if authArray, ok := auth.([]interface{}); ok && len(authArray) == 2 {
+					username := fmt.Sprint(authArray[0])
+					password := fmt.Sprint(authArray[1])
+					req.SetBasicAuth(username, password)
+				}
+			}
+		}
+
+		resp, err = s.Client.Do(req)
+		if err == nil && resp.StatusCode < 500 {
+			break
+		}
+
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		if i < s.MaxRetries {
+			time.Sleep(s.RetryDelay)
 		}
 	}
 
-	// Set cookies
-	for name, value := range s.Cookies {
-		req.AddCookie(&http.Cookie{Name: name, Value: value})
-	}
-
-	// Handle authentication
-	if s.Auth != nil {
-		req.SetBasicAuth(s.Auth.Username, s.Auth.Password)
-	}
-	if params != nil {
-		if auth, exists := params["auth"]; exists {
-			if authArray, ok := auth.([]interface{}); ok && len(authArray) == 2 {
-				username := fmt.Sprint(authArray[0])
-				password := fmt.Sprint(authArray[1])
-				req.SetBasicAuth(username, password)
-			}
-		}
-	}
-
-	// Make request
-	resp, err := s.Client.Do(req)
 	if err != nil {
-		panic(fmt.Sprintf("Request failed: %v", err))
+		panic(fmt.Sprintf("Request failed after %d retries: %v", s.MaxRetries, err))
 	}
 	defer resp.Body.Close()
 
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to read response body: %v", err))
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		panic(fmt.Sprintf("Failed to read response body: %v", readErr))
 	}
 
-	// Parse response headers
 	headers := make(map[string]interface{})
 	for name, values := range resp.Header {
 		if len(values) == 1 {
@@ -359,7 +439,6 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 		}
 	}
 
-	// Try to parse JSON response
 	var jsonResponse interface{}
 	if len(respBody) > 0 {
 		contentType := resp.Header.Get("Content-Type")
@@ -368,7 +447,6 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 		}
 	}
 
-	// Create response object
 	response := &Response{
 		URL:        resp.Request.URL.String(),
 		StatusCode: resp.StatusCode,
@@ -380,7 +458,6 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 		Elapsed:    time.Since(start),
 	}
 
-	// Return response as map
 	return responseToMap(response)
 }
 
@@ -437,4 +514,18 @@ func urlDecode(args ...interface{}) interface{} {
 	}
 
 	return decoded
+}
+
+func getProxy(proxiesMap map[string]interface{}) (*url.URL, error) {
+	if httpProxy, ok := proxiesMap["http"]; ok {
+		if httpProxyStr, ok := httpProxy.(string); ok {
+			return url.Parse(httpProxyStr)
+		}
+	}
+	if httpsProxy, ok := proxiesMap["https"]; ok {
+		if httpsProxyStr, ok := httpsProxy.(string); ok {
+			return url.Parse(httpsProxyStr)
+		}
+	}
+	return nil, nil
 }
