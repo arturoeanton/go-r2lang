@@ -45,6 +45,7 @@ func RunCode(filename string) {
 	r2libs.RegisterDate(env)
 	r2libs.RegisterDB(env)
 	r2libs.RegisterSOAP(env)
+	r2libs.RegisterGRPC(env)
 	r2libs.RegisterJSON(env)
 	r2libs.RegisterXML(env)
 	r2libs.RegisterCSV(env)
