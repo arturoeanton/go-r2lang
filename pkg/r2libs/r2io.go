@@ -2,6 +2,9 @@ package r2libs
 
 import (
 	"bufio"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -735,7 +738,293 @@ func RegisterIO(env *r2core.Environment) {
 			}
 			return nil
 		}),
+
+		// Stream operations
+		"readStream": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("readStream needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("readStream: path must be string")
+			}
+
+			batchSize := 1024
+			if len(args) > 1 {
+				if size, ok := args[1].(float64); ok {
+					batchSize = int(size)
+				}
+			}
+
+			file, err := os.Open(path)
+			if err != nil {
+				panic(fmt.Sprintf("readStream: error opening '%s': %v", path, err))
+			}
+			defer file.Close()
+
+			var chunks []interface{}
+			buffer := make([]byte, batchSize)
+			for {
+				n, err := file.Read(buffer)
+				if n > 0 {
+					chunks = append(chunks, string(buffer[:n]))
+				}
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					panic(fmt.Sprintf("readStream: error reading '%s': %v", path, err))
+				}
+			}
+			return chunks
+		}),
+
+		"writeStream": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("writeStream needs (path, chunks)")
+			}
+			path, ok1 := args[0].(string)
+			chunks, ok2 := args[1].([]interface{})
+			if !ok1 || !ok2 {
+				panic("writeStream: (path, chunks) must be (string, array)")
+			}
+
+			file, err := os.Create(path)
+			if err != nil {
+				panic(fmt.Sprintf("writeStream: error creating '%s': %v", path, err))
+			}
+			defer file.Close()
+
+			for _, chunk := range chunks {
+				if str, ok := chunk.(string); ok {
+					_, err := file.WriteString(str)
+					if err != nil {
+						panic(fmt.Sprintf("writeStream: error writing to '%s': %v", path, err))
+					}
+				} else {
+					panic("writeStream: all chunks must be strings")
+				}
+			}
+			return nil
+		}),
+
+		// File comparison
+		"compareFiles": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("compareFiles needs (path1, path2)")
+			}
+			path1, ok1 := args[0].(string)
+			path2, ok2 := args[1].(string)
+			if !ok1 || !ok2 {
+				panic("compareFiles: paths must be strings")
+			}
+
+			data1, err := os.ReadFile(path1)
+			if err != nil {
+				panic(fmt.Sprintf("compareFiles: error reading '%s': %v", path1, err))
+			}
+			data2, err := os.ReadFile(path2)
+			if err != nil {
+				panic(fmt.Sprintf("compareFiles: error reading '%s': %v", path2, err))
+			}
+
+			if len(data1) != len(data2) {
+				return false
+			}
+
+			for i := range data1 {
+				if data1[i] != data2[i] {
+					return false
+				}
+			}
+			return true
+		}),
+
+		// File checksum
+		"checksum": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("checksum needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("checksum: path must be string")
+			}
+
+			algorithm := "sha256"
+			if len(args) > 1 {
+				if algo, ok := args[1].(string); ok {
+					algorithm = algo
+				}
+			}
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				panic(fmt.Sprintf("checksum: error reading '%s': %v", path, err))
+			}
+
+			switch algorithm {
+			case "md5":
+				sum := fmt.Sprintf("%x", md5.Sum(data))
+				return sum
+			case "sha1":
+				sum := fmt.Sprintf("%x", sha1.Sum(data))
+				return sum
+			case "sha256":
+				sum := fmt.Sprintf("%x", sha256.Sum256(data))
+				return sum
+			default:
+				panic(fmt.Sprintf("checksum: unsupported algorithm '%s'", algorithm))
+			}
+		}),
+
+		// Directory operations
+		"createPath": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("createPath needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("createPath: path must be string")
+			}
+
+			err := os.MkdirAll(filepath.Dir(path), 0755)
+			if err != nil {
+				panic(fmt.Sprintf("createPath: error creating directories for '%s': %v", path, err))
+			}
+			return nil
+		}),
+
+		// Backup operations
+		"backup": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("backup needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("backup: path must be string")
+			}
+
+			timestamp := time.Now().Format("20060102_150405")
+			ext := filepath.Ext(path)
+			base := strings.TrimSuffix(path, ext)
+			backupPath := fmt.Sprintf("%s_backup_%s%s", base, timestamp, ext)
+
+			err := copyFileInternal(path, backupPath)
+			if err != nil {
+				panic(fmt.Sprintf("backup: error creating backup: %v", err))
+			}
+			return backupPath
+		}),
+
+		// File watching simulation
+		"watchFile": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("watchFile needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("watchFile: path must be string")
+			}
+
+			info, err := os.Stat(path)
+			if err != nil {
+				panic(fmt.Sprintf("watchFile: error getting info for '%s': %v", path, err))
+			}
+
+			return map[string]interface{}{
+				"path":    path,
+				"size":    float64(info.Size()),
+				"modTime": info.ModTime().Format(time.RFC3339),
+				"mode":    float64(info.Mode()),
+			}
+		}),
+
+		// Batch operations
+		"batchCopy": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("batchCopy needs (srcPattern, destDir)")
+			}
+			pattern, ok1 := args[0].(string)
+			destDir, ok2 := args[1].(string)
+			if !ok1 || !ok2 {
+				panic("batchCopy: arguments must be strings")
+			}
+
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				panic(fmt.Sprintf("batchCopy: error with pattern '%s': %v", pattern, err))
+			}
+
+			var results []interface{}
+			for _, srcPath := range matches {
+				filename := filepath.Base(srcPath)
+				destPath := filepath.Join(destDir, filename)
+
+				err := copyFileInternal(srcPath, destPath)
+				if err == nil {
+					results = append(results, map[string]interface{}{
+						"src":    srcPath,
+						"dest":   destPath,
+						"status": "success",
+					})
+				} else {
+					results = append(results, map[string]interface{}{
+						"src":    srcPath,
+						"dest":   destPath,
+						"status": "error",
+						"error":  err.Error(),
+					})
+				}
+			}
+			return results
+		}),
+
+		// File metadata
+		"getMetadata": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("getMetadata needs (path)")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("getMetadata: path must be string")
+			}
+
+			info, err := os.Stat(path)
+			if err != nil {
+				panic(fmt.Sprintf("getMetadata: error getting info for '%s': %v", path, err))
+			}
+
+			return map[string]interface{}{
+				"name":    info.Name(),
+				"size":    float64(info.Size()),
+				"mode":    float64(info.Mode()),
+				"modTime": info.ModTime().Format(time.RFC3339),
+				"isDir":   info.IsDir(),
+				"abs":     func() string { abs, _ := filepath.Abs(path); return abs }(),
+				"ext":     filepath.Ext(path),
+				"dir":     filepath.Dir(path),
+				"base":    filepath.Base(path),
+			}
+		}),
 	}
 
 	RegisterModule(env, "io", functions)
+}
+
+// Helper function for internal file copying
+func copyFileInternal(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }
