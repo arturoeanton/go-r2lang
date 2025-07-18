@@ -39,6 +39,7 @@ Whether you're writing automation scripts, building web APIs, creating robust te
 | **⚡ Concurrent** | Goroutines with simple `r2()` function and synchronization primitives | `r2(processData, userData); sleep(100);` |
 | **🏗️ Object-Oriented** | Classes with inheritance, method overriding, and `super` calls | `class Manager extends Employee { super(); this.team = []; }` |
 | **🌐 Web Ready** | Built-in HTTP server and client with REST API support | `http.get("/api/users", handleUsers); request.post(url, data)` |
+| **⚡ gRPC Support** | Dynamic gRPC client without code generation, all streaming types | `let client = grpc.grpcClient("service.proto", "localhost:9090")` |
 | **🛡️ Secure & Safe** | Infinite loop protection, timeout controls, and error handling | `try { risky(); } catch (e) { log(e); } finally { cleanup(); }` |
 
 ---
@@ -232,6 +233,10 @@ go test ./pkg/r2libs/
 go run main.go examples/dsl/calculadora_dsl.r2
 go run main.go examples/dsl/comando_simple.r2
 
+# Try gRPC examples (terminal 1: server, terminal 2: client)  
+cd examples/grpc/example1 && go run simple_grpc_server.go
+go run main.go examples/grpc/example1/introspection_demo.r2
+
 # Build the interpreter
 go build -o r2lang main.go
 ./r2lang script.r2
@@ -337,6 +342,7 @@ go test ./pkg/r2libs/    # Built-in library tests
 - **r2hack.go**: Cryptographic utilities (509 LOC)
 - **r2http.go**: HTTP server with routing (410 LOC)
 - **r2httpclient.go**: HTTP client requests (324 LOC)
+- **r2grpc.go**: Dynamic gRPC client without code generation (1,467 LOC)
 - **r2print.go**: Advanced output formatting (365 LOC)
 - **r2os.go**: Operating system interface (245 LOC)
 - **r2string.go**: String manipulation (194 LOC)

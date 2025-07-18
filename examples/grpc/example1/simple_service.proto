@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package simple;
+
+// Servicio simple con 4 métodos básicos
+service SimpleService {
+    // Método 1: Saludo simple
+    rpc SayHello(HelloRequest) returns (HelloResponse);
+    
+    // Método 2: Suma de dos números
+    rpc Add(AddRequest) returns (AddResponse);
+    
+    // Método 3: Información del servidor
+    rpc GetServerInfo(ServerInfoRequest) returns (ServerInfoResponse);
+    
+    // Método 4: Echo - devuelve lo que recibe
+    rpc Echo(EchoRequest) returns (EchoResponse);
+}
+
+// Mensajes para SayHello
+message HelloRequest {
+    string name = 1;
+}
+
+message HelloResponse {
+    string message = 1;
+    string timestamp = 2;
+}
+
+// Mensajes para Add
+message AddRequest {
+    double a = 1;
+    double b = 2;
+}
+
+message AddResponse {
+    double result = 1;
+    string operation = 2;
+}
+
+// Mensajes para GetServerInfo
+message ServerInfoRequest {
+    bool include_stats = 1;
+}
+
+message ServerInfoResponse {
+    string server_name = 1;
+    string version = 2;
+    string uptime = 3;
+    string language = 4;
+    int32 connections = 5;
+}
+
+// Mensajes para Echo
+message EchoRequest {
+    string message = 1;
+    int32 number = 2;
+    bool flag = 3;
+}
+
+message EchoResponse {
+    string message = 1;
+    int32 number = 2;
+    bool flag = 3;
+    string echo_timestamp = 4;
+}
