@@ -1,6 +1,6 @@
 // DSL de Calculadora
 dsl Calculadora {
-    token("NUMERO", "\\\\d+")
+    token("NUMERO", "[0-9]+")
     token("SUMA", "\\+")
     token("RESTA", "-")
     token("MULT", "\\*")

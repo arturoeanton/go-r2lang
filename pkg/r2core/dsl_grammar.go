@@ -59,22 +59,34 @@ func NewDSLGrammar() *DSLGrammar {
 
 // AddRule agrega una regla a la gramática
 func (g *DSLGrammar) AddRule(name string, alternatives []string, action string) {
-	rule := &DSLRule{
-		Name:         name,
-		Alternatives: []*DSLAlternative{},
+	rule, exists := g.Rules[name]
+	if !exists {
+		rule = &DSLRule{
+			Name:         name,
+			Alternatives: []*DSLAlternative{},
+		}
+		g.Rules[name] = rule
+		if g.StartRule == "" {
+			g.StartRule = name
+		}
 	}
 
-	for _, alt := range alternatives {
-		sequence := strings.Fields(alt)
+	// If we have only one alternative, treat it as a sequence
+	if len(alternatives) == 1 {
+		sequence := strings.Fields(alternatives[0])
 		rule.Alternatives = append(rule.Alternatives, &DSLAlternative{
 			Sequence: sequence,
 			Action:   action,
 		})
-	}
-
-	g.Rules[name] = rule
-	if g.StartRule == "" {
-		g.StartRule = name
+	} else {
+		// Multiple alternatives - each one is a separate sequence
+		for _, alt := range alternatives {
+			sequence := strings.Fields(alt)
+			rule.Alternatives = append(rule.Alternatives, &DSLAlternative{
+				Sequence: sequence,
+				Action:   action,
+			})
+		}
 	}
 }
 
@@ -199,14 +211,24 @@ func (p *DSLParser) parseAlternative(alt *DSLAlternative) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			results = append(results, result)
+			// If the result is a ReturnValue, extract its value
+			if retVal, ok := result.(*ReturnValue); ok {
+				results = append(results, retVal.Value)
+			} else {
+				results = append(results, result)
+			}
 		}
 	}
 
 	// Apply semantic action if available
 	if alt.Action != "" {
 		if action, exists := p.Grammar.Actions[alt.Action]; exists {
-			return action(results), nil
+			result := action(results)
+			// If the result is a ReturnValue, extract its value
+			if retVal, ok := result.(*ReturnValue); ok {
+				return retVal.Value, nil
+			}
+			return result, nil
 		}
 	}
 
@@ -224,4 +246,30 @@ type DSLResult struct {
 	AST    interface{}
 	Code   string
 	Output interface{}
+}
+
+// GetResult returns the final result of the DSL execution
+func (r *DSLResult) GetResult() interface{} {
+	return r.Output
+}
+
+// String returns a string representation of the result
+func (r *DSLResult) String() string {
+	// If there's no output, show the original code
+	if r.Output == nil {
+		return fmt.Sprintf("DSL[%s] -> <no result>", r.Code)
+	}
+
+	// For simple values, show them directly
+	switch v := r.Output.(type) {
+	case string:
+		return fmt.Sprintf("DSL[%s] -> \"%s\"", r.Code, v)
+	case int, int64, float64:
+		return fmt.Sprintf("DSL[%s] -> %v", r.Code, v)
+	case bool:
+		return fmt.Sprintf("DSL[%s] -> %t", r.Code, v)
+	default:
+		// For complex objects, show type and value
+		return fmt.Sprintf("DSL[%s] -> %v", r.Code, v)
+	}
 }

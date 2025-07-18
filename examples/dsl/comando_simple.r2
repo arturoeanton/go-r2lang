@@ -8,7 +8,7 @@ dsl ComandoDSL {
     rule("bebida", ["CAFE"], "elegir_cafe")
     rule("bebida", ["TE"], "elegir_te")
     
-    func ejecutar_comando(hacer, bebida) {
+    func ejecutar_comando( hacer,bebida) {
         return "Ejecutando: " + hacer + " " + bebida
     }
     

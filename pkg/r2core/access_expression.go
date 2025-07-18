@@ -40,6 +40,8 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalArrayAccess(obj, ae.Member, env)
 	case *DSLDefinition:
 		return evalDSLAccess(obj, ae.Member, env)
+	case *DSLResult:
+		return evalDSLResultAccess(obj, ae.Member, env)
 	default:
 		panic(fmt.Sprintf("access to property in unsupported type: %T", objVal))
 	}
@@ -396,5 +398,22 @@ func evalDSLAccess(dsl *DSLDefinition, member string, env *Environment) interfac
 		}
 	default:
 		panic("DSL does not have property: " + member)
+	}
+}
+
+func evalDSLResultAccess(dslResult *DSLResult, member string, env *Environment) interface{} {
+	switch member {
+	case "AST":
+		return dslResult.AST
+	case "Code":
+		return dslResult.Code
+	case "Output":
+		return dslResult.Output
+	case "GetResult":
+		return func([]interface{}) interface{} {
+			return dslResult.GetResult()
+		}
+	default:
+		return nil
 	}
 }
