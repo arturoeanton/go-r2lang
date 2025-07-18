@@ -51,11 +51,23 @@ const (
 	TRUE     = "true"
 	FALSE    = "false"
 
+	// DSL tokens
+	DSL       = "dsl"
+	USE       = "use"
+	SYNTAX    = "syntax"
+	SEMANTICS = "semantics"
+	KEYWORDS  = "keywords"
+
 	// Testing framework tokens - will be replaced with new system
-	TOKEN_BREAK    = "BREAK"
-	TOKEN_CONTINUE = "CONTINUE"
-	TOKEN_TRUE     = "TRUE"
-	TOKEN_FALSE    = "FALSE"
+	TOKEN_BREAK     = "BREAK"
+	TOKEN_CONTINUE  = "CONTINUE"
+	TOKEN_TRUE      = "TRUE"
+	TOKEN_FALSE     = "FALSE"
+	TOKEN_DSL       = "DSL"
+	TOKEN_USE       = "USE"
+	TOKEN_SYNTAX    = "SYNTAX"
+	TOKEN_SEMANTICS = "SEMANTICS"
+	TOKEN_KEYWORDS  = "KEYWORDS"
 )
 
 var (
@@ -378,6 +390,21 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case strings.ToLower(FALSE):
 			l.currentToken = Token{Type: TOKEN_FALSE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(DSL):
+			l.currentToken = Token{Type: TOKEN_DSL, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(USE):
+			l.currentToken = Token{Type: TOKEN_USE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(SYNTAX):
+			l.currentToken = Token{Type: TOKEN_SYNTAX, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(SEMANTICS):
+			l.currentToken = Token{Type: TOKEN_SEMANTICS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(KEYWORDS):
+			l.currentToken = Token{Type: TOKEN_KEYWORDS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 			// ... otras palabras clave
 		default:

@@ -1,0 +1,175 @@
+package r2core
+
+import (
+	"fmt"
+	"strings"
+)
+
+// DSLDefinition represents a DSL definition block
+type DSLDefinition struct {
+	Token     Token
+	Name      *Identifier
+	Body      *BlockStatement
+	Grammar   *DSLGrammar
+	Functions map[string]*FunctionDeclaration
+	IsActive  bool
+	GlobalEnv *Environment
+}
+
+func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
+	// Create a new DSL environment
+	dslEnv := NewInnerEnv(env)
+
+	// Register the DSL in the environment
+	dslName := dsl.Name.Name
+	env.Set(dslName, dsl)
+
+	// Initialize grammar
+	dsl.Grammar = NewDSLGrammar()
+
+	// Evaluate the body to collect grammar rules and actions
+	dsl.collectGrammarDefinitions(dslEnv)
+
+	// Create a DSL object with a 'use' method
+	dslObject := map[string]interface{}{
+		"use": func(code string) interface{} {
+			return dsl.evaluateDSLCode(code, env)
+		},
+		"grammar":   dsl.Grammar,
+		"functions": dsl.Functions,
+	}
+
+	return dslObject
+}
+
+func (dsl *DSLDefinition) collectGrammarDefinitions(env *Environment) {
+	if dsl.Body != nil {
+		for _, stmt := range dsl.Body.Statements {
+			switch node := stmt.(type) {
+			case *ExprStatement:
+				// Handle grammar definitions
+				if call, ok := node.Expr.(*CallExpression); ok {
+					if id, ok := call.Callee.(*Identifier); ok {
+						switch id.Name {
+						case "rule":
+							dsl.extractRule(call)
+						case "token":
+							dsl.extractToken(call)
+						case "action":
+							dsl.extractAction(call, env)
+						}
+					}
+				}
+			case *FunctionDeclaration:
+				// Store function declarations as semantic actions
+				if dsl.Functions == nil {
+					dsl.Functions = make(map[string]*FunctionDeclaration)
+				}
+				dsl.Functions[node.Name] = node
+
+				// Also add as grammar action
+				dsl.Grammar.AddAction(node.Name, func(args []interface{}) interface{} {
+					return dsl.callDSLFunction(node, args, env)
+				})
+			}
+		}
+	}
+}
+
+func (dsl *DSLDefinition) extractRule(call *CallExpression) {
+	if len(call.Args) >= 2 {
+		if nameStr, ok := call.Args[0].(*StringLiteral); ok {
+			if alternatives, ok := call.Args[1].(*ArrayLiteral); ok {
+				var altStrings []string
+				for _, alt := range alternatives.Elements {
+					if altStr, ok := alt.(*StringLiteral); ok {
+						altStrings = append(altStrings, strings.Trim(altStr.Value, "\"'"))
+					}
+				}
+				action := ""
+				if len(call.Args) > 2 {
+					if actionStr, ok := call.Args[2].(*StringLiteral); ok {
+						action = strings.Trim(actionStr.Value, "\"'")
+					}
+				}
+				dsl.Grammar.AddRule(strings.Trim(nameStr.Value, "\"'"), altStrings, action)
+			}
+		}
+	}
+}
+
+func (dsl *DSLDefinition) extractToken(call *CallExpression) {
+	if len(call.Args) >= 2 {
+		if nameStr, ok := call.Args[0].(*StringLiteral); ok {
+			if patternStr, ok := call.Args[1].(*StringLiteral); ok {
+				name := strings.Trim(nameStr.Value, "\"'")
+				pattern := strings.Trim(patternStr.Value, "\"'")
+				dsl.Grammar.AddToken(name, pattern)
+			}
+		}
+	}
+}
+
+func (dsl *DSLDefinition) extractAction(call *CallExpression, env *Environment) {
+	if len(call.Args) >= 2 {
+		if nameStr, ok := call.Args[0].(*StringLiteral); ok {
+			if fn, ok := call.Args[1].(*FunctionDeclaration); ok {
+				name := strings.Trim(nameStr.Value, "\"'")
+				dsl.Grammar.AddAction(name, func(args []interface{}) interface{} {
+					return dsl.callDSLFunction(fn, args, env)
+				})
+			}
+		}
+	}
+}
+
+func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interface{} {
+	// Make sure we have the global environment
+	if dsl.GlobalEnv == nil {
+		dsl.GlobalEnv = env
+	}
+
+	// Create parser for this DSL
+	parser := NewDSLParser(dsl.Grammar)
+
+	// Parse the DSL code
+	ast, err := parser.Parse(code)
+	if err != nil {
+		return fmt.Errorf("DSL parsing error: %v", err)
+	}
+
+	// Return the parsed AST or execute it
+	return &DSLResult{
+		AST:    ast,
+		Code:   code,
+		Output: ast, // For now, return the AST as output
+	}
+}
+
+func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interface{}, env *Environment) interface{} {
+	// Create new environment for function execution that inherits from global environment
+	fnEnv := NewInnerEnv(dsl.GlobalEnv)
+
+	// Bind parameters to arguments
+	for i, param := range fn.Args {
+		if i < len(args) {
+			fnEnv.Set(param, args[i])
+		} else {
+			fnEnv.Set(param, nil)
+		}
+	}
+
+	// Execute function body
+	result := fn.Body.Eval(fnEnv)
+
+	// Handle return values
+	if retVal, ok := result.(*ReturnValue); ok {
+		return retVal.Value
+	}
+
+	return result
+}
+
+func (dsl *DSLDefinition) String() string {
+	return fmt.Sprintf("DSL(%s)", dsl.Name.Name)
+}

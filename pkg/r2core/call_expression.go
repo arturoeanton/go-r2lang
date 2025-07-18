@@ -36,6 +36,20 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 	case map[string]interface{}:
 		// Instanciar un blueprint
 		return instantiateObject(env, cv, argVals)
+	case func() interface{}:
+		// Handle Go native functions with no args
+		return cv()
+	case func(...interface{}) interface{}:
+		// Handle Go native functions with variable args
+		return cv(argVals...)
+	case func(string) interface{}:
+		// Handle DSL use function with string argument
+		if len(argVals) > 0 {
+			if str, ok := argVals[0].(string); ok {
+				return cv(str)
+			}
+		}
+		return cv("")
 	default:
 		panic("Attempt to call something that is neither a function nor a blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
 	}
