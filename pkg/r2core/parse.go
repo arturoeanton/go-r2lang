@@ -132,6 +132,10 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == CLASS {
 		return p.parseObjectDeclaration()
 	}
+
+	if p.curTok.Value == DSL {
+		return p.parseDSLDefinition()
+	}
 	// sino parseAsignmentOrExpressionStatement
 	return p.parseAssignmentOrExpressionStatement()
 }
@@ -691,10 +695,14 @@ func (p *Parser) parseCallExpression(left Node) Node {
 
 func (p *Parser) parseAccessExpression(left Node) Node {
 	p.nextToken() // "."
-	if p.curTok.Type != TOKEN_IDENT {
-		p.except("Expected identifier after ‘.’")
+	var mem string
+	if p.curTok.Type == TOKEN_IDENT {
+		mem = p.curTok.Value
+	} else if p.curTok.Type == TOKEN_USE {
+		mem = "use"
+	} else {
+		p.except("Expected identifier after '.'")
 	}
-	mem := p.curTok.Value
 	p.nextToken()
 	node := &AccessExpression{Object: left, Member: mem}
 	return p.parsePostfix(node)
@@ -827,6 +835,30 @@ func (p *Parser) parseTemplateString() Node {
 
 	parts := parseTemplateParts(encoded, p)
 	return &TemplateString{Parts: parts}
+}
+
+func (p *Parser) parseDSLDefinition() Node {
+	token := p.curTok
+	p.nextToken() // consume 'dsl'
+
+	if p.curTok.Type != TOKEN_IDENT {
+		p.except("Expected identifier after 'dsl'")
+	}
+
+	name := &Identifier{Name: p.curTok.Value}
+	p.nextToken()
+
+	if p.curTok.Value != "{" {
+		p.except("Expected '{' after DSL name")
+	}
+
+	body := p.parseBlockStatement()
+
+	return &DSLDefinition{
+		Token: token,
+		Name:  name,
+		Body:  body,
+	}
 }
 
 func (p *Parser) except(msgErr string) {

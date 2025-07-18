@@ -14,6 +14,21 @@ type AccessExpression struct {
 
 func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	objVal := ae.Object.Eval(env)
+
+	// Unwrap ReturnValue if necessary (recursively)
+	for {
+		if retVal, ok := objVal.(*ReturnValue); ok {
+			objVal = retVal.Value
+		} else {
+			break
+		}
+	}
+
+	// Debug: check what type we have after unwrapping
+	if retVal, ok := objVal.(*ReturnValue); ok {
+		panic(fmt.Sprintf("Still ReturnValue after unwrapping: %T - %v", objVal, retVal))
+	}
+
 	switch obj := objVal.(type) {
 	case *ObjectInstance:
 		return evalMemberAccess(obj, ae.Member)
@@ -23,6 +38,8 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalArrayAccess(obj, ae.Member, env)
 	case []interface{}:
 		return evalArrayAccess(obj, ae.Member, env)
+	case *DSLDefinition:
+		return evalDSLAccess(obj, ae.Member, env)
 	default:
 		panic(fmt.Sprintf("access to property in unsupported type: %T", objVal))
 	}
@@ -369,4 +386,15 @@ func evalArrayJoin(arr interfaceSlice) interface{} {
 		}
 		return sb.String()
 	})
+}
+
+func evalDSLAccess(dsl *DSLDefinition, member string, env *Environment) interface{} {
+	switch member {
+	case "use":
+		return func(code string) interface{} {
+			return dsl.evaluateDSLCode(code, env)
+		}
+	default:
+		panic("DSL does not have property: " + member)
+	}
 }
