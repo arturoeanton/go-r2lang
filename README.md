@@ -30,8 +30,9 @@ Whether you're writing automation scripts, building web APIs, creating robust te
 | Feature | Description | Example |
 |---------|-------------|---------|
 | **🎯 Modern Language (2025)** | JavaScript-style syntax with `true`/`false` literals, multiline maps, `else if`, and `%` operator | `if (x % 2 == 0) { ... } else if (x % 3 == 0) { ... }` |
+| **🔧 DSL Builder** | **🌟 ORIGINAL** - Create custom Domain-Specific Languages with simple syntax | `dsl Calculator { token("NUM", "[0-9]+"); rule("sum", ["NUM", "+", "NUM"], "add"); }` |
 | **🗺️ Advanced Maps** | JavaScript-style map literals with multiline support and mixed separators | `let config = { host: "localhost", port: 8080, ssl: true }` |
-| **📝 Template Strings** | String interpolation with backticks and multilple variables | `let msg = \`Hello ${name}, you have ${count} messages\`` |
+| **📝 Template Strings** | String interpolation with backticks and multiple variables | `let msg = \`Hello ${name}, you have ${count} messages\`` |
 | **🌍 Unicode Support** | Full international character support in strings and identifiers | `let año = 2025; let текст = "Привет мир"; let 名前 = "田中"` |
 | **📅 Native Dates** | Built-in date types with comprehensive formatting | `let date = @2024-12-25; Date.format(date, "YYYY-MM-DD")` |
 | **🧪 Testing Ready** | Comprehensive test suite with 416+ test cases validating all features | `go test ./pkg/r2core/ && go run main.go gold_test.r2` |
@@ -39,6 +40,89 @@ Whether you're writing automation scripts, building web APIs, creating robust te
 | **🏗️ Object-Oriented** | Classes with inheritance, method overriding, and `super` calls | `class Manager extends Employee { super(); this.team = []; }` |
 | **🌐 Web Ready** | Built-in HTTP server and client with REST API support | `http.get("/api/users", handleUsers); request.post(url, data)` |
 | **🛡️ Secure & Safe** | Infinite loop protection, timeout controls, and error handling | `try { risky(); } catch (e) { log(e); } finally { cleanup(); }` |
+
+---
+
+## 🌟 DSL Builder - Our Most Original Feature
+
+**R2Lang's DSL Builder is our most innovative feature**, allowing you to create custom Domain-Specific Languages with an elegantly simple syntax. This sets R2Lang apart from other languages by making parser creation as easy as writing a function.
+
+### Why DSL Builder is Special
+
+Unlike complex parser generators like ANTLR or Lex/Yacc, R2Lang's DSL system is:
+- **Native Integration**: DSL code runs directly in R2Lang
+- **Zero Setup**: No external tools or code generation
+- **Intuitive Syntax**: Declarative and readable
+- **Instant Results**: From concept to working parser in minutes
+
+### Quick DSL Example
+
+```r2
+// Define a simple calculator DSL
+dsl Calculator {
+    token("NUMBER", "[0-9]+")
+    token("PLUS", "\\+")
+    token("MINUS", "-")
+    token("MULTIPLY", "\\*")
+    token("DIVIDE", "/")
+    
+    rule("operation", ["NUMBER", "operator", "NUMBER"], "calculate")
+    rule("operator", ["PLUS"], "plus")
+    rule("operator", ["MINUS"], "minus")
+    rule("operator", ["MULTIPLY"], "multiply")
+    rule("operator", ["DIVIDE"], "divide")
+    
+    func calculate(left, op, right) {
+        var l = parseFloat(left)
+        var r = parseFloat(right)
+        
+        if (op == "+") return l + r
+        if (op == "-") return l - r
+        if (op == "*") return l * r
+        if (op == "/") return l / r
+    }
+    
+    func plus(token) { return "+" }
+    func minus(token) { return "-" }
+    func multiply(token) { return "*" }
+    func divide(token) { return "/" }
+}
+
+// Use your DSL
+func main() {
+    var calc = Calculator.use
+    
+    var result = calc("15 + 25")
+    console.log(result.Output)  // 40
+    
+    console.log(result)  // "DSL[15 + 25] -> 40"
+}
+```
+
+### DSL vs Traditional Parsers
+
+| Feature | R2Lang DSL | ANTLR | Lex/Yacc |
+|---------|------------|-------|-----------|
+| **Setup Time** | Minutes | Hours | Days |
+| **Code Generation** | None | Required | Required |
+| **Learning Curve** | Minimal | Steep | Very Steep |
+| **Integration** | Native | External | External |
+| **Debugging** | R2Lang tools | Specialized | Complex |
+| **Result Access** | `result.Output` | Generated code | Generated code |
+
+### DSL Use Cases
+
+- **Configuration Languages**: Custom config file formats
+- **Command Systems**: Domain-specific command languages
+- **Data Validators**: Custom validation rules
+- **Text Processors**: Specialized text parsing
+- **Business Rules**: Domain-specific business logic
+
+### Learn More
+
+- [**Complete DSL Documentation**](./docs/es/dsl/) - Full guide and examples
+- [**DSL Examples**](./examples/dsl/) - Working calculator and command examples
+- [**DSL API Reference**](./docs/es/dsl/referencia_rapida.md) - Quick reference guide
 
 ---
 
@@ -143,6 +227,10 @@ go run main.go gold_test.r2
 # Test specific modules
 go test ./pkg/r2core/
 go test ./pkg/r2libs/
+
+# Try our innovative DSL examples
+go run main.go examples/dsl/calculadora_dsl.r2
+go run main.go examples/dsl/comando_simple.r2
 
 # Build the interpreter
 go build -o r2lang main.go

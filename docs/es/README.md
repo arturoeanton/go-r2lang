@@ -2,9 +2,92 @@
 
 ## Descripción General
 
-R2Lang es un lenguaje de programación interpretado que combina la sintaxis familiar de JavaScript con características modernas como orientación a objetos, concurrencia nativa, y un sistema de testing integrado. Diseñado para ser simple de aprender pero poderoso en sus capacidades.
+R2Lang es un lenguaje de programación interpretado que combina la sintaxis familiar de JavaScript con características modernas como orientación a objetos, concurrencia nativa, sistema de testing integrado, y **nuestro innovador sistema DSL** para crear lenguajes específicos de dominio de forma elegante y sencilla.
 
-## Características Principales
+## ✨ Características Principales
+
+### 🌟 Constructor de DSL - Nuestra Característica Más Original
+
+**El sistema DSL de R2Lang es nuestra característica más innovadora**, permitiendo crear lenguajes específicos de dominio con una sintaxis elegante y simple. Esto diferencia a R2Lang de otros lenguajes al hacer que la creación de parsers sea tan fácil como escribir una función.
+
+#### ¿Por qué nuestro DSL es especial?
+
+A diferencia de generadores de parsers complejos como ANTLR o Lex/Yacc, el sistema DSL de R2Lang es:
+- **Integración Nativa**: El código DSL se ejecuta directamente en R2Lang
+- **Configuración Cero**: Sin herramientas externas o generación de código
+- **Sintaxis Intuitiva**: Declarativa y legible
+- **Resultados Instantáneos**: De la idea a un parser funcional en minutos
+
+#### Ejemplo Rápido de DSL
+
+```r2
+// Definir un DSL de calculadora simple
+dsl Calculadora {
+    token("NUMERO", "[0-9]+")
+    token("SUMA", "\\+")
+    token("RESTA", "-")
+    token("MULT", "\\*")
+    token("DIV", "/")
+    
+    rule("operacion", ["NUMERO", "operador", "NUMERO"], "calcular")
+    rule("operador", ["SUMA"], "op_suma")
+    rule("operador", ["RESTA"], "op_resta")
+    rule("operador", ["MULT"], "op_mult")
+    rule("operador", ["DIV"], "op_div")
+    
+    func calcular(izq, op, der) {
+        var a = parseFloat(izq)
+        var b = parseFloat(der)
+        
+        if (op == "+") return a + b
+        if (op == "-") return a - b
+        if (op == "*") return a * b
+        if (op == "/") return a / b
+    }
+    
+    func op_suma(token) { return "+" }
+    func op_resta(token) { return "-" }
+    func op_mult(token) { return "*" }
+    func op_div(token) { return "/" }
+}
+
+// Usar tu DSL
+func main() {
+    var calc = Calculadora.use
+    
+    var resultado = calc("15 + 25")
+    console.log(resultado.Output)  // 40
+    
+    console.log(resultado)  // "DSL[15 + 25] -> 40"
+}
+```
+
+#### DSL vs Parsers Tradicionales
+
+| Característica | R2Lang DSL | ANTLR | Lex/Yacc |
+|----------------|------------|-------|-----------|
+| **Tiempo de Setup** | Minutos | Horas | Días |
+| **Generación de Código** | Ninguna | Requerida | Requerida |
+| **Curva de Aprendizaje** | Mínima | Empinada | Muy Empinada |
+| **Integración** | Nativa | Externa | Externa |
+| **Debugging** | Herramientas R2Lang | Especializado | Complejo |
+| **Acceso a Resultados** | `resultado.Output` | Código generado | Código generado |
+
+#### Casos de Uso del DSL
+
+- **Lenguajes de Configuración**: Formatos de archivos de configuración personalizados
+- **Sistemas de Comandos**: Lenguajes de comandos específicos de dominio
+- **Validadores de Datos**: Reglas de validación personalizadas
+- **Procesadores de Texto**: Parseo de texto especializado
+- **Reglas de Negocio**: Lógica de negocio específica de dominio
+
+#### Aprende Más
+
+- [**Documentación Completa del DSL**](./dsl/) - Guía completa y ejemplos
+- [**Ejemplos de DSL**](../../examples/dsl/) - Ejemplos de calculadora y comandos
+- [**Referencia Rápida DSL**](./dsl/referencia_rapida.md) - Guía de referencia rápida
+
+---
 
 ### 🚀 Sintaxis Intuitiva
 ```r2

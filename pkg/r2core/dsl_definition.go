@@ -92,7 +92,11 @@ func (dsl *DSLDefinition) extractRule(call *CallExpression) {
 						action = strings.Trim(actionStr.Value, "\"'")
 					}
 				}
-				dsl.Grammar.AddRule(strings.Trim(nameStr.Value, "\"'"), altStrings, action)
+				ruleName := strings.Trim(nameStr.Value, "\"'")
+
+				// Join the alternatives into a single sequence
+				sequence := strings.Join(altStrings, " ")
+				dsl.Grammar.AddRule(ruleName, []string{sequence}, action)
 			}
 		}
 	}
@@ -138,22 +142,42 @@ func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interfa
 		return fmt.Errorf("DSL parsing error: %v", err)
 	}
 
-	// Return the parsed AST or execute it
+	// Extract the final result from the AST
+	var finalResult interface{}
+	if retVal, ok := ast.(*ReturnValue); ok {
+		finalResult = retVal.Value
+	} else if retVal, ok := ast.(ReturnValue); ok {
+		finalResult = retVal.Value
+	} else {
+		finalResult = ast
+	}
+
+	// Return the parsed AST with the final result
 	return &DSLResult{
 		AST:    ast,
 		Code:   code,
-		Output: ast, // For now, return the AST as output
+		Output: finalResult,
 	}
 }
 
 func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interface{}, env *Environment) interface{} {
+
 	// Create new environment for function execution that inherits from global environment
 	fnEnv := NewInnerEnv(dsl.GlobalEnv)
 
 	// Bind parameters to arguments
 	for i, param := range fn.Args {
 		if i < len(args) {
-			fnEnv.Set(param, args[i])
+			// If the argument is a ReturnValue, extract its value
+			var argValue interface{}
+			if retVal, ok := args[i].(*ReturnValue); ok {
+				argValue = retVal.Value
+			} else if retVal, ok := args[i].(ReturnValue); ok {
+				argValue = retVal.Value
+			} else {
+				argValue = args[i]
+			}
+			fnEnv.Set(param, argValue)
 		} else {
 			fnEnv.Set(param, nil)
 		}
