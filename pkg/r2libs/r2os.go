@@ -1,6 +1,7 @@
 package r2libs
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,95 @@ import (
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
+
+// CommandObject represents an external command with a fluent API.
+type CommandObject struct {
+	command string
+	args    []string
+	stdout  bytes.Buffer
+	stderr  bytes.Buffer
+	cmd     *exec.Cmd
+	status  int
+	pipeTo  *CommandObject
+}
+
+func (c *CommandObject) Eval(env *r2core.Environment) interface{} {
+	return c
+}
+
+func (c *CommandObject) Getattr(name string) (r2core.Node, bool) {
+	switch name {
+	case "run":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			parts := strings.Fields(c.command)
+			c.cmd = exec.Command(parts[0], parts[1:]...)
+			c.cmd.Stderr = &c.stderr
+
+			if c.pipeTo != nil {
+				pipe, err := c.cmd.StdoutPipe()
+				if err != nil {
+					panic(fmt.Sprintf("Command.run: failed to create pipe: %v", err))
+				}
+				pipeParts := strings.Fields(c.pipeTo.command)
+				c.pipeTo.cmd = exec.Command(pipeParts[0], pipeParts[1:]...)
+				c.pipeTo.cmd.Stdin = pipe
+				c.pipeTo.cmd.Stdout = &c.pipeTo.stdout
+				c.pipeTo.cmd.Stderr = &c.pipeTo.stderr
+				err = c.pipeTo.cmd.Start()
+				if err != nil {
+					panic(fmt.Sprintf("Command.run: failed to start piped command: %v", err))
+				}
+			} else {
+				c.cmd.Stdout = &c.stdout
+			}
+
+			err := c.cmd.Run()
+			if c.pipeTo != nil {
+				c.pipeTo.cmd.Wait()
+			}
+
+			if err != nil {
+				if exitError, ok := err.(*exec.ExitError); ok {
+					c.status = exitError.ExitCode()
+				} else {
+					c.status = -1 // Unknown error
+				}
+			} else {
+				c.status = 0
+			}
+			return c
+		}}, true
+	case "stdout":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return c.stdout.String()
+		}}, true
+	case "stderr":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return c.stderr.String()
+		}}, true
+	case "isOk":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return c.status == 0
+		}}, true
+	case "exitCode":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return float64(c.status)
+		}}, true
+	case "pipe":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Command.pipe needs another Command object")
+			}
+			pipeCmd, ok := args[0].(*CommandObject)
+			if !ok {
+				panic("Command.pipe: argument must be a Command object")
+			}
+			c.pipeTo = pipeCmd
+			return c
+		}}, true
+	}
+	return nil, false
+}
 
 // r2os.go: Funciones nativas para interactuar con el Sistema Operativo.
 // Incluye manejo de procesos (exec, background process, etc.).
@@ -31,6 +121,16 @@ func (rp *R2Process) Eval(env *r2core.Environment) interface{} {
 
 func RegisterOS(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
+		"Command": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("os.Command needs a command string")
+			}
+			command, ok := args[0].(string)
+			if !ok {
+				panic("os.Command: argument must be a string")
+			}
+			return &CommandObject{command: command, status: -1}
+		}),
 		"exit": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				os.Exit(0)
@@ -428,64 +528,49 @@ func RegisterOS(env *r2core.Environment) {
 
 		// Network and System State
 		"getLoadAvg": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			// This is platform specific, simplified version
 			if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-				return "Load average not available on this platform"
+				return map[string]interface{}{"error": "Load average not available on this platform"}
 			}
-
-			cmd := exec.Command("uptime")
-			output, err := cmd.Output()
+			output, err := exec.Command("uptime").Output()
 			if err != nil {
-				return fmt.Sprintf("Error getting load average: %v", err)
+				return map[string]interface{}{"error": fmt.Sprintf("Error getting load average: %v", err)}
 			}
-			return string(output)
+			parts := strings.Split(string(output), "load average: ")
+			if len(parts) < 2 {
+				return map[string]interface{}{"error": "Could not parse uptime output"}
+			}
+			loads := strings.Split(parts[1], ", ")
+			load1, _ := strconv.ParseFloat(loads[0], 64)
+			load5, _ := strconv.ParseFloat(loads[1], 64)
+			load15, _ := strconv.ParseFloat(strings.TrimSpace(loads[2]), 64)
+			return map[string]interface{}{
+				"1min":  load1,
+				"5min":  load5,
+				"15min": load15,
+			}
 		}),
 
 		"getMemoryInfo": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			var memInfo map[string]interface{}
-
 			switch runtime.GOOS {
 			case "linux":
-				cmd := exec.Command("free", "-b")
-				output, err := cmd.Output()
-				if err == nil {
-					lines := strings.Split(string(output), "\n")
-					if len(lines) > 1 {
-						fields := strings.Fields(lines[1])
-						if len(fields) >= 3 {
-							total, _ := strconv.ParseFloat(fields[1], 64)
-							used, _ := strconv.ParseFloat(fields[2], 64)
-							free, _ := strconv.ParseFloat(fields[3], 64)
-							memInfo = map[string]interface{}{
-								"total": total,
-								"used":  used,
-								"free":  free,
-							}
-						}
+				output, err := os.ReadFile("/proc/meminfo")
+				if err != nil {
+					return map[string]interface{}{"error": "could not read /proc/meminfo"}
+				}
+				lines := strings.Split(string(output), "\n")
+				memInfo := make(map[string]interface{})
+				for _, line := range lines {
+					parts := strings.Fields(line)
+					if len(parts) >= 2 {
+						key := strings.TrimSuffix(parts[0], ":")
+						val, _ := strconv.ParseFloat(parts[1], 64)
+						memInfo[key] = val * 1024 // Convert from kB to Bytes
 					}
 				}
-			case "darwin":
-				cmd := exec.Command("vm_stat")
-				output, err := cmd.Output()
-				if err == nil {
-					memInfo = map[string]interface{}{
-						"raw_output": string(output),
-					}
-				}
+				return memInfo
 			default:
-				memInfo = map[string]interface{}{
-					"platform": runtime.GOOS,
-					"message":  "Memory info not implemented for this platform",
-				}
+				return map[string]interface{}{"error": fmt.Sprintf("Memory info not implemented for %s", runtime.GOOS)}
 			}
-
-			if memInfo == nil {
-				memInfo = map[string]interface{}{
-					"error": "Failed to get memory information",
-				}
-			}
-
-			return memInfo
 		}),
 
 		// File System Information
@@ -497,43 +582,15 @@ func RegisterOS(env *r2core.Environment) {
 			if !ok {
 				panic("getDiskUsage: path must be string")
 			}
-
-			var cmd *exec.Cmd
-			switch runtime.GOOS {
-			case "linux", "darwin":
-				cmd = exec.Command("df", "-B1", path)
-			case "windows":
-				cmd = exec.Command("dir", path)
-			default:
-				return fmt.Sprintf("Disk usage not implemented for %s", runtime.GOOS)
-			}
-
-			output, err := cmd.Output()
+			var stat syscall.Statfs_t
+			err := syscall.Statfs(path, &stat)
 			if err != nil {
-				return fmt.Sprintf("Error getting disk usage: %v", err)
+				return map[string]interface{}{"error": fmt.Sprintf("Could not get disk usage for %s: %v", path, err)}
 			}
-
-			if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-				lines := strings.Split(string(output), "\n")
-				if len(lines) > 1 {
-					fields := strings.Fields(lines[1])
-					if len(fields) >= 4 {
-						total, _ := strconv.ParseFloat(fields[1], 64)
-						used, _ := strconv.ParseFloat(fields[2], 64)
-						available, _ := strconv.ParseFloat(fields[3], 64)
-						return map[string]interface{}{
-							"total":     total,
-							"used":      used,
-							"available": available,
-							"path":      path,
-						}
-					}
-				}
-			}
-
 			return map[string]interface{}{
-				"raw_output": string(output),
-				"path":       path,
+				"total":     float64(stat.Blocks * uint64(stat.Bsize)),
+				"free":      float64(stat.Bfree * uint64(stat.Bsize)),
+				"available": float64(stat.Bavail * uint64(stat.Bsize)),
 			}
 		}),
 
@@ -550,23 +607,18 @@ func RegisterOS(env *r2core.Environment) {
 		}),
 
 		"getUptime": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			var cmd *exec.Cmd
 			switch runtime.GOOS {
 			case "linux":
-				cmd = exec.Command("cat", "/proc/uptime")
-			case "darwin":
-				cmd = exec.Command("uptime")
-			case "windows":
-				cmd = exec.Command("systeminfo")
+				output, err := os.ReadFile("/proc/uptime")
+				if err != nil {
+					return map[string]interface{}{"error": "could not read /proc/uptime"}
+				}
+				parts := strings.Fields(string(output))
+				uptime, _ := strconv.ParseFloat(parts[0], 64)
+				return uptime
 			default:
-				return fmt.Sprintf("Uptime not implemented for %s", runtime.GOOS)
+				return map[string]interface{}{"error": fmt.Sprintf("Uptime not implemented for %s", runtime.GOOS)}
 			}
-
-			output, err := cmd.Output()
-			if err != nil {
-				return fmt.Sprintf("Error getting uptime: %v", err)
-			}
-			return strings.TrimSpace(string(output))
 		}),
 	}
 

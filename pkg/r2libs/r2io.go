@@ -16,8 +16,377 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
+// PathObject represents a file system path with a fluent API.
+type NativeFunction struct {
+	Fn r2core.BuiltinFunction
+}
+
+func (nf *NativeFunction) Eval(env *r2core.Environment) interface{} {
+	return nf.Fn
+}
+
+// PathObject represents a file system path with a fluent API.
+type PathObject struct {
+	Path string
+}
+
+func (p *PathObject) Eval(env *r2core.Environment) interface{} {
+	// A PathObject evaluates to itself, making it available for method calls.
+	return p
+}
+
+// Getattr implements the attribute access for PathObject, returning functions that operate on the path.
+
+// FileStreamObject represents a stream of lines from a file with fluent operations.
+type FileStreamObject struct {
+	path    string
+	filters []r2core.BuiltinFunction
+	mappers []r2core.BuiltinFunction
+	limit   int
+}
+
+func (fs *FileStreamObject) Eval(env *r2core.Environment) interface{} {
+	return fs
+}
+
+func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
+	switch name {
+	case "lines":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			// This method doesn't execute, it just sets up the stream for iteration.
+			// The actual reading happens in toArray or saveTo.
+			return fs
+		}}, true
+	case "filter":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("FileStream.filter needs a callback function")
+			}
+			callback, ok := args[0].(r2core.BuiltinFunction)
+			if !ok {
+				panic("FileStream.filter: argument must be a function")
+			}
+			newFs := *fs // Create a copy to avoid modifying the original object
+			newFs.filters = append(newFs.filters, callback)
+			return &newFs
+		}}, true
+	case "map":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("FileStream.map needs a callback function")
+			}
+			callback, ok := args[0].(r2core.BuiltinFunction)
+			if !ok {
+				panic("FileStream.map: argument must be a function")
+			}
+			newFs := *fs // Create a copy
+			newFs.mappers = append(newFs.mappers, callback)
+			return &newFs
+		}}, true
+	case "limit":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("FileStream.limit needs a number")
+			}
+			limit, ok := args[0].(float64)
+			if !ok {
+				panic("FileStream.limit: argument must be a number")
+			}
+			newFs := *fs // Create a copy
+			newFs.limit = int(limit)
+			return &newFs
+		}}, true
+	case "toArray":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			file, err := os.Open(fs.path)
+			if err != nil {
+				panic(fmt.Sprintf("FileStream.toArray: error opening '%s': %v", fs.path, err))
+			}
+			defer file.Close()
+
+			var result []interface{}
+			scanner := bufio.NewScanner(file)
+			linesRead := 0
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				// Apply filters
+				shouldInclude := true
+				for _, filter := range fs.filters {
+					filterResult := filter(line).(bool) // Assuming filter returns boolean
+					if !filterResult {
+						shouldInclude = false
+						break
+					}
+				}
+
+				if shouldInclude {
+					// Apply mappers
+					mappedLine := interface{}(line)
+					for _, mapper := range fs.mappers {
+						mappedLine = mapper(mappedLine)
+					}
+					result = append(result, mappedLine)
+					linesRead++
+				}
+
+				if fs.limit > 0 && linesRead >= fs.limit {
+					break
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("FileStream.toArray: error scanning '%s': %v", fs.path, err))
+			}
+			return result
+		}}, true
+	case "saveTo":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("FileStream.saveTo needs a destination path")
+			}
+			destPath, ok := args[0].(string)
+			if !ok {
+				panic("FileStream.saveTo: argument must be a string")
+			}
+
+			file, err := os.Open(fs.path)
+			if err != nil {
+				panic(fmt.Sprintf("FileStream.saveTo: error opening source '%s': %v", fs.path, err))
+			}
+			defer file.Close()
+
+			destFile, err := os.Create(destPath)
+			if err != nil {
+				panic(fmt.Sprintf("FileStream.saveTo: error creating destination '%s': %v", destPath, err))
+			}
+			defer destFile.Close()
+
+			writer := bufio.NewWriter(destFile)
+			scanner := bufio.NewScanner(file)
+			linesWritten := 0
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				// Apply filters
+				shouldInclude := true
+				for _, filter := range fs.filters {
+					filterResult := filter(line).(bool) // Assuming filter returns boolean
+					if !filterResult {
+						shouldInclude = false
+						break
+					}
+				}
+
+				if shouldInclude {
+					// Apply mappers
+					mappedLine := interface{}(line)
+					for _, mapper := range fs.mappers {
+						mappedLine = mapper(mappedLine)
+					}
+					_, err := writer.WriteString(fmt.Sprintf("%v\n", mappedLine))
+					if err != nil {
+						panic(fmt.Sprintf("FileStream.saveTo: error writing to '%s': %v", destPath, err))
+					}
+					linesWritten++
+				}
+
+				if fs.limit > 0 && linesWritten >= fs.limit {
+					break
+				}
+			}
+			writer.Flush()
+			if err := scanner.Err(); err != nil {
+				panic(fmt.Sprintf("FileStream.saveTo: error scanning '%s': %v", fs.path, err))
+			}
+			return nil
+		}}, true
+	}
+	return nil, false
+}
+
+func (p *PathObject) Getattr(name string) (r2core.Node, bool) {
+
+	switch name {
+	case "readText":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			data, err := os.ReadFile(p.Path)
+			if err != nil {
+				panic(fmt.Sprintf("Path.readText: error reading '%s': %v", p.Path, err))
+			}
+			return string(data)
+		}}, true
+	case "writeText":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Path.writeText needs (contents)")
+			}
+			contents, ok := args[0].(string)
+			if !ok {
+				panic("Path.writeText: contents must be a string")
+			}
+			err := os.WriteFile(p.Path, []byte(contents), 0644)
+			if err != nil {
+				panic(fmt.Sprintf("Path.writeText: error writing '%s': %v", p.Path, err))
+			}
+			return p
+		}}, true
+	case "exists":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			_, err := os.Stat(p.Path)
+			return !os.IsNotExist(err)
+		}}, true
+	case "isDir":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			info, err := os.Stat(p.Path)
+			if err != nil {
+				return false
+			}
+			return info.IsDir()
+		}}, true
+	case "isFile":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			info, err := os.Stat(p.Path)
+			if err != nil {
+				return false
+			}
+			return !info.IsDir()
+		}}, true
+	case "name":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return filepath.Base(p.Path)
+		}}, true
+	case "ext":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return filepath.Ext(p.Path)
+		}}, true
+	case "stem":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			base := filepath.Base(p.Path)
+			ext := filepath.Ext(base)
+			return strings.TrimSuffix(base, ext)
+		}}, true
+	case "dir":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			return &PathObject{Path: filepath.Dir(p.Path)}
+		}}, true
+	case "remove":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			err := os.Remove(p.Path)
+			if err != nil {
+				panic(fmt.Sprintf("Path.remove: error removing '%s': %v", p.Path, err))
+			}
+			return nil
+		}}, true
+	case "copyTo":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Path.copyTo needs (destination)")
+			}
+			var destPath string
+			switch dest := args[0].(type) {
+			case string:
+				destPath = dest
+			case *PathObject:
+				destPath = dest.Path
+			default:
+				panic("Path.copyTo: destination must be a string or a Path object")
+			}
+			err := copyFileInternal(p.Path, destPath)
+			if err != nil {
+				panic(fmt.Sprintf("Path.copyTo: error copying to '%s': %v", destPath, err))
+			}
+			return &PathObject{Path: destPath}
+		}}, true
+	case "moveTo":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Path.moveTo needs (destination)")
+			}
+			var destPath string
+			switch dest := args[0].(type) {
+			case string:
+				destPath = dest
+			case *PathObject:
+				destPath = dest.Path
+			default:
+				panic("Path.moveTo: destination must be a string or a Path object")
+			}
+			err := os.Rename(p.Path, destPath)
+			if err != nil {
+				panic(fmt.Sprintf("Path.moveTo: error moving to '%s': %v", destPath, err))
+			}
+			p.Path = destPath // Update the path of the object itself
+			return p
+		}}, true
+	case "sibling":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Path.sibling needs (name)")
+			}
+			name, ok := args[0].(string)
+			if !ok {
+				panic("Path.sibling: name must be a string")
+			}
+			return &PathObject{Path: filepath.Join(filepath.Dir(p.Path), name)}
+		}}, true
+	case "withSuffix":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("Path.withSuffix needs (suffix)")
+			}
+			suffix, ok := args[0].(string)
+			if !ok {
+				panic("Path.withSuffix: suffix must be a string")
+			}
+			base := strings.TrimSuffix(p.Path, filepath.Ext(p.Path))
+			return &PathObject{Path: base + suffix}
+		}}, true
+	case "iter":
+		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			info, err := os.Stat(p.Path)
+			if err != nil {
+				panic(fmt.Sprintf("Path.iter: cannot read path '%s': %v", p.Path, err))
+			}
+			if !info.IsDir() {
+				panic("Path.iter can only be called on a directory")
+			}
+			files, err := os.ReadDir(p.Path)
+			if err != nil {
+				panic(fmt.Sprintf("Path.iter: error reading directory '%s': %v", p.Path, err))
+			}
+			var result []interface{}
+			for _, f := range files {
+				result = append(result, &PathObject{Path: filepath.Join(p.Path, f.Name())})
+			}
+			return result
+		}}, true
+	}
+	return nil, false
+}
+
 func RegisterIO(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
+		"Path": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("io.Path needs a path string")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("io.Path: argument must be a string")
+			}
+			return &PathObject{Path: path}
+		}),
+		"FileStream": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("io.FileStream needs a path string")
+			}
+			path, ok := args[0].(string)
+			if !ok {
+				panic("io.FileStream: argument must be a string")
+			}
+			return &FileStreamObject{path: path}
+		}),
+
 		"readFile": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				panic("readFile needs (path)")
