@@ -613,6 +613,9 @@ func (p *Parser) parseFunctionParameters() []Parameter {
 			} else if p.curTok.Value != ")" {
 				p.except("Expected ',' or ')' after parameter")
 			}
+		} else if p.curTok.Value == ")" {
+			// Empty parameter list - break the loop
+			break
 		} else {
 			p.except("Expected parameter name, got: " + p.curTok.Value)
 		}
@@ -753,6 +756,10 @@ func (p *Parser) parseFactor() Node {
 		return node
 
 	case TOKEN_IDENT:
+		// Check for arrow function with single parameter: id =>
+		if p.peekTok.Type == TOKEN_ARROW {
+			return p.parseArrowFunction()
+		}
 		// normal ident
 		idName := p.curTok.Value
 		p.nextToken()
@@ -761,11 +768,15 @@ func (p *Parser) parseFactor() Node {
 
 	case TOKEN_SYMBOL:
 		if p.curTok.Value == "(" {
+			// Check if this could be arrow function parameters
+			if p.isArrowFunctionParameters() {
+				return p.parseArrowFunction()
+			}
 			// ( expr )
 			p.nextToken()
 			expr := p.parseExpression()
 			if p.curTok.Value != ")" {
-				p.except("Expected ‘)’ after ( expr )")
+				p.except("Expected ')' after ( expr )")
 			}
 			p.nextToken()
 			return expr
@@ -997,6 +1008,114 @@ func (p *Parser) parseDSLDefinition() Node {
 		Token: token,
 		Name:  name,
 		Body:  body,
+	}
+}
+
+// isArrowFunctionParameters checks if current position looks like arrow function parameters
+func (p *Parser) isArrowFunctionParameters() bool {
+	if p.curTok.Value != "(" {
+		return false
+	}
+
+	// Check for simple case: () =>
+	if p.peekTok.Value == ")" {
+		// Look ahead for => after the )
+		// We need to look further ahead than just peekTok
+		// Save current state
+		savedPos := p.lexer.pos
+		savedCol := p.lexer.col
+		savedLine := p.lexer.line
+		savedCurTok := p.curTok
+		savedPeekTok := p.peekTok
+
+		// Advance to )
+		p.nextToken()
+		// Advance past )
+		p.nextToken()
+
+		isArrow := p.curTok.Type == TOKEN_ARROW
+
+		// Restore state
+		p.lexer.pos = savedPos
+		p.lexer.col = savedCol
+		p.lexer.line = savedLine
+		p.curTok = savedCurTok
+		p.peekTok = savedPeekTok
+
+		return isArrow
+	}
+
+	// For more complex cases, use string scanning
+	pos := p.lexer.pos
+	input := p.lexer.input
+
+	// Find the matching closing parenthesis
+	parenCount := 1
+	i := pos
+
+	// Find matching closing parenthesis
+	for i < len(input) && parenCount > 0 {
+		if input[i] == '(' {
+			parenCount++
+		} else if input[i] == ')' {
+			parenCount--
+		}
+		i++
+	}
+
+	if parenCount != 0 {
+		return false // Unmatched parentheses
+	}
+
+	// Skip whitespace after closing )
+	for i < len(input) && (input[i] == ' ' || input[i] == '\t' || input[i] == '\r' || input[i] == '\n') {
+		i++
+	}
+
+	// Check for =>
+	return i+1 < len(input) && input[i] == '=' && input[i+1] == '>'
+}
+
+// parseArrowFunction parses arrow function expressions
+func (p *Parser) parseArrowFunction() Node {
+	var params []Parameter
+
+	if p.curTok.Type == TOKEN_IDENT {
+		// Single parameter without parentheses: x =>
+		paramName := p.curTok.Value
+		p.nextToken() // consume parameter name
+		params = append(params, Parameter{Name: paramName, DefaultValue: nil})
+	} else if p.curTok.Value == "(" {
+		// Parameters in parentheses: (x, y) => or () =>
+		params = p.parseFunctionParameters()
+	} else {
+		p.except("Expected parameter or '(' in arrow function")
+	}
+
+	// Expect =>
+	if p.curTok.Type != TOKEN_ARROW {
+		p.except("Expected '=>' in arrow function")
+	}
+	p.nextToken() // consume "=>"
+
+	// Parse body
+	var body Node
+	var isExpression bool
+
+	if p.curTok.Value == "{" {
+		// Block body: => { statements }
+		body = p.parseBlockStatement()
+		isExpression = false
+	} else {
+		// Expression body: => expression
+		body = p.parseExpression()
+		isExpression = true
+	}
+
+	return &ArrowFunction{
+		Params:       params,
+		Body:         body,
+		IsExpression: isExpression,
 	}
 }
 
