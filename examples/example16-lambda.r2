@@ -3,9 +3,9 @@
 func main() {
 
  let a = [1,2,3,4,5];
-        println(">>>",a.length); // tiene que ser 1,2,3,4,5
+        std.print(">>>",std.len(a)); // tiene que ser 1,2,3,4,5
         a = a.map(func (v){ v*2}).filter(func (v){ v<10}).reduce(func (v,c) {v+c;});
-        print(a);
+        std.print(a);
 
     let add = func(x, y) {
         return x + y;
@@ -52,9 +52,9 @@ func main() {
 
 
            a = [1,2,3,4,5];
-           println(">>>",a.length); // tiene que ser 1,2,3,4,5
+           std.print(">>>",std.len(a)); // tiene que ser 1,2,3,4,5
            a = a.map(func (v){ v*2}).filter(func (v){ v<10}).reduce(func (v,c) {v+c;});
-           print(a); // tiene que ser 20  -> de map 2,4,6,8,10 -> de filter 2,4,6,8 -> de reduce 20
+           std.print(a); // tiene que ser 20  -> de map 2,4,6,8,10 -> de filter 2,4,6,8 -> de reduce 20
 
 
 

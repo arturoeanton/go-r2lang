@@ -36,6 +36,20 @@ func (ie *IndexExpression) Eval(env *Environment) interface{} {
 			panic(fmt.Sprintf("index out of range: %d len of array %d", idx, len(container)))
 		}
 		return container[idx]
+	case interfaceSlice:
+		fIndex, ok := indexVal.(float64)
+		if !ok {
+			panic("index must be numeric for array")
+		}
+		idx := int(fIndex)
+		if idx < 0 {
+
+			idx = (len(container) + idx)
+		}
+		if idx < 0 || idx >= len(container) {
+			panic(fmt.Sprintf("index out of range: %d len of array %d", idx, len(container)))
+		}
+		return container[idx]
 	default:
 		panic("index on something that is neither map nor array")
 	}

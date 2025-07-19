@@ -2,19 +2,19 @@
 // Demonstrates the new template string functionality with ${} interpolation
 
 func main() {
-    print("=== R2Lang Template Strings Demo ===");
+    std.print("=== R2Lang Template Strings Demo ===");
     
     // 1. Basic interpolation
     let name = "R2Lang";
     let version = "2.0";
     let greeting = `Hello from ${name} version ${version}!`;
-    print(greeting);
+    std.print(greeting);
     
     // 2. Arithmetic expressions
     let a = 15;
     let b = 25;
     let mathResult = `${a} + ${b} = ${a + b}`;
-    print(mathResult);
+    std.print(mathResult);
     
     // 3. Multiline templates
     let title = "Project Report";
@@ -28,7 +28,7 @@ Date: July 2025
 This is a multiline template string that preserves
 formatting and allows interpolation throughout.
     `;
-    print(report);
+    std.print(report);
     
     // 4. HTML generation
     func generateUserCard(userName, userAge, userEmail) {
@@ -45,8 +45,8 @@ formatting and allows interpolation throughout.
     }
     
     let userData = generateUserCard("Ana García", 28, "ana@example.com");
-    print("Generated HTML:");
-    print(userData);
+    std.print("Generated HTML:");
+    std.print(userData);
     
     // 5. SQL query generation
     func buildQuery(table, condition, limit) {
@@ -57,8 +57,8 @@ LIMIT ${limit};`;
     }
     
     let query = buildQuery("users", "active = true", 10);
-    print("Generated SQL:");
-    print(query);
+    std.print("Generated SQL:");
+    std.print(query);
     
     // 6. JSON-like template
     let userId = 123;
@@ -71,8 +71,8 @@ LIMIT ${limit};`;
     "timestamp": "${timestamp}",
     "success": ${isActive}
 }`;
-    print("JSON Template:");
-    print(jsonTemplate);
+    std.print("JSON Template:");
+    std.print(jsonTemplate);
     
     // 7. Configuration file generation
     let serverHost = "localhost";
@@ -86,37 +86,37 @@ debug.enabled=${debugMode}
 app.name=${name}
 app.version=${version}`;
     
-    print("Configuration:");
-    print(config);
+    std.print("Configuration:");
+    std.print(config);
     
     // 8. Performance demonstration
     let iterations = 100;
-    print(`Starting performance test with ${iterations} iterations...`);
+    std.print(`Starting performance test with ${iterations} iterations...`);
     
     for (i = 0; i < iterations; i = i + 1) {
         let perfTest = `Iteration ${i}: Result ${i * 2}`;
     }
     
     let perfResult = `Performance test: ${iterations} template strings created successfully`;
-    print(perfResult);
+    std.print(perfResult);
     
     // 9. Nested templates
     let innerTemplate = `inner content`;
     let outerTemplate = `Outer: ${innerTemplate} - complete`;
-    print("Nested template result:");
-    print(outerTemplate);
+    std.print("Nested template result:");
+    std.print(outerTemplate);
     
     // 10. Complex expressions
     let x = 10;
     let y = 20;
     let complexExpr = `Complex calculation: ${x * y + (x - y) / 2}`;
-    print(complexExpr);
+    std.print(complexExpr);
     
     // 11. Boolean interpolation
     let isReady = true;
     let notReady = false;
     let boolTest = `Ready: ${isReady}, Not Ready: ${notReady}`;
-    print(boolTest);
+    std.print(boolTest);
     
-    print("=== Template Strings Demo Complete ===");
+    std.print("=== Template Strings Demo Complete ===");
 }

@@ -2,32 +2,32 @@
 
 func main() {
     // 1) GET simple
-    let texto = clientHttpGet("https://httpbin.org/get");
-    print("Texto de GET =>", texto);
+    let texto = request.get("https://httpbin.org/get");
+    std.print("Texto de GET =>", texto);
 
     // 2) parse JSON
-    let jresp = parseJSON(texto);
-    print("parseJSON =>", jresp);
+    let jresp = json.parse(texto);
+    std.print("parseJSON =>", jresp);
 
     // 3) GET JSON directo
-    let jauto = clientHttpGetJSON("https://httpbin.org/json");
-    print("httpGetJSON =>", jauto);
+    let jauto = request.getJSON("https://httpbin.org/json");
+    std.print("httpGetJSON =>", jauto);
 
     // 4) POST con body "Hola"
-    let postResp = clientHttpPost("https://httpbin.org/post", "Hola desde R2");
-    print("POST resp =>", postResp);
+    let postResp = request.post("https://httpbin.org/post", "Hola desde R2");
+    std.print("POST resp =>", postResp);
 
     // 5) POST JSON
     let data = {};
-    varsSet(data, "nombre", "Alice");
-    varsSet(data, "edad", 30);
-    let postJsonResp = clientHttpPostJSON("https://httpbin.org/post", data);
-    print("httpPostJSON =>", postJsonResp);
+    data["nombre"] = "Alice";
+    data["edad"] = 30;
+    let postJsonResp = request.postJSON("https://httpbin.org/post", data);
+    std.print("httpPostJSON =>", postJsonResp);
 
     // 6) Manejo de XML (didáctico)
     let xmlString = "<root><person name='Bob'><age>25</age></person></root>";
-    let parsedXml = parseXML(xmlString);
-    print("parsedXml =>", parsedXml);
+    let parsedXml = xml.parse(xmlString);
+    std.print("parsedXml =>", parsedXml);
 
     // stringifyXML con un map estilo { "root": { ... } }
     let newXmlMap = {};
@@ -39,8 +39,8 @@ func main() {
     newXmlMap["root"]["person"]["age"]["_content"] = 40;
 
 
-    let xmlOut = stringifyXML(newXmlMap);
-    print("stringifyXML =>", xmlOut);
+    let xmlOut = xml.stringify(newXmlMap);
+    std.print("stringifyXML =>", xmlOut);
 
-    print("Fin de pruebaHTTP.r2");
+    std.print("Fin de pruebaHTTP.r2");
 }

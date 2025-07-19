@@ -1,58 +1,58 @@
 func main() {
-    println("=== r2hack Demo ===");
+    std.print("=== r2hack Demo ===");
 
     let text = "Hola Mundo";
-    println("hashMD5 =>", hashMD5(text));
-    println("hashSHA1 =>", hashSHA1(text));
-    println("hashSHA256 =>", hashSHA256(text));
+    std.print("hashMD5 =>", hack.hashMD5(text));
+    std.print("hashSHA1 =>", hack.hashSHA1(text));
+    std.print("hashSHA256 =>", hack.hashSHA256(text));
 
-    let b64 = base64Encode(text);
-    println("base64Encode =>", b64);
-    let dec = base64Decode(b64);
-    println("base64Decode =>", dec);
+    let b64 = hack.base64Encode(text);
+    std.print("base64Encode =>", b64);
+    let dec = hack.base64Decode(b64);
+    std.print("base64Decode =>", dec);
 
     // portScan
-    let openPorts = portScan("127.0.0.1", 1, 10000);
-    println("Puertos abiertos =>", openPorts);
+    let openPorts = hack.portScan("127.0.0.1", 1, 10000);
+    std.print("Puertos abiertos =>", openPorts);
 
     // whois
-    let ws = whois("goole.com");
-    println("whois =>", ws);
+    let ws = hack.whois("goole.com");
+    std.print("whois =>", ws);
 
     // hexdump
-    let hex = hexdump("Test\n\x00\xff!");
-    println("hexdump =>\n", hex);
+    let hex = hack.hexdump("Test\n\x00\xff!");
+    std.print("hexdump =>\n", hex);
 
 
      // 1) hmac
-        let hm = hmacSHA256("key123", "hola");
-        println("hmacSHA256 =>", hm);
+        let hm = hack.hmacSHA256("key123", "hola");
+        std.print("hmacSHA256 =>", hm);
 
         // 2) AES
-        let cipher = aesEncrypt("1234567890123456", "Mensaje secreto");
-        println("aesEncrypt =>", cipher);
-        let plain = aesDecrypt("1234567890123456", cipher);
-        println("aesDecrypt =>", plain);
+        let cipher = hack.aesEncrypt("1234567890123456", "Mensaje secreto");
+        std.print("aesEncrypt =>", cipher);
+        let plain = hack.aesDecrypt("1234567890123456", cipher);
+        std.print("aesDecrypt =>", plain);
 
         // 3) DNS
-        let ips = dnsLookup("example.com");
-        println("dnsLookup =>", ips);
+        let ips = hack.dnsLookup("example.com");
+        std.print("dnsLookup =>", ips);
 
         // 4) simplePing
-        let alive = simplePing("google.com");
-        println("simplePing(google.com) =>", alive);
+        let alive = hack.simplePing("google.com");
+        std.print("simplePing(google.com) =>", alive);
 
         // 5) RSA
-        let keys = quickRSA(1024);
-        println("quickRSA =>", keys);
+        let keys = hack.quickRSA(1024);
+        std.print("quickRSA =>", keys);
 
         // parse a manual
         let pub = keys[0];
         let priv = keys[1];
-        let ciphRSA = rsaEncrypt(pub, "HolaRSA");
-        println("rsaEncrypt =>", ciphRSA);
-        let decRSA = rsaDecrypt(priv, ciphRSA);
-        println("rsaDecrypt =>", decRSA);
+        let ciphRSA = hack.rsaEncrypt(pub, "HolaRSA");
+        std.print("rsaEncrypt =>", ciphRSA);
+        let decRSA = hack.rsaDecrypt(priv, ciphRSA);
+        std.print("rsaDecrypt =>", decRSA);
 
-    println("=== Fin ===");
+    std.print("=== Fin ===");
 }

@@ -9,11 +9,11 @@ class Persona {
     }
 
     saludar() {
-        println("Hola, soy", this.nombre, "y tengo", this.edad, "años.");
+        std.print("Hola, soy", this.nombre, "y tengo", this.edad, "años.");
     }
 }
 
-function main() {
+func main() {
     let p = Persona("Carlos", 30);
     p.saludar();
 }

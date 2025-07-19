@@ -1,20 +1,77 @@
 # Manual Completo de r2soap - Cliente SOAP Dinámico para R2Lang
 
+> **📝 Actualización v2.0**: A partir de esta versión, el cliente SOAP se crea con `soap.client()` en lugar de `soapClient()` para mayor consistencia con el sistema de módulos de R2Lang.
+
 ## Tabla de Contenidos
 
-1. [Introducción](#introducción)
-2. [Instalación y Configuración](#instalación-y-configuración)
-3. [Conceptos Fundamentales](#conceptos-fundamentales)
-4. [API Completa](#api-completa)
-5. [Ejemplos Básicos](#ejemplos-básicos)
-6. [Configuración Empresarial](#configuración-empresarial)
-7. [Autenticación](#autenticación)
-8. [SSL/TLS y Seguridad](#ssltls-y-seguridad)
-9. [Manejo de Errores](#manejo-de-errores)
-10. [Mejores Prácticas](#mejores-prácticas)
-11. [Casos de Uso Avanzados](#casos-de-uso-avanzados)
-12. [Troubleshooting](#troubleshooting)
-13. [Referencia Técnica](#referencia-técnica)
+1. [Guía de Migración v2.0](#guía-de-migración-v20)
+2. [Introducción](#introducción)
+3. [Instalación y Configuración](#instalación-y-configuración)
+4. [Conceptos Fundamentales](#conceptos-fundamentales)
+5. [API Completa](#api-completa)
+6. [Ejemplos Básicos](#ejemplos-básicos)
+7. [Configuración Empresarial](#configuración-empresarial)
+8. [Autenticación](#autenticación)
+9. [SSL/TLS y Seguridad](#ssltls-y-seguridad)
+10. [Manejo de Errores](#manejo-de-errores)
+11. [Mejores Prácticas](#mejores-prácticas)
+12. [Casos de Uso Avanzados](#casos-de-uso-avanzados)
+13. [Troubleshooting](#troubleshooting)
+14. [Referencia Técnica](#referencia-técnica)
+
+---
+
+## Guía de Migración v2.0
+
+Si vienes de una versión anterior de r2soap, aquí están los cambios principales:
+
+### Cambio de API Principal
+
+```javascript
+// ❌ Versión anterior
+let client = soapClient("http://service.com/service.wsdl");
+
+// ✅ Nueva versión (v2.0+)
+let client = soap.client("http://service.com/service.wsdl");
+```
+
+### Funciones Auxiliares
+
+```javascript
+// ❌ Versión anterior
+let envelope = soapEnvelope(namespace, method, params);
+let response = soapRequest(url, envelope);
+
+// ✅ Nueva versión (v2.0+)
+let envelope = soap.envelope(namespace, method, params);
+let response = soap.request(url, envelope);
+```
+
+### Compatibilidad
+
+- ✅ Todos los métodos del cliente mantienen la misma API
+- ✅ Los parámetros y opciones son idénticos
+- ✅ Las respuestas tienen el mismo formato
+- ⚠️ Solo cambia la función de creación inicial
+
+### Script de Migración Rápida
+
+Para migrar código existente, simplemente reemplaza las siguientes funciones:
+
+```javascript
+// Ejemplo de migración
+func migrateSOAPCode() {
+    // ❌ Código anterior
+    // let client = soapClient("http://service.com/service.wsdl");
+    
+    // ✅ Código actualizado
+    let client = soap.client("http://service.com/service.wsdl");
+    
+    // Todo lo demás permanece igual
+    let result = client.callSimple("Add", {"intA": 10, "intB": 5});
+    std.print("Resultado:", result);
+}
+```
 
 ---
 
@@ -41,7 +98,7 @@ import { CalculatorClient } from './generated/calculator-client';
 let client = new CalculatorClient();
 
 // r2soap (100% dinámico)
-let client = soapClient("http://service.com/calculator.wsdl");
+let client = soap.client("http://service.com/calculator.wsdl");
 ```
 
 ---
@@ -58,10 +115,10 @@ let client = soapClient("http://service.com/calculator.wsdl");
 
 ```javascript
 // Verificar que r2soap está disponible
-print("Funciones SOAP disponibles:");
-print("- soapClient:", typeOf(soapClient));
-print("- soapEnvelope:", typeOf(soapEnvelope));
-print("- soapRequest:", typeOf(soapRequest));
+std.std.print("Funciones SOAP disponibles:");
+std.std.print("- soap.client:", std.std.typeOf(soap.client));
+std.std.print("- soap.envelope:", std.std.typeOf(soap.envelope));
+std.std.print("- soap.request:", std.std.typeOf(soap.request));
 ```
 
 ---
@@ -81,14 +138,14 @@ WSDL es un documento XML que describe:
 
 ```javascript
 // Creación básica
-let client = soapClient("http://service.com/service.wsdl");
+let client = soap.client("http://service.com/service.wsdl");
 
 // Con headers personalizados
 let customHeaders = {
     "User-Agent": "MiAplicacion/1.0",
     "X-Company": "MiEmpresa"
 };
-let client = soapClient("http://service.com/service.wsdl", customHeaders);
+let client = soap.client("http://service.com/service.wsdl", customHeaders);
 ```
 
 ### Tipos de Respuesta
@@ -103,10 +160,10 @@ r2soap ofrece tres tipos de respuesta:
 
 ## API Completa
 
-### Función Principal: soapClient
+### Función Principal: soap.client
 
 ```javascript
-soapClient(wsdlURL, [customHeaders])
+soap.client(wsdlURL, [customHeaders])
 ```
 
 **Parámetros:**
@@ -205,9 +262,9 @@ client.setAuth({
 
 ```javascript
 // Información del servicio
-print("WSDL URL:", client.wsdlURL);
-print("Service URL:", client.serviceURL);
-print("Namespace:", client.namespace);
+std.print("WSDL URL:", client.wsdlURL);
+std.print("Service URL:", client.serviceURL);
+std.print("Namespace:", client.namespace);
 ```
 
 ---
@@ -218,34 +275,34 @@ print("Namespace:", client.namespace);
 
 ```javascript
 // Conectar a servicio de calculadora
-let client = soapClient("http://www.dneonline.com/calculator.asmx?WSDL");
+let client = soap.client("http://www.dneonline.com/calculator.asmx?WSDL");
 
 // Verificar conexión
-print("✅ Conectado a:", client.serviceURL);
+std.print("✅ Conectado a:", client.serviceURL);
 
 // Listar operaciones
 let operations = client.listOperations();
-print("Operaciones:", operations);
+std.print("Operaciones:", operations);
 
 // Realizar operación simple
 let result = client.callSimple("Add", {"intA": 10, "intB": 5});
-print("10 + 5 =", result);
+std.print("10 + 5 =", result);
 ```
 
 ### Ejemplo 2: Respuesta Completa
 
 ```javascript
-let client = soapClient("http://service.com/calculator.wsdl");
+let client = soap.client("http://service.com/calculator.wsdl");
 
 // Obtener respuesta completa
 let response = client.call("Multiply", {"intA": 7, "intB": 8});
 
 if (response.success) {
-    print("✅ Operación exitosa");
-    print("Resultado:", response.result);
-    print("Valores extraídos:", response.values);
+    std.print("✅ Operación exitosa");
+    std.print("Resultado:", response.result);
+    std.print("Valores extraídos:", response.values);
 } else {
-    print("❌ Error SOAP:", response.fault);
+    std.print("❌ Error SOAP:", response.fault);
 }
 ```
 
@@ -253,17 +310,17 @@ if (response.success) {
 
 ```javascript
 try {
-    let client = soapClient("http://service.com/service.wsdl");
+    let client = soap.client("http://service.com/service.wsdl");
     let result = client.callSimple("Operation", {"param": "value"});
-    print("Resultado:", result);
+    std.print("Resultado:", result);
 } catch (error) {
-    print("Error:", error);
+    std.print("Error:", error);
     
     let errorStr = "" + error;
-    if (indexOf(errorStr, "timeout") != -1) {
-        print("💡 Sugerencia: Aumentar timeout con client.setTimeout()");
-    } else if (indexOf(errorStr, "connection") != -1) {
-        print("💡 Sugerencia: Verificar conectividad de red");
+    if (string.indexOf(errorStr, "timeout") != -1) {
+        std.print("💡 Sugerencia: Aumentar timeout con client.setTimeout()");
+    } else if (string.indexOf(errorStr, "connection") != -1) {
+        std.print("💡 Sugerencia: Verificar conectividad de red");
     }
 }
 ```
@@ -275,7 +332,7 @@ try {
 ### Headers Corporativos
 
 ```javascript
-let client = soapClient("https://internal.company.com/service.wsdl");
+let client = soap.client("https://internal.company.com/service.wsdl");
 
 // Headers de compliance empresarial
 client.setHeader({
@@ -305,7 +362,7 @@ client.setHeader({
 
 ```javascript
 func createEnterpriseClient(wsdlURL, environment) {
-    let client = soapClient(wsdlURL);
+    let client = soap.client(wsdlURL);
     
     if (environment == "development") {
         // Configuración para desarrollo
@@ -333,7 +390,7 @@ func createEnterpriseClient(wsdlURL, environment) {
 ### Basic Authentication
 
 ```javascript
-let client = soapClient("https://secure-service.com/service.wsdl");
+let client = soap.client("https://secure-service.com/service.wsdl");
 
 // Configurar Basic Auth
 client.setAuth({
@@ -349,7 +406,7 @@ let result = client.callSimple("SecureOperation", {"data": "sensitive"});
 ### Bearer Token (OAuth/JWT)
 
 ```javascript
-let client = soapClient("https://api.company.com/service.wsdl");
+let client = soap.client("https://api.company.com/service.wsdl");
 
 // Configurar Bearer token
 client.setAuth({
@@ -365,7 +422,7 @@ let result = client.call("AuthenticatedOperation", {"param": "value"});
 
 ```javascript
 // Para sistemas de autenticación propietarios
-let client = soapClient("https://custom-auth.com/service.wsdl");
+let client = soap.client("https://custom-auth.com/service.wsdl");
 
 // Agregar headers de autenticación personalizados
 client.setHeader({
@@ -383,7 +440,7 @@ client.setHeader({
 ### Configuración SSL Básica
 
 ```javascript
-let client = soapClient("https://secure.company.com/service.wsdl");
+let client = soap.client("https://secure.company.com/service.wsdl");
 
 // Configuración SSL estricta para producción
 client.setTLSConfig({
@@ -396,7 +453,7 @@ client.setTLSConfig({
 
 ```javascript
 // ⚠️ Solo para desarrollo/testing
-let client = soapClient("https://internal-dev.company.com/service.wsdl");
+let client = soap.client("https://internal-dev.company.com/service.wsdl");
 
 client.setTLSConfig({
     "skipVerify": true,       // Skip verificación para testing
@@ -411,7 +468,7 @@ client.setHeader("X-Insecure-Mode", "true");
 
 ```javascript
 func createSecureClient(wsdlURL) {
-    let client = soapClient(wsdlURL);
+    let client = soap.client(wsdlURL);
     
     // Configuración corporativa estricta
     client.setTLSConfig({
@@ -440,19 +497,19 @@ func createSecureClient(wsdlURL) {
 
 ```javascript
 try {
-    let client = soapClient("http://unavailable-service.com/service.wsdl");
+    let client = soap.client("http://unavailable-service.com/service.wsdl");
 } catch (error) {
     let errorStr = "" + error;
     
-    if (indexOf(errorStr, "connection reset") != -1) {
-        print("🌐 Error: Servicio no disponible o bloqueando requests");
-        print("💡 Solución: Verificar headers User-Agent o firewall");
-    } else if (indexOf(errorStr, "timeout") != -1) {
-        print("⏱️ Error: Timeout de conexión");
-        print("💡 Solución: Aumentar timeout o verificar red");
-    } else if (indexOf(errorStr, "no such host") != -1) {
-        print("🔍 Error: No se pudo resolver DNS");
-        print("💡 Solución: Verificar URL y conectividad");
+    if (string.indexOf(errorStr, "connection reset") != -1) {
+        std.print("🌐 Error: Servicio no disponible o bloqueando requests");
+        std.print("💡 Solución: Verificar headers User-Agent o firewall");
+    } else if (string.indexOf(errorStr, "timeout") != -1) {
+        std.print("⏱️ Error: Timeout de conexión");
+        std.print("💡 Solución: Aumentar timeout o verificar red");
+    } else if (string.indexOf(errorStr, "no such host") != -1) {
+        std.print("🔍 Error: No se pudo resolver DNS");
+        std.print("💡 Solución: Verificar URL y conectividad");
     }
 }
 ```
@@ -463,12 +520,12 @@ try {
 try {
     let result = client.call("SecureOperation", {"data": "test"});
 } catch (error) {
-    if (indexOf("" + error, "401") != -1) {
-        print("🔐 Error de autenticación");
-        print("💡 Verificar credenciales con client.setAuth()");
-    } else if (indexOf("" + error, "403") != -1) {
-        print("🚫 Sin permisos para esta operación");
-        print("💡 Contactar administrador del servicio");
+    if (string.indexOf("" + error, "401") != -1) {
+        std.print("🔐 Error de autenticación");
+        std.print("💡 Verificar credenciales con client.setAuth()");
+    } else if (string.indexOf("" + error, "403") != -1) {
+        std.print("🚫 Sin permisos para esta operación");
+        std.print("💡 Contactar administrador del servicio");
     }
 }
 ```
@@ -479,15 +536,15 @@ try {
 let response = client.call("RiskyOperation", {"data": "invalid"});
 
 if (!response.success && response.fault) {
-    print("🚨 SOAP Fault detectado:");
-    print("Código:", response.fault.code);
-    print("Mensaje:", response.fault.message);
+    std.print("🚨 SOAP Fault detectado:");
+    std.print("Código:", response.fault.code);
+    std.print("Mensaje:", response.fault.message);
     
     // Manejo específico por tipo de fault
     if (response.fault.code == "Client") {
-        print("💡 Error del cliente - verificar parámetros");
+        std.print("💡 Error del cliente - verificar parámetros");
     } else if (response.fault.code == "Server") {
-        print("💡 Error del servidor - contactar soporte");
+        std.print("💡 Error del servidor - contactar soporte");
     }
 }
 ```
@@ -498,20 +555,20 @@ if (!response.success && response.fault) {
 func callWithRetry(client, operation, params, maxRetries) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            print("🔄 Intento", attempt, "de", maxRetries);
+            std.print("🔄 Intento", attempt, "de", maxRetries);
             let result = client.callSimple(operation, params);
-            print("✅ Éxito en intento", attempt);
+            std.print("✅ Éxito en intento", attempt);
             return result;
         } catch (error) {
-            print("❌ Fallo intento", attempt, ":", error);
+            std.print("❌ Fallo intento", attempt, ":", error);
             
             if (attempt < maxRetries) {
-                print("⏳ Esperando antes del siguiente intento...");
-                sleep(2.0 * attempt); // Backoff exponencial
+                std.print("⏳ Esperando antes del siguiente intento...");
+                std.sleep(2.0 * attempt); // Backoff exponencial
             }
         }
     }
-    print("💥 Falló después de", maxRetries, "intentos");
+    std.print("💥 Falló después de", maxRetries, "intentos");
     return null;
 }
 
@@ -527,7 +584,7 @@ let result = callWithRetry(client, "UnstableOperation", {"data": "test"}, 3);
 
 ```javascript
 func createConfiguredClient(wsdlURL, config) {
-    let client = soapClient(wsdlURL, config.headers || {});
+    let client = soap.client(wsdlURL, config.headers || {});
     
     // Aplicar configuraciones
     if (config.timeout) {
@@ -581,23 +638,23 @@ func auditedSOAPCall(client, operation, params, userId) {
         "X-Timestamp": getCurrentTimestamp()
     });
     
-    print("📝 Audit Log - Request ID:", requestId);
-    print("   Operation:", operation);
-    print("   User:", userId);
-    print("   Parameters:", Object.keys(params));
+    std.print("📝 Audit Log - Request ID:", requestId);
+    std.print("   Operation:", operation);
+    std.print("   User:", userId);
+    std.print("   Parameters:", Object.keys(params));
     
     try {
         let startTime = getCurrentTime();
         let result = client.call(operation, params);
         let duration = getCurrentTime() - startTime;
         
-        print("✅ Audit Log - Success");
-        print("   Duration:", duration, "ms");
-        print("   Response Type:", typeOf(result));
+        std.print("✅ Audit Log - Success");
+        std.print("   Duration:", duration, "ms");
+        std.print("   Response Type:", std.typeOf(result));
         
         return result;
     } catch (error) {
-        print("❌ Audit Log - Error:", error);
+        std.print("❌ Audit Log - Error:", error);
         throw error;
     }
 }
@@ -610,12 +667,12 @@ let clientCache = {};
 
 func getCachedClient(wsdlURL) {
     if (clientCache[wsdlURL]) {
-        print("📋 Usando cliente cacheado para:", wsdlURL);
+        std.print("📋 Usando cliente cacheado para:", wsdlURL);
         return clientCache[wsdlURL];
     }
     
-    print("🆕 Creando nuevo cliente para:", wsdlURL);
-    let client = soapClient(wsdlURL);
+    std.print("🆕 Creando nuevo cliente para:", wsdlURL);
+    let client = soap.client(wsdlURL);
     clientCache[wsdlURL] = client;
     return client;
 }
@@ -663,7 +720,7 @@ let result = validateAndCall(client, "Add", {"intA": 5, "intB": 3}, addSchema);
 ```javascript
 func processInvoice(invoiceData) {
     // Cliente para servicio de facturación empresarial
-    let billingClient = soapClient("https://billing.company.com/service.wsdl");
+    let billingClient = soap.client("https://billing.company.com/service.wsdl");
     
     // Configuración empresarial
     billingClient.setAuth({
@@ -687,7 +744,7 @@ func processInvoice(invoiceData) {
         });
         
         if (invoice.success) {
-            print("✅ Factura creada:", invoice.result.invoiceId);
+            std.print("✅ Factura creada:", invoice.result.invoiceId);
             
             // Enviar por email
             let emailResult = billingClient.call("SendInvoiceEmail", {
@@ -704,7 +761,7 @@ func processInvoice(invoiceData) {
             throw "Error al crear factura: " + invoice.fault.message;
         }
     } catch (error) {
-        print("❌ Error en facturación:", error);
+        std.print("❌ Error en facturación:", error);
         return {"success": false, "error": error};
     }
 }
@@ -725,7 +782,7 @@ class EnterpriseSOAPManager {
     func getClient(serviceName) {
         if (!this.clients[serviceName]) {
             let config = getServiceConfig(serviceName);
-            let client = soapClient(config.wsdlURL);
+            let client = soap.client(config.wsdlURL);
             
             // Aplicar configuración predeterminada
             client.setTimeout(this.defaultConfig.timeout);
@@ -778,7 +835,7 @@ func createEnvironmentProxy(environment) {
     
     proxy.getClient = func(serviceName) {
         let wsdlURL = proxy.baseURL + "/" + serviceName + "/service.wsdl";
-        let client = soapClient(wsdlURL);
+        let client = soap.client(wsdlURL);
         
         // Configuración por ambiente
         if (environment == "dev") {
@@ -813,7 +870,7 @@ let prodClient = prodProxy.getClient("calculator");
 
 **Síntomas:**
 ```
-panic: soapClient: failed to create client: connection reset by peer
+panic: soap.client: failed to create client: connection reset by peer
 ```
 
 **Causas:**
@@ -824,7 +881,7 @@ panic: soapClient: failed to create client: connection reset by peer
 **Soluciones:**
 ```javascript
 // Cambiar User-Agent a uno de navegador
-let client = soapClient("http://service.com/service.wsdl", {
+let client = soap.client("http://service.com/service.wsdl", {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 });
 
@@ -862,11 +919,11 @@ panic: operation 'NonExistent' not found
 ```javascript
 // Listar operaciones disponibles
 let operations = client.listOperations();
-print("Operaciones disponibles:", operations);
+std.print("Operaciones disponibles:", operations);
 
 // Verificar información del servicio
-print("Namespace:", client.namespace);
-print("Service URL:", client.serviceURL);
+std.print("Namespace:", client.namespace);
+std.print("Service URL:", client.serviceURL);
 ```
 
 #### 4. "Invalid SOAP Response"
@@ -879,11 +936,11 @@ print("Service URL:", client.serviceURL);
 ```javascript
 // Obtener respuesta raw para debug
 let rawResponse = client.callRaw("Operation", {"param": "value"});
-print("Respuesta XML cruda:", rawResponse);
+std.print("Respuesta XML cruda:", rawResponse);
 
 // Verificar estructura
-if (indexOf(rawResponse, "soap:Fault") != -1) {
-    print("❌ SOAP Fault detectado en respuesta");
+if (string.indexOf(rawResponse, "soap:Fault") != -1) {
+    std.print("❌ SOAP Fault detectado en respuesta");
 }
 ```
 
@@ -893,28 +950,28 @@ if (indexOf(rawResponse, "soap:Fault") != -1) {
 
 ```javascript
 func debugSOAPCall(client, operation, params) {
-    print("🔍 DEBUG - SOAP Call");
-    print("   Service URL:", client.serviceURL);
-    print("   Operation:", operation);
-    print("   Parameters:", params);
+    std.print("🔍 DEBUG - SOAP Call");
+    std.print("   Service URL:", client.serviceURL);
+    std.print("   Operation:", operation);
+    std.print("   Parameters:", params);
     
     // Headers actuales
     let headers = client.getHeaders();
-    print("   Headers:", Object.keys(headers));
+    std.print("   Headers:", Object.keys(headers));
     
     try {
         let startTime = getCurrentTime();
         let result = client.call(operation, params);
         let duration = getCurrentTime() - startTime;
         
-        print("✅ DEBUG - Success");
-        print("   Duration:", duration, "ms");
-        print("   Success:", result.success);
-        print("   Result type:", typeOf(result.result));
+        std.print("✅ DEBUG - Success");
+        std.print("   Duration:", duration, "ms");
+        std.print("   Success:", result.success);
+        std.print("   Result type:", std.typeOf(result.result));
         
         return result;
     } catch (error) {
-        print("❌ DEBUG - Error:", error);
+        std.print("❌ DEBUG - Error:", error);
         throw error;
     }
 }
@@ -925,25 +982,25 @@ func debugSOAPCall(client, operation, params) {
 ```javascript
 func validateWSDL(wsdlURL) {
     try {
-        print("🔍 Validando WSDL:", wsdlURL);
+        std.print("🔍 Validando WSDL:", wsdlURL);
         
-        let client = soapClient(wsdlURL);
-        print("✅ WSDL válido y parseado");
+        let client = soap.client(wsdlURL);
+        std.print("✅ WSDL válido y parseado");
         
         let operations = client.listOperations();
-        print("📋 Operaciones encontradas:", operations.length);
+        std.print("📋 Operaciones encontradas:", operations.length);
         
         for (let op in operations) {
             let opInfo = client.getOperation(op);
-            print("   -", op, "| Action:", opInfo.soapAction);
+            std.print("   -", op, "| Action:", opInfo.soapAction);
         }
         
-        print("🌐 Endpoint:", client.serviceURL);
-        print("📦 Namespace:", client.namespace);
+        std.print("🌐 Endpoint:", client.serviceURL);
+        std.print("📦 Namespace:", client.namespace);
         
         return true;
     } catch (error) {
-        print("❌ WSDL inválido:", error);
+        std.print("❌ WSDL inválido:", error);
         return false;
     }
 }
@@ -1048,7 +1105,7 @@ true  // Para operaciones booleanas
 
 ```javascript
 func bankingIntegration() {
-    let bankClient = soapClient("https://bank-api.company.com/banking.wsdl");
+    let bankClient = soap.client("https://bank-api.company.com/banking.wsdl");
     
     // Autenticación bancaria segura
     bankClient.setAuth({
@@ -1084,7 +1141,7 @@ func bankingIntegration() {
 
 ```javascript
 func erpIntegration(salesOrder) {
-    let erpClient = soapClient("https://erp.company.com/sales.wsdl");
+    let erpClient = soap.client("https://erp.company.com/sales.wsdl");
     
     // Headers ERP
     erpClient.setHeader({
@@ -1143,6 +1200,7 @@ r2soap es una solución completa y robusta para integración SOAP en R2Lang. Su 
 
 ---
 
-**Versión del Manual:** 1.0  
-**Última Actualización:** 2024  
-**Compatibilidad:** R2Lang v2.0+
+**Versión del Manual:** 2.0  
+**Última Actualización:** 2025  
+**Compatibilidad:** R2Lang v2.0+  
+**Cambios v2.0:** Actualizado para usar `soap.client()` en lugar de `soapClient()`
