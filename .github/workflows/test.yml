@@ -79,7 +79,7 @@ jobs:
         key: ${{ runner.os }}-go-1.22-${{ hashFiles('**/go.sum') }}
 
     - name: Download dependencies
-      run: go mod tidy
+      run: go mod download
 
     - name: Basic Go checks
       run: |
@@ -97,14 +97,6 @@ jobs:
         if command -v goimports &> /dev/null; then
           goimports -l .
         fi
-
-    - name: golangci-lint (optional)
-      uses: golangci/golangci-lint-action@v4
-      with:
-        #version: v1.54.2  # Versión más estable
-        version: v1.57.2 
-        args: --timeout=3m --disable=typecheck
-      continue-on-error: true
 
   integration:
     runs-on: ubuntu-latest
