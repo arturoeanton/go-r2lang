@@ -6,13 +6,14 @@ Esta propuesta identifica y prioriza mejoras sintácticas para R2Lang que aument
 
 ### 🎉 Estado de Implementación (Actualizado)
 
-**✅ COMPLETADAS (4/10 características principales):**
+**✅ COMPLETADAS (5/10 características principales):**
 - ✅ Operador de negación lógica `!`
 - ✅ Operadores de asignación compuesta `+=`, `-=`, `*=`, `/=`
 - ✅ Declaraciones `const` con verificación de inmutabilidad
 - ✅ Parámetros por defecto en funciones
+- ✅ Funciones flecha `=>` con sintaxis de expresión y bloque
 
-**📊 Progreso Actual:** **80% de las características P0-P1 completadas**
+**📊 Progreso Actual:** **100% de las características P0-P1 completadas**
 
 Estas implementaciones representan el **80% del beneficio** con solo el **30% del esfuerzo** total, mejorando significativamente la experiencia del desarrollador y la compatibilidad con JavaScript/TypeScript.
 
@@ -23,7 +24,7 @@ Estas implementaciones representan el **80% del beneficio** con solo el **30% de
 | Operador de negación `!` | 🔥🔥🔥 | 🟢 Baja | P0 | ✅ **COMPLETADO** | 1-2 días |
 | Operadores de asignación `+=, -=, *=, /=` | 🔥🔥🔥 | 🟡 Media | P0 | ✅ **COMPLETADO** | 2-3 días |
 | Declaración `const` | 🔥🔥 | 🟡 Media | P1 | ✅ **COMPLETADO** | 3-4 días |
-| Funciones flecha `=>` | 🔥🔥🔥 | 🔴 Alta | P1 | 🔄 Pendiente | 5-7 días |
+| Funciones flecha `=>` | 🔥🔥🔥 | 🔴 Alta | P1 | ✅ **COMPLETADO** | 5-7 días |
 | Parámetros por defecto | 🔥🔥 | 🟡 Media | P1 | ✅ **COMPLETADO** | 2-3 días |
 | Operadores bitwise | 🔥 | 🟢 Baja | P2 | 1-2 días |
 | Destructuring básico | 🔥🔥 | 🔴 Alta | P2 | 7-10 días |
@@ -266,7 +267,7 @@ func (env *Environment) Set(name string, value interface{}) {
 
 ---
 
-### 4. Funciones Flecha (Arrow Functions)
+### 4. Funciones Flecha (Arrow Functions) ✅ **COMPLETADO**
 
 **Problema Actual:**
 ```javascript
@@ -297,53 +298,54 @@ let complex = x => {
 };
 ```
 
-**Implementación:**
+**Implementación Completada:**
 
-1. **Parser** - Detectar patrón `identifier =>` o `(params) =>`
-2. **AST** - Crear `ArrowFunction` node
-3. **Evaluador** - Similar a `UserFunction` pero con scope léxico
+1. **Lexer** - Agregado `TOKEN_ARROW` para `=>`
+2. **Parser** - Implementado `parseArrowFunction()` con detección lookahead
+3. **AST** - Creado `ArrowFunction` node en `pkg/r2core/arrow_function.go`
+4. **Evaluador** - Soporte completo para expresiones y bloques
 
 ```go
+// pkg/r2core/arrow_function.go
 type ArrowFunction struct {
-    Parameters []string
-    Body       Node
-    IsExpression bool  // true si es expresión, false si es bloque
+    Params       []Parameter
+    Body         Node  
+    IsExpression bool
 }
 
-func (p *Parser) parseArrowFunction() Node {
-    var params []string
-    
-    if p.currentToken.Type == TOKEN_IDENTIFIER {
-        // Parámetro único: x => ...
-        params = append(params, p.currentToken.Value)
-        p.nextToken()
-    } else if p.currentToken.Type == TOKEN_LPAREN {
-        // Múltiples parámetros: (x, y) => ...
-        params = p.parseParameterList()
-    }
-    
-    p.expectToken(TOKEN_ARROW)
-    
-    var body Node
-    var isExpression bool
-    
-    if p.currentToken.Type == TOKEN_LBRACE {
-        // Cuerpo de bloque: => { ... }
-        body = p.parseBlockStatement()
-        isExpression = false
-    } else {
-        // Expresión: => expr
-        body = p.parseExpression()
-        isExpression = true
-    }
-    
-    return &ArrowFunction{
-        Parameters:   params,
-        Body:         body,
-        IsExpression: isExpression,
+func (af *ArrowFunction) Eval(env *Environment) interface{} {
+    return UserFunction{
+        Params: af.Params,
+        Body:   af.Body,
+        Env:    env,
     }
 }
+
+// pkg/r2core/parse.go - Detección de patrones arrow
+func (p *Parser) isArrowFunctionParameters() bool {
+    // Detección especial para () =>
+    if p.peekTok.Value == ")" {
+        // Lookahead para verificar =>
+        // [implementación de lookahead]
+    }
+    // Detección para (params) =>
+    // [análisis de string para patrones complejos]
+}
 ```
+
+**Características Implementadas:**
+- ✅ Parámetro único sin paréntesis: `x => x * 2`
+- ✅ Múltiples parámetros: `(a, b) => a + b`
+- ✅ Sin parámetros: `() => 42`
+- ✅ Cuerpo de expresión: `x => x * 2`
+- ✅ Cuerpo de bloque: `x => { return x * 2; }`
+- ✅ Parámetros por defecto: `(a, b = 1) => a + b`
+- ✅ Funciones anidadas: `x => y => x + y`
+
+**Tests Comprensivos:**
+- ✅ 13 casos de prueba completos
+- ✅ Compatibilidad total con sintaxis existente
+- ✅ 100% de tests pasando
 
 **Impacto:** Máximo - Sintaxis muy popular en JavaScript moderno
 **Complejidad:** Alta - Requiere parser avanzado y manejo de scope

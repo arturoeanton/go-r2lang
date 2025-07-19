@@ -29,7 +29,7 @@ Whether you're writing automation scripts, building web APIs, creating robust te
 
 | Feature | Description | Example |
 |---------|-------------|---------|
-| **🎯 Modern Language (2025)** | JavaScript-style syntax with `true`/`false` literals, multiline maps, `else if`, and `%` operator | `if (x % 2 == 0) { ... } else if (x % 3 == 0) { ... }` |
+| **🎯 Modern Language (2025)** | JavaScript-style syntax with `true`/`false` literals, arrow functions, const declarations, compound operators, and logical negation | `let double = x => x * 2; const API = "url"; count += 5; if (!isValid) { ... }` |
 | **🔧 DSL Builder** | **🌟 ORIGINAL** - Create custom Domain-Specific Languages with simple syntax | `dsl Calculator { token("NUM", "[0-9]+"); rule("sum", ["NUM", "+", "NUM"], "add"); }` |
 | **🗺️ Advanced Maps** | JavaScript-style map literals with multiline support and mixed separators | `let config = { host: "localhost", port: 8080, ssl: true }` |
 | **📝 Template Strings** | String interpolation with backticks and multiple variables | `let msg = \`Hello ${name}, you have ${count} messages\`` |
@@ -289,7 +289,32 @@ let birthday = @1990-05-15;
 let formatted = Date.format(birthday, "DD/MM/YYYY");
 print(`Birthday: ${formatted}`);
 
-// For-in loops with modern syntax
+// Arrow functions with modern syntax
+let numbers = [1, 2, 3, 4, 5];
+let doubled = numbers.map(x => x * 2);
+let evens = numbers.filter(x => x % 2 == 0);
+
+// Multiple parameters and block bodies
+let processUser = (name, age) => {
+    const greeting = `Hello ${name}`;
+    return age >= 18 ? `${greeting}, you're an adult` : `${greeting}, you're a minor`;
+};
+
+// Nested arrow functions (currying)
+let createMultiplier = factor => value => value * factor;
+let double = createMultiplier(2);
+print(double(5)); // 10
+
+// Compound operators and const declarations
+const MAX_ATTEMPTS = 3;
+let attempts = 0;
+attempts += 1;
+
+if (!isValid || attempts >= MAX_ATTEMPTS) {
+    print("Authentication failed");
+}
+
+// For-in loops with modern syntax  
 let scores = { alice: 95, bob: 87, charlie: 92 };
 let studentKeys = keys(scores);
 
