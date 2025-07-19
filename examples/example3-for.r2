@@ -1,20 +1,21 @@
 // 3) Ejemplo con for
 func main() {
     for (let i=0; i<3; i=i+1) {
-        print("for i:", i);
+        std.print("for i:", i);
     }
 
-    for (let i in range(1,4)) {
-            print("(range)for i:", i, " value:", $v);
+    let rng = std.range(1,4);
+    for (i in rng) {
+            std.print("(range)for i:", $k, " value:", $v);
     }
 
     let arr = [1, 2, 3];
-    for (let i=0; i<arr.len(); i=i+1) {
-           print("for i:", i, " value:",  arr[i]);
+    for (let i=0; i<std.len(arr); i=i+1) {
+           std.print("for i:", i, " value:",  arr[i]);
     }
 
-    for (let i in arr) {
-        print("for i:", i, " value:", $v);
+    for (i in arr) {
+        std.print("for i:", $k, " value:", $v);
     }
 
 

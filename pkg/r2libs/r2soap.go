@@ -145,7 +145,7 @@ type WSDLElement struct {
 // RegisterSOAP registers SOAP functions in R2Lang environment
 func RegisterSOAP(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
-		"soapClient": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		"client": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				panic("soapClient requires (wsdlURL, [customHeaders])")
 			}
@@ -183,7 +183,7 @@ func RegisterSOAP(env *r2core.Environment) {
 			return soapClientToMap(client)
 		}),
 
-		"soapEnvelope": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		"envelope": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 3 {
 				panic("soapEnvelope requires (namespace, methodName, bodyContent)")
 			}
@@ -200,7 +200,7 @@ func RegisterSOAP(env *r2core.Environment) {
 			return envelope
 		}),
 
-		"soapRequest": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		"request": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 3 {
 				panic("soapRequest requires (url, soapAction, envelope)")
 			}

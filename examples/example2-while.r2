@@ -2,7 +2,7 @@
 func main() {
     let i = 0;
     while (i < 3) {
-        print("i es", i);
+        std.print("i es", i);
         i = i + 1;
     }
 }

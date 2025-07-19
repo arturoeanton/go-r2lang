@@ -49,28 +49,28 @@ class Cuadrado2 extends Cuadrado {
 }
 
 function main() {
-    print("Clases que heredan de Figura");
-    print("Circulo");
+    std.print("Clases que heredan de Figura");
+    std.print("Circulo");
     c =  Circulo();
-    print(c.getColor());
-    print(c.getRadio());
+    std.print(c.getColor());
+    std.print(c.getRadio());
 
 
-    print("Cuadrado");
+    std.print("Cuadrado");
     cu =  Cuadrado();
-    print(cu.getColor());
-    print(cu.getLado());
+    std.print(cu.getColor());
+    std.print(cu.getLado());
 
-    print("Cuadrado2");
+    std.print("Cuadrado2");
     cu2 =  Cuadrado2();
-    print(cu2.getColor());
-    print(cu2.getLado());
+    std.print(cu2.getColor());
+    std.print(cu2.getLado());
 
-    print("Triangulo");
+    std.print("Triangulo");
     t =  Triangulo();
-    print(t.getColor());
-    print(t.getBase());
-    print(t.getAltura());
+    std.print(t.getColor());
+    std.print(t.getBase());
+    std.print(t.getAltura());
 
 
 

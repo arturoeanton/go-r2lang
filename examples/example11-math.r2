@@ -1,43 +1,43 @@
 // example11.r2
 
 func main() {
-    print("=== Prueba de r2math ===");
+    std.print("=== Prueba de r2math ===");
 
     // Usamos pi, e
-    print("pi =>", pi);
-    print("e =>", e);
+    std.print("pi =>", PI);
+    std.print("e =>", E);
 
     // Trig
     let x = 1;
-    let s = sin(x);
-    let c = cos(x);
-    print("sin(1) =>", s, " cos(1) =>", c);
+    let s = math.sin(x);
+    let c = math.cos(x);
+    std.print("sin(1) =>", s, " cos(1) =>", c);
 
     // log y exp
-    let lx = log(x + 10);
-    print("log(10+1) =>", lx);
-    let ex = exp(2);
-    print("exp(2) =>", ex);
+    let lx = math.log(x + 10);
+    std.print("log(10+1) =>", lx);
+    let ex = math.exp(2);
+    std.print("exp(2) =>", ex);
 
     // sqrt, pow
-    let sq = sqrt(9);
-    print("sqrt(9) =>", sq);
-    let pw = pow(2, 8);
-    print("pow(2, 8) =>", pw);
+    let sq = math.sqrt(9);
+    std.print("sqrt(9) =>", sq);
+    let pw = math.pow(2, 8);
+    std.print("pow(2, 8) =>", pw);
 
     // abs, floor, ceil, round
     let neg = -3.7;
-    print("abs(-3.7) =>", abs(neg));
-    print("floor(-3.7) =>", floor(neg));
-    print("ceil(-3.7) =>", ceil(neg));
-    print("round(-3.7) =>", round(neg));
+    std.print("abs(-3.7) =>", math.abs(neg));
+    std.print("floor(-3.7) =>", math.floor(neg));
+    std.print("ceil(-3.7) =>", math.ceil(neg));
+    std.print("round(-3.7) =>", math.round(neg));
 
     // max, min
-    print("max(10, 20) =>", max(10, 20));
-    print("min(10, 20) =>", min(10, 20));
+    std.print("max(10, 20) =>", math.max(10, 20));
+    std.print("min(10, 20) =>", math.min(10, 20));
 
     // hypot
-    print("hypot(3,4) =>", hypot(3, 4)); // => 5
+    std.print("hypot(3,4) =>", math.hypot(3, 4)); // => 5
 
-    print("=== Fin de example11.r2 ===");
+    std.print("=== Fin de example11.r2 ===");
 }

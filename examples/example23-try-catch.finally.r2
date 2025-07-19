@@ -6,17 +6,17 @@ func main() {
     try{
         let a = 1/0;
     }catch(e){
-        print("Error:", e);
+        std.print("Error:", e);
     }finally {
-        print("Finally");
+        std.print("Finally");
     }
 
     try{
         throw "Example of exception";
     }catch(e){
-        print("Error2:", e);
+        std.print("Error2:", e);
     }finally {
-        print("Finally2");
+        std.print("Finally2");
     }
 
 

@@ -9,27 +9,27 @@ class Persona {
     let edad;
     let pp;
     constructor(n, e) {
-        self.nombre = n;
-        self.edad = e;
+        this.nombre = n;
+        this.edad = e;
     }
     saludar() {
-        return sprint("Hola, soy ", self.nombre, " y tengo ", self.edad, " años.");
+        return sprint("Hola, soy ", this.nombre, " y tengo ", this.edad, " años.");
     }
 }
 
 func main(){
-    handler("GET","/users/:id", handleUser);
+    http.handler("GET","/users/:id", handleUser);
 
-    handler("GET","/users", func(){
+    http.handler("GET","/users", func(){
                             let p = Persona("Carlos", 30);
 
 
                             let p1 = Persona("Arturo", 44);
                             p.pp = p1;
 
-                            data = {saludo :   p.saludar(), persona: p};
+                            let data = {saludo :   p.saludar(), persona: p};
                             //body = JSON(data);
-                            body = XML("persona",data);
+                            let body = XML("persona",data);
                             return HttpResponse(body);
                             //return HttpResponse(200 ,body);
                             //return HttpResponse("application/xml"  ,body);
@@ -38,5 +38,5 @@ func main(){
 
 
       // Levantamos servidor
-      serve(":8080");
+      http.serve(":8080");
 }

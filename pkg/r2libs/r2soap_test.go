@@ -86,7 +86,7 @@ func TestRegisterSOAP(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	functions := []string{"soapClient", "soapEnvelope", "soapRequest"}
+	functions := []string{"client", "envelope", "request"}
 
 	for _, funcName := range functions {
 		if _, exists := soapModule[funcName]; !exists {
@@ -105,7 +105,7 @@ func TestSOAPEnvelope(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapEnvelopeFunc, _ := soapModule["soapEnvelope"]
+	soapEnvelopeFunc, _ := soapModule["envelope"]
 	builtinFunc := soapEnvelopeFunc.(r2core.BuiltinFunction)
 
 	namespace := "http://tempuri.org/"
@@ -154,7 +154,7 @@ func TestSOAPClientCreation(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Test client creation with mock WSDL
@@ -200,7 +200,7 @@ func TestSOAPClientListOperations(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientMap := builtinFunc(wsdlServer.URL).(map[string]interface{})
@@ -234,7 +234,7 @@ func TestSOAPClientGetOperation(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientMap := builtinFunc(wsdlServer.URL).(map[string]interface{})
@@ -268,7 +268,7 @@ func TestSOAPClientSetTimeout(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientMap := builtinFunc(wsdlServer.URL).(map[string]interface{})
@@ -295,7 +295,7 @@ func TestSOAPClientSetHeader(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientMap := builtinFunc(wsdlServer.URL).(map[string]interface{})
@@ -331,7 +331,7 @@ func TestSOAPRawRequest(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapRequestFunc, _ := soapModule["soapRequest"]
+	soapRequestFunc, _ := soapModule["request"]
 	builtinFunc := soapRequestFunc.(r2core.BuiltinFunction)
 
 	envelope := createSOAPEnvelope("http://tempuri.org/", "Add", "<intA>5</intA><intB>10</intB>")
@@ -387,7 +387,7 @@ func TestSOAPClientErrorHandling(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Test with invalid URL
@@ -410,7 +410,7 @@ func TestSOAPEnvelopeErrorHandling(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapEnvelopeFunc, _ := soapModule["soapEnvelope"]
+	soapEnvelopeFunc, _ := soapModule["envelope"]
 	builtinFunc := soapEnvelopeFunc.(r2core.BuiltinFunction)
 
 	// Test with insufficient arguments
@@ -433,7 +433,7 @@ func TestSOAPRequestErrorHandling(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapRequestFunc, _ := soapModule["soapRequest"]
+	soapRequestFunc, _ := soapModule["request"]
 	builtinFunc := soapRequestFunc.(r2core.BuiltinFunction)
 
 	// Test with insufficient arguments
@@ -539,7 +539,7 @@ func TestEnterpriseHeadersCustomization(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	customHeaders := map[string]interface{}{
@@ -612,7 +612,7 @@ func TestTLSConfiguration(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientResult := builtinFunc(wsdlServer.URL)
@@ -654,7 +654,7 @@ func TestAuthentication(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	clientResult := builtinFunc(wsdlServer.URL)
@@ -701,7 +701,7 @@ func TestResponseParsing(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Update mock WSDL to point to our test server
@@ -876,7 +876,7 @@ func TestEnterpriseErrorHandling(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Test with invalid WSDL URL
@@ -918,7 +918,7 @@ func TestMultipleClientInstances(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Create multiple clients
@@ -989,7 +989,7 @@ func TestSOAPClientFullWorkflow(t *testing.T) {
 	}
 	soapModule := soapModuleObj.(map[string]interface{})
 
-	soapClientFunc, _ := soapModule["soapClient"]
+	soapClientFunc, _ := soapModule["client"]
 	builtinFunc := soapClientFunc.(r2core.BuiltinFunction)
 
 	// Create client

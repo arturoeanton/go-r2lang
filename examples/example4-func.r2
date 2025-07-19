@@ -5,7 +5,7 @@ func suma(a, b) {
 
 func main() {
     let s = suma(10, 20);
-    print("La suma es", s);
+    std.print("La suma es", s);
 }
 
 // Output:
