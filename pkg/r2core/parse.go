@@ -111,6 +111,9 @@ func (p *Parser) parseStatement() Node {
 	if p.curTok.Value == LET || p.curTok.Value == VAR {
 		return p.parseLetStatement()
 	}
+	if p.curTok.Value == CONST {
+		return p.parseConstStatement()
+	}
 	if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION {
 		// esto parsea "func nombre(...) { ... }" => FunctionDeclaration con nombre
 		return p.parseFunctionDeclaration()
@@ -204,6 +207,17 @@ func (p *Parser) parseAssignmentOrExpressionStatement() Node {
 			p.nextToken()
 		}
 		return &GenericAssignStatement{Left: left, Right: &BinaryExpression{Left: left, Op: "-", Right: &NumberLiteral{Value: 1}}}
+	}
+
+	// Handle compound assignment operators
+	if p.curTok.Value == "+=" || p.curTok.Value == "-=" || p.curTok.Value == "*=" || p.curTok.Value == "/=" {
+		op := p.curTok.Value[:len(p.curTok.Value)-1] // Remove the '=' to get the binary operator
+		p.nextToken()
+		right := p.parseExpression()
+		if p.curTok.Value == ";" {
+			p.nextToken()
+		}
+		return &GenericAssignStatement{Left: left, Right: &BinaryExpression{Left: left, Op: op, Right: right}}
 	}
 
 	if p.curTok.Value == ";" {
@@ -302,6 +316,65 @@ func (p *Parser) parseLetStatement() Node {
 	return &MultipleLetStatement{Declarations: declarations}
 }
 
+func (p *Parser) parseConstStatement() Node {
+	p.nextToken() // "const"
+
+	var declarations []ConstDeclaration
+
+	// Parsear primera declaración
+	if p.curTok.Type != TOKEN_IDENT {
+		p.except("Variable name expected after 'const'")
+	}
+
+	name := p.curTok.Value
+	p.nextToken()
+
+	// const requires initialization
+	if p.curTok.Value != "=" {
+		p.except("const declarations must be initialized")
+	}
+
+	p.nextToken()
+	value := p.parseExpression()
+
+	declarations = append(declarations, ConstDeclaration{Name: name, Value: value})
+
+	// Parsear declaraciones adicionales separadas por comas
+	for p.curTok.Value == "," {
+		p.nextToken() // consumir ","
+
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Variable name expected after ','")
+		}
+
+		name = p.curTok.Value
+		p.nextToken()
+
+		// const requires initialization
+		if p.curTok.Value != "=" {
+			p.except("const declarations must be initialized")
+		}
+
+		p.nextToken()
+		value = p.parseExpression()
+
+		declarations = append(declarations, ConstDeclaration{Name: name, Value: value})
+	}
+
+	// Consumir punto y coma opcional
+	if p.curTok.Value == ";" {
+		p.nextToken()
+	}
+
+	// Si solo hay una declaración, usar ConstStatement simple para mantener compatibilidad
+	if len(declarations) == 1 {
+		return &ConstStatement{Name: declarations[0].Name, Value: declarations[0].Value}
+	}
+
+	// Si hay múltiples declaraciones, usar MultipleConstStatement
+	return &MultipleConstStatement{Declarations: declarations}
+}
+
 // parseFunctionDeclaration => "func nombre(args) { ... }"
 func (p *Parser) parseFunctionDeclaration() Node {
 	p.nextToken() // consumir "func"
@@ -317,9 +390,16 @@ func (p *Parser) parseFunctionDeclaratioWithoutFunc() Node {
 	if p.curTok.Value != "(" {
 		p.except("'(' expected after function name")
 	}
-	args := p.parseFunctionArgs()
+	params := p.parseFunctionParameters()
 	body := p.parseBlockStatement()
-	return &FunctionDeclaration{Name: funcName, Args: args, Body: body}
+
+	// Convert parameters to args for backward compatibility
+	var args []string
+	for _, param := range params {
+		args = append(args, param.Name)
+	}
+
+	return &FunctionDeclaration{Name: funcName, Args: args, Params: params, Body: body}
 }
 
 func (p *Parser) parseIfStatement() Node {
@@ -488,7 +568,7 @@ func (p *Parser) parseOptionalExtends() string {
 	return parentName
 }
 
-// parseFunctionArgs => lee identificadores separados por coma hasta ")"
+// parseFunctionArgs => lee identificadores separados por coma hasta ")" (backward compatibility)
 func (p *Parser) parseFunctionArgs() []string {
 	var args []string
 	p.nextToken() // consumir "("
@@ -501,10 +581,48 @@ func (p *Parser) parseFunctionArgs() []string {
 		p.nextToken()
 	}
 	if p.curTok.Value != ")" {
-		p.except("Expected ‘)’ after function arguments")
+		p.except("Expected ')' after function arguments")
 	}
 	p.nextToken() // consumir ")"
 	return args
+}
+
+// parseFunctionParameters => parsea parámetros con valores por defecto
+func (p *Parser) parseFunctionParameters() []Parameter {
+	var params []Parameter
+	p.nextToken() // consumir "("
+
+	for p.curTok.Value != ")" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_IDENT {
+			paramName := p.curTok.Value
+			p.nextToken()
+
+			var defaultValue Node
+			if p.curTok.Value == "=" {
+				p.nextToken() // consumir "="
+				defaultValue = p.parseExpression()
+			}
+
+			params = append(params, Parameter{
+				Name:         paramName,
+				DefaultValue: defaultValue,
+			})
+
+			if p.curTok.Value == "," {
+				p.nextToken() // consumir ","
+			} else if p.curTok.Value != ")" {
+				p.except("Expected ',' or ')' after parameter")
+			}
+		} else {
+			p.except("Expected parameter name, got: " + p.curTok.Value)
+		}
+	}
+
+	if p.curTok.Value != ")" {
+		p.except("Expected ')' after function parameters")
+	}
+	p.nextToken() // consumir ")"
+	return params
 }
 
 func (p *Parser) parseBlockStatement() *BlockStatement {
@@ -548,7 +666,7 @@ func (p *Parser) parseExpression() Node {
 
 // parseBinaryExpression => parsea operadores binarios
 func (p *Parser) parseBinaryExpression(precedence int) Node {
-	left := p.parseFactor()
+	left := p.parseUnaryExpression()
 	for p.curTok.Type == TOKEN_SYMBOL && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
 		op := p.curTok.Value
 		p.nextToken()
@@ -556,6 +674,20 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 		left = &BinaryExpression{Left: left, Op: op, Right: right}
 	}
 	return left
+}
+
+// parseUnaryExpression => parsea operadores unarios como !, -, +
+func (p *Parser) parseUnaryExpression() Node {
+	if p.curTok.Type == TOKEN_SYMBOL {
+		switch p.curTok.Value {
+		case "!", "-", "+":
+			operator := p.curTok.Value
+			p.nextToken()
+			right := p.parseUnaryExpression()
+			return &UnaryExpression{Operator: operator, Right: right}
+		}
+	}
+	return p.parseFactor()
 }
 
 func getPrecedence(op string) int {
@@ -655,11 +787,18 @@ func (p *Parser) parseAnonymousFunction() Node {
 	// ya vimos p.curTok == "func" (type=ident)
 	p.nextToken() // consumir "func"
 	if p.curTok.Value != "(" {
-		p.except("Expected ‘(’ after ‘func’ in the anonymous function")
+		p.except("Expected '(' after 'func' in the anonymous function")
 	}
-	args := p.parseFunctionArgs()
+	params := p.parseFunctionParameters()
 	body := p.parseBlockStatement()
-	return &FunctionLiteral{Args: args, Body: body}
+
+	// Convert parameters to args for backward compatibility
+	var args []string
+	for _, param := range params {
+		args = append(args, param.Name)
+	}
+
+	return &FunctionLiteral{Args: args, Params: params, Body: body}
 }
 
 func (p *Parser) parsePostfix(left Node) Node {

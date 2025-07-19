@@ -1,7 +1,14 @@
 package r2core
 
+// Parameter represents a function parameter with optional default value
+type Parameter struct {
+	Name         string
+	DefaultValue Node // nil if no default value
+}
+
 type UserFunction struct {
-	Args     []string
+	Args     []string    // For backward compatibility
+	Params   []Parameter // New parameter structure with default values
 	Body     *BlockStatement
 	Env      *Environment
 	IsMethod bool
@@ -58,11 +65,29 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 		}
 
 	}
-	for i, param := range uf.Args {
-		if i < len(args) {
-			newEnv.Set(param, args[i])
-		} else {
-			newEnv.Set(param, nil)
+
+	// Handle parameters with default values
+	if len(uf.Params) > 0 {
+		// Use new parameter structure
+		for i, param := range uf.Params {
+			if i < len(args) {
+				newEnv.Set(param.Name, args[i])
+			} else if param.DefaultValue != nil {
+				// Evaluate default value in the new environment
+				defaultVal := param.DefaultValue.Eval(newEnv)
+				newEnv.Set(param.Name, defaultVal)
+			} else {
+				newEnv.Set(param.Name, nil)
+			}
+		}
+	} else {
+		// Fallback to old parameter structure for backward compatibility
+		for i, param := range uf.Args {
+			if i < len(args) {
+				newEnv.Set(param, args[i])
+			} else {
+				newEnv.Set(param, nil)
+			}
 		}
 	}
 	val := uf.Body.Eval(newEnv)
@@ -110,6 +135,7 @@ func instantiateObject(env *Environment, blueprint map[string]interface{}, argVa
 		case *UserFunction:
 			newFn := &UserFunction{
 				Args:     vv.Args,
+				Params:   vv.Params,
 				Body:     vv.Body,
 				Env:      objEnv,
 				IsMethod: true,

@@ -73,8 +73,8 @@ func TestEnvironment_Set(t *testing.T) {
 	if !exists {
 		t.Error("Expected 'name' to exist in store")
 	}
-	if val != "test" {
-		t.Errorf("Expected 'test', got %v", val)
+	if val.Value != "test" {
+		t.Errorf("Expected 'test', got %v", val.Value)
 	}
 
 	// Test setting a number value
@@ -87,8 +87,8 @@ func TestEnvironment_Set(t *testing.T) {
 	if !exists {
 		t.Error("Expected 'age' to exist in store")
 	}
-	if val != 42 {
-		t.Errorf("Expected 42, got %v", val)
+	if val.Value != 42 {
+		t.Errorf("Expected 42, got %v", val.Value)
 	}
 
 	// Test overwriting a value
@@ -101,8 +101,8 @@ func TestEnvironment_Set(t *testing.T) {
 	if !exists {
 		t.Error("Expected 'name' to exist in store")
 	}
-	if val != "updated" {
-		t.Errorf("Expected 'updated', got %v", val)
+	if val.Value != "updated" {
+		t.Errorf("Expected 'updated', got %v", val.Value)
 	}
 }
 

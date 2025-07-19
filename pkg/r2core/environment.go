@@ -12,8 +12,14 @@ import (
 // 6) ENVIRONMENT
 // ============================================================
 
+// Variable represents a variable with its value and mutability status
+type Variable struct {
+	Value   interface{}
+	IsConst bool
+}
+
 type Environment struct {
-	store    map[string]interface{}
+	store    map[string]*Variable
 	outer    *Environment
 	imported map[string]bool
 	Dir      string
@@ -32,7 +38,7 @@ type Environment struct {
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		store:       make(map[string]interface{}),
+		store:       make(map[string]*Variable),
 		outer:       nil,
 		imported:    make(map[string]bool),
 		lookupCache: make(map[string]interface{}),
@@ -43,7 +49,7 @@ func NewEnvironment() *Environment {
 
 func NewInnerEnv(outer *Environment) *Environment {
 	return &Environment{
-		store:       make(map[string]interface{}),
+		store:       make(map[string]*Variable),
 		outer:       outer,
 		imported:    make(map[string]bool),
 		Dir:         outer.Dir,
@@ -57,11 +63,33 @@ func (e *Environment) GetStore() map[string]interface{} {
 	if e == nil {
 		return nil
 	}
-	return e.store
+	// Convert Variable map to interface{} map for backward compatibility
+	result := make(map[string]interface{})
+	for name, variable := range e.store {
+		result[name] = variable.Value
+	}
+	return result
 }
 
 func (e *Environment) Set(name string, value interface{}) {
-	e.store[name] = value
+	// Check if variable already exists and is const
+	if existing, exists := e.store[name]; exists && existing.IsConst {
+		panic("cannot assign to const variable '" + name + "'")
+	}
+	e.store[name] = &Variable{Value: value, IsConst: false}
+	// Limpiar cache cuando se modifica una variable
+	e.lookupCacheMu.Lock()
+	delete(e.lookupCache, name)
+	e.lookupCacheMu.Unlock()
+}
+
+// SetConst creates an immutable variable
+func (e *Environment) SetConst(name string, value interface{}) {
+	// Check if variable already exists
+	if _, exists := e.store[name]; exists {
+		panic("variable '" + name + "' already declared")
+	}
+	e.store[name] = &Variable{Value: value, IsConst: true}
 	// Limpiar cache cuando se modifica una variable
 	e.lookupCacheMu.Lock()
 	delete(e.lookupCache, name)
@@ -71,8 +99,11 @@ func (e *Environment) Set(name string, value interface{}) {
 // Update modifica una variable existente en el scope correcto
 func (e *Environment) Update(name string, value interface{}) {
 	// Buscar la variable en el scope actual
-	if _, ok := e.store[name]; ok {
-		e.store[name] = value
+	if existing, ok := e.store[name]; ok {
+		if existing.IsConst {
+			panic("cannot assign to const variable '" + name + "'")
+		}
+		e.store[name] = &Variable{Value: value, IsConst: false}
 		// Limpiar cache cuando se modifica una variable
 		e.lookupCacheMu.Lock()
 		delete(e.lookupCache, name)
@@ -101,8 +132,9 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 	e.lookupCacheMu.RUnlock()
 
 	// Búsqueda en store local
-	val, ok := e.store[name]
+	variable, ok := e.store[name]
 	if ok {
+		val := variable.Value
 		// Cachear solo si el cache no está lleno (evitar memory leak)
 		e.lookupCacheMu.Lock()
 		if len(e.lookupCache) < 100 { // Limitar tamaño del cache
