@@ -29,6 +29,7 @@ const (
 	RETURN   = "return"
 	LET      = "let"
 	VAR      = "var"
+	CONST    = "const"
 	FUNC     = "func"
 	FUNCTION = "function"
 	METHOD   = "method"
@@ -244,11 +245,18 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 	}
 
 	if ch == '+' {
-		nextch := l.input[l.pos+1]
-		if nextch == '+' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: l.line, Pos: l.pos, Col: l.col}
-			l.pos += 2
-			return l.currentToken, true
+		if l.pos+1 < l.length {
+			nextch := l.input[l.pos+1]
+			if nextch == '+' {
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "++", Line: l.line, Pos: l.pos, Col: l.col}
+				l.pos += 2
+				return l.currentToken, true
+			}
+			if nextch == '=' {
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "+=", Line: l.line, Pos: l.pos, Col: l.col}
+				l.pos += 2
+				return l.currentToken, true
+			}
 		}
 	}
 
@@ -263,9 +271,26 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 	}
 
 	if ch == '-' {
-		nextch := l.input[l.pos+1]
-		if nextch == '-' {
-			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: l.line, Pos: l.pos, Col: l.col}
+		if l.pos+1 < l.length {
+			nextch := l.input[l.pos+1]
+			if nextch == '-' {
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "--", Line: l.line, Pos: l.pos, Col: l.col}
+				l.pos += 2
+				return l.currentToken, true
+			}
+			if nextch == '=' {
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "-=", Line: l.line, Pos: l.pos, Col: l.col}
+				l.pos += 2
+				return l.currentToken, true
+			}
+		}
+	}
+
+	// Handle *= and /= operators
+	if ch == '*' || ch == '/' {
+		if l.pos+1 < l.length && l.input[l.pos+1] == '=' {
+			op := string(ch) + "="
+			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
 			return l.currentToken, true
 		}

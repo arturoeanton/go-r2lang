@@ -39,13 +39,15 @@ func (al *ArrayLiteral) Eval(env *Environment) interface{} {
 
 // Queremos un "FunctionLiteral" para soportar func(...) { ... } anónimas
 type FunctionLiteral struct {
-	Args []string
-	Body *BlockStatement
+	Args   []string    // For backward compatibility
+	Params []Parameter // New parameter structure with default values
+	Body   *BlockStatement
 }
 
 func (fl *FunctionLiteral) Eval(env *Environment) interface{} {
 	fn := &UserFunction{
 		Args:     fl.Args,
+		Params:   fl.Params,
 		Body:     fl.Body,
 		Env:      env, // closure
 		IsMethod: false,
