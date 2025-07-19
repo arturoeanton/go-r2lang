@@ -79,7 +79,7 @@ jobs:
         key: ${{ runner.os }}-go-1.22-${{ hashFiles('**/go.sum') }}
 
     - name: Download dependencies
-      run: go mod download
+      run: go mod tidy
 
     - name: Basic Go checks
       run: |
