@@ -1,8 +1,9 @@
 package r2libs
 
 import (
-	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 	"testing"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 func TestModuleSystem(t *testing.T) {
@@ -20,6 +21,9 @@ func TestModuleSystem(t *testing.T) {
 	RegisterOS(env)
 	RegisterRand(env)
 	RegisterTest(env)
+	RegisterCSV(env)
+	RegisterHack(env)
+	RegisterConsole(env)
 
 	tests := []struct {
 		name     string
@@ -85,6 +89,51 @@ func TestModuleSystem(t *testing.T) {
 			name:     "test module functions exist",
 			code:     `return std.typeOf(test.assertEq);`,
 			expected: "r2core.BuiltinFunction",
+		},
+		{
+			name:     "csv module functions exist",
+			code:     `return std.typeOf(csv.parse);`,
+			expected: "r2core.BuiltinFunction",
+		},
+		{
+			name:     "hack module functions exist",
+			code:     `return std.typeOf(hack.hashMD5);`,
+			expected: "r2core.BuiltinFunction",
+		},
+		{
+			name:     "console module functions exist",
+			code:     `return std.typeOf(console.log);`,
+			expected: "r2core.BuiltinFunction",
+		},
+		{
+			name:     "string.toUpper works",
+			code:     `return string.toUpper("hello");`,
+			expected: "HELLO",
+		},
+		{
+			name:     "string.toLower works",
+			code:     `return string.toLower("HELLO");`,
+			expected: "hello",
+		},
+		{
+			name:     "string.trim works",
+			code:     `return string.trim("  hello  ");`,
+			expected: "hello",
+		},
+		{
+			name:     "hack.hashMD5 works",
+			code:     `return hack.hashMD5("hello");`,
+			expected: "5d41402abc4b2a76b9719d911017c592",
+		},
+		{
+			name:     "hack.base64Encode works",
+			code:     `return hack.base64Encode("hello");`,
+			expected: "aGVsbG8=",
+		},
+		{
+			name:     "rand.randInt returns number in range",
+			code:     `let x = rand.randInt(1, 10); return x >= 1 && x <= 10;`,
+			expected: true,
 		},
 	}
 
