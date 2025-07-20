@@ -109,6 +109,13 @@ func (p *Parser) parseStatement() Node {
 		return p.parseContinueStatement()
 	}
 	if p.curTok.Value == LET || p.curTok.Value == VAR {
+		// Verificar si es destructuring
+		if p.peekTok.Value == "[" {
+			return p.parseArrayDestructuring()
+		}
+		if p.peekTok.Value == "{" {
+			return p.parseObjectDestructuring()
+		}
 		return p.parseLetStatement()
 	}
 	if p.curTok.Value == CONST {
@@ -681,6 +688,13 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 
 // parseUnaryExpression => parsea operadores unarios como !, -, +
 func (p *Parser) parseUnaryExpression() Node {
+	// Operador spread ...
+	if p.curTok.Type == TOKEN_ELLIPSIS {
+		p.nextToken()
+		value := p.parseUnaryExpression()
+		return &SpreadExpression{Value: value}
+	}
+
 	if p.curTok.Type == TOKEN_SYMBOL {
 		switch p.curTok.Value {
 		case "!", "-", "+", "~":
@@ -913,54 +927,65 @@ func (p *Parser) parseMapLiteral() Node {
 		return &MapLiteral{Pairs: pairs}
 	}
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
-		var keyNode Node
+		// Verificar si es spread operator
+		if p.curTok.Type == TOKEN_ELLIPSIS {
+			p.nextToken() // consumir "..."
+			spreadValue := p.parseExpression()
+			// Usar una clave especial para spread que no será usada
+			pairs = append(pairs, MapPair{
+				Key:   &StringLiteral{Value: "..."},
+				Value: &SpreadExpression{Value: spreadValue},
+			})
+		} else {
+			var keyNode Node
 
-		// Soportar expresiones como claves estilo JavaScript
-		switch p.curTok.Type {
-		case TOKEN_STRING:
-			keyNode = &StringLiteral{Value: p.curTok.Value}
-			p.nextToken()
-		case TOKEN_IDENT:
-			// En JavaScript: {foo: "bar"} equivale a {"foo": "bar"}
-			keyNode = &StringLiteral{Value: p.curTok.Value}
-			p.nextToken()
-		case TOKEN_NUMBER:
-			// En JavaScript: {123: "bar"} es válido
-			keyNode = &StringLiteral{Value: p.curTok.Value}
-			p.nextToken()
-		case TOKEN_SYMBOL:
-			if p.curTok.Value == "(" {
-				// Permitir expresiones entre paréntesis como claves
-				p.nextToken() // consumir "("
-				keyNode = p.parseExpression()
-				if p.curTok.Value != ")" {
-					p.except("Expected ')' after key expression")
+			// Soportar expresiones como claves estilo JavaScript
+			switch p.curTok.Type {
+			case TOKEN_STRING:
+				keyNode = &StringLiteral{Value: p.curTok.Value}
+				p.nextToken()
+			case TOKEN_IDENT:
+				// En JavaScript: {foo: "bar"} equivale a {"foo": "bar"}
+				keyNode = &StringLiteral{Value: p.curTok.Value}
+				p.nextToken()
+			case TOKEN_NUMBER:
+				// En JavaScript: {123: "bar"} es válido
+				keyNode = &StringLiteral{Value: p.curTok.Value}
+				p.nextToken()
+			case TOKEN_SYMBOL:
+				if p.curTok.Value == "(" {
+					// Permitir expresiones entre paréntesis como claves
+					p.nextToken() // consumir "("
+					keyNode = p.parseExpression()
+					if p.curTok.Value != ")" {
+						p.except("Expected ')' after key expression")
+					}
+					p.nextToken() // consumir ")"
+				} else if p.curTok.Value == "[" {
+					// Soporte para [expression]: value
+					p.nextToken() // consumir "["
+					keyNode = p.parseExpression()
+					if p.curTok.Value != "]" {
+						p.except("Expected ']' after computed key expression")
+					}
+					p.nextToken() // consumir "]"
+				} else {
+					// Permitir expresiones simples como claves
+					keyNode = p.parseExpression()
 				}
-				p.nextToken() // consumir ")"
-			} else if p.curTok.Value == "[" {
-				// Soporte para [expression]: value
-				p.nextToken() // consumir "["
-				keyNode = p.parseExpression()
-				if p.curTok.Value != "]" {
-					p.except("Expected ']' after computed key expression")
-				}
-				p.nextToken() // consumir "]"
-			} else {
+			default:
 				// Permitir expresiones simples como claves
 				keyNode = p.parseExpression()
 			}
-		default:
-			// Permitir expresiones simples como claves
-			keyNode = p.parseExpression()
-		}
 
-		if p.curTok.Value != ":" {
-			p.except("Expected ':' after key in map-literal")
-		}
-		p.nextToken()
-		valNode := p.parseExpression()
+			if p.curTok.Value != ":" {
+				p.except("Expected ':' after key in map-literal")
+			}
+			p.nextToken()
+			valNode := p.parseExpression()
 
-		pairs = append(pairs, MapPair{Key: keyNode, Value: valNode})
+			pairs = append(pairs, MapPair{Key: keyNode, Value: valNode})
+		}
 
 		if p.curTok.Value == "," {
 			p.nextToken()
@@ -1125,6 +1150,76 @@ func (p *Parser) parseArrowFunction() Node {
 		Body:         body,
 		IsExpression: isExpression,
 	}
+}
+
+// parseArrayDestructuring parsea: let [a, b, c] = [1, 2, 3]
+func (p *Parser) parseArrayDestructuring() Node {
+	p.nextToken() // consumir "let"
+	p.nextToken() // consumir "["
+
+	var names []string
+	for p.curTok.Value != "]" {
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Expected identifier in array destructuring")
+		}
+		names = append(names, p.curTok.Value)
+		p.nextToken()
+
+		if p.curTok.Value == "," {
+			p.nextToken()
+		} else if p.curTok.Value != "]" {
+			p.except("Expected ',' or ']' in array destructuring")
+		}
+	}
+	p.nextToken() // consumir "]"
+
+	if p.curTok.Value != "=" {
+		p.except("Expected '=' after array destructuring")
+	}
+	p.nextToken() // consumir "="
+
+	value := p.parseExpression()
+
+	if p.curTok.Value == ";" {
+		p.nextToken()
+	}
+
+	return &ArrayDestructuring{Names: names, Value: value}
+}
+
+// parseObjectDestructuring parsea: let {name, age} = user
+func (p *Parser) parseObjectDestructuring() Node {
+	p.nextToken() // consumir "let"
+	p.nextToken() // consumir "{"
+
+	var names []string
+	for p.curTok.Value != "}" {
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Expected identifier in object destructuring")
+		}
+		names = append(names, p.curTok.Value)
+		p.nextToken()
+
+		if p.curTok.Value == "," {
+			p.nextToken()
+		} else if p.curTok.Value != "}" {
+			p.except("Expected ',' or '}' in object destructuring")
+		}
+	}
+	p.nextToken() // consumir "}"
+
+	if p.curTok.Value != "=" {
+		p.except("Expected '=' after object destructuring")
+	}
+	p.nextToken() // consumir "="
+
+	value := p.parseExpression()
+
+	if p.curTok.Value == ";" {
+		p.nextToken()
+	}
+
+	return &ObjectDestructuring{Names: names, Value: value}
 }
 
 func (p *Parser) except(msgErr string) {

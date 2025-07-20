@@ -11,21 +11,30 @@ type MapLiteral struct {
 
 func (ml *MapLiteral) Eval(env *Environment) interface{} {
 	m := make(map[string]interface{})
+
 	for _, pair := range ml.Pairs {
-		keyVal := pair.Key.Eval(env)
-
-		// Convertir la clave a string
-		var keyStr string
-		switch k := keyVal.(type) {
-		case string:
-			keyStr = k
-		case float64:
-			keyStr = toString(k)
-		default:
-			keyStr = toString(k)
+		// Verificar si el valor es un spread
+		val := pair.Value.Eval(env)
+		if sv, isSpread := IsSpreadValue(val); isSpread {
+			// Expandir objeto spread
+			switch obj := sv.Value.(type) {
+			case map[string]interface{}:
+				// Expandir todas las propiedades del objeto
+				for k, v := range obj {
+					m[k] = v
+				}
+			default:
+				// Si no es un objeto, lo tratamos como una propiedad normal
+				keyVal := pair.Key.Eval(env)
+				keyStr := toString(keyVal)
+				m[keyStr] = obj
+			}
+		} else {
+			// Evaluar clave y valor normalmente
+			keyVal := pair.Key.Eval(env)
+			keyStr := toString(keyVal)
+			m[keyStr] = val
 		}
-
-		m[keyStr] = pair.Value.Eval(env)
 	}
 	return m
 }

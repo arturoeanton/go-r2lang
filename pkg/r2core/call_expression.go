@@ -25,6 +25,8 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 	for _, a := range ce.Args {
 		argVals = append(argVals, a.Eval(env))
 	}
+	// Expandir spreads en argumentos si los hay
+	argVals = ExpandSpreadInFunctionCall(argVals)
 	switch cv := calleeVal.(type) {
 	case BuiltinFunction:
 		return cv(argVals...)
