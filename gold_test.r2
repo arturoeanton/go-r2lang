@@ -797,6 +797,143 @@ std.print("  String vacío length:", std.len(string_vacio));
 // ============================================================================
 // RESUMEN FINAL COMPLETO
 // ============================================================================
+// ============================================================================
+// 🆕 NUEVAS CARACTERÍSTICAS P2 - DESTRUCTURING Y SPREAD OPERATOR
+// ============================================================================
+std.print("\n1️⃣9️⃣ NUEVAS CARACTERÍSTICAS P2 - DESTRUCTURING Y SPREAD OPERATOR");
+
+// Array Destructuring
+std.print("✓ Array Destructuring:");
+let [primero, segundo, tercero] = [100, 200, 300];
+std.print("  [primero, segundo, tercero] = [100, 200, 300]");
+std.print("  primero =", primero, ", segundo =", segundo, ", tercero =", tercero);
+
+let [x1, x2, x3, x4] = [10, 20];
+std.print("  Más variables que elementos: x1 =", x1, ", x2 =", x2, ", x3 =", x3, ", x4 =", x4);
+
+let [nombre_user, edad_user, activo_user] = ["Juan", 30, true];
+std.print("  Tipos mixtos: nombre =", nombre_user, ", edad =", edad_user, ", activo =", activo_user);
+
+// Object Destructuring
+std.print("✓ Object Destructuring:");
+let usuario = {
+    nombre: "Ana García",
+    email: "ana@ejemplo.com",
+    edad: 28,
+    admin: false
+};
+
+let {nombre, email, edad} = usuario;
+std.print("  {nombre, email, edad} extraído de usuario");
+std.print("  nombre =", nombre, ", email =", email, ", edad =", edad);
+
+let {username, role, permisos} = {username: "admin_user"};
+std.print("  Propiedades faltantes: username =", username, ", role =", role, ", permisos =", permisos);
+
+// Spread Operator en Arrays
+std.print("✓ Spread Operator en Arrays:");
+let array1 = [1, 2, 3];
+let array2 = [4, 5, 6];
+let combinado = [...array1, ...array2];
+std.print("  [...array1, ...array2] =", combinado);
+
+let extendido = [...array1, 7, 8, 9];
+std.print("  [...array1, 7, 8, 9] =", extendido);
+
+let conPrefijo = [0, ...array2];
+std.print("  [0, ...array2] =", conPrefijo);
+
+// Spread Operator en Objetos
+std.print("✓ Spread Operator en Objetos:");
+let configuracion = {
+    tema: "claro",
+    idioma: "es",
+    notificaciones: true
+};
+
+let personalizacion = {
+    tema: "oscuro",
+    fuente: 16
+};
+
+let configFinal = {...configuracion, ...personalizacion};
+std.print("  {...configuracion, ...personalizacion} =", configFinal);
+std.print("  Nota: tema 'oscuro' sobrescribe 'claro'");
+
+let empleado = {...usuario, id: 12345, departamento: "IT"};
+std.print("  {...usuario, id, departamento} =", empleado);
+
+// Spread Operator en Llamadas a Funciones
+std.print("✓ Spread Operator en Llamadas a Funciones:");
+func sumarCuatro(a, b, c, d) {
+    return a + b + c + d;
+}
+
+let valores = [10, 20, 30, 40];
+let resultado = sumarCuatro(...valores);
+std.print("  sumarCuatro(...[10, 20, 30, 40]) =", resultado);
+
+let argsParciales = [5, 15];
+let resultado2 = sumarCuatro(1, ...argsParciales, 25);
+std.print("  sumarCuatro(1, ...argsParciales, 25) =", resultado2);
+
+func saludar(saludo, nombre, puntuacion) {
+    if (puntuacion) {
+        return saludo + " " + nombre + puntuacion;
+    } else if (nombre) {
+        return saludo + " " + nombre;
+    } else {
+        return saludo;
+    }
+}
+
+let args1 = ["Hola"];
+let args2 = ["Buenos días", "María"];
+let args3 = ["¡Felicidades", "Carlos", "!"];
+
+std.print("  saludar(...args) examples:");
+std.print("    saludar(...['Hola']) =", saludar(...args1));
+std.print("    saludar(...['Buenos días', 'María']) =", saludar(...args2));
+std.print("    saludar(...['¡Felicidades', 'Carlos', '!']) =", saludar(...args3));
+
+// Casos de uso prácticos
+std.print("✓ Casos de Uso Prácticos:");
+
+// Intercambio de variables
+let var1 = "A";
+let var2 = "B";
+let [nuevo1, nuevo2] = [var2, var1];
+std.print("  Intercambio: [nuevo1, nuevo2] = [var2, var1] =>", nuevo1, nuevo2);
+
+// Clonado de arrays
+let original = [1, 2, 3, {nested: "valor"}];
+let clon = [...original];
+std.print("  Clonado: clon = [...original] =>", clon);
+
+// Configuración con defaults
+func crearConfig(opciones) {
+    let porDefecto = {
+        timeout: 5000,
+        reintentos: 3,
+        cache: true,
+        debug: false
+    };
+    
+    return {...porDefecto, ...opciones};
+}
+
+let miConfig = crearConfig({timeout: 10000, debug: true});
+std.print("  Config personalizada =", miConfig);
+
+std.print("\n✅ CARACTERÍSTICAS P2 COMPLETADAS:");
+std.print("   ✅ Array Destructuring básico");
+std.print("   ✅ Object Destructuring básico");
+std.print("   ✅ Spread Operator en arrays");
+std.print("   ✅ Spread Operator en objetos");
+std.print("   ✅ Spread Operator en llamadas a funciones");
+std.print("   ✅ Casos de uso prácticos y edge cases");
+std.print("   ✅ Compatibilidad total con sintaxis existente");
+
 std.print("\n" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
 std.print("🎉 GOLD TEST COMPREHENSIVO COMPLETADO EXITOSAMENTE!");
 std.print("=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=" + "=");
@@ -824,6 +961,15 @@ std.print("   ✅ Sintaxis 'else if' para mejor legibilidad");
 std.print("   ✅ Cadenas complejas de 'else if'");
 std.print("   ✅ Operador módulo '%' en múltiples contextos");
 std.print("   ✅ Integración FizzBuzz con else if + módulo");
+
+std.print("\n🚀 CARACTERÍSTICAS P2 IMPLEMENTADAS 2025:");
+std.print("   ✅ Array Destructuring - let [a, b, c] = array");
+std.print("   ✅ Object Destructuring - let {name, age} = obj");
+std.print("   ✅ Spread Operator en Arrays - [...arr1, ...arr2]");
+std.print("   ✅ Spread Operator en Objetos - {...obj1, ...obj2}");
+std.print("   ✅ Spread Operator en Funciones - func(...args)");
+std.print("   ✅ Casos de uso prácticos y edge cases");
+std.print("   ✅ Compatibilidad total con sintaxis existente");
 
 std.print("\n🔥 NUEVOS MÓDULOS PREMIUM 2025:");
 std.print("   ✅ Módulo DATE mejorado con API JavaScript-like");

@@ -30,11 +30,12 @@ type ArrayLiteral struct {
 }
 
 func (al *ArrayLiteral) Eval(env *Environment) interface{} {
-	var result []interface{}
+	var elements []interface{}
 	for _, e := range al.Elements {
-		result = append(result, e.Eval(env))
+		elements = append(elements, e.Eval(env))
 	}
-	return result
+	// Expandir spreads si los hay
+	return ExpandSpreadInArray(elements)
 }
 
 // Queremos un "FunctionLiteral" para soportar func(...) { ... } anónimas

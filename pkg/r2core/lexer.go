@@ -69,6 +69,7 @@ const (
 	TOKEN_SYNTAX    = "SYNTAX"
 	TOKEN_SEMANTICS = "SEMANTICS"
 	TOKEN_KEYWORDS  = "KEYWORDS"
+	TOKEN_ELLIPSIS  = "ELLIPSIS" // Para operador spread ...
 )
 
 var (
@@ -292,6 +293,15 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 			op := string(ch) + "="
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: op, Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
+			return l.currentToken, true
+		}
+	}
+
+	// Operador spread ... (debe ir antes del punto simple)
+	if ch == '.' {
+		if l.pos+2 < l.length && l.input[l.pos+1] == '.' && l.input[l.pos+2] == '.' {
+			l.currentToken = Token{Type: TOKEN_ELLIPSIS, Value: "...", Line: l.line, Pos: l.pos, Col: l.col}
+			l.pos += 3
 			return l.currentToken, true
 		}
 	}
