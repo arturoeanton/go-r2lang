@@ -323,13 +323,17 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 		return l.currentToken, true
 	}
 
-	// Operadores lógicos
+	// Operadores lógicos y bitwise
 	if ch == '&' {
 		if l.pos+1 < l.length && l.input[l.pos+1] == '&' {
 			l.pos += 2
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "&&", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 		}
+		// Bitwise AND
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "&", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
 	}
 
 	if ch == '|' {
@@ -338,10 +342,68 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "||", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 		}
+		// Bitwise OR
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "|", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
 	}
 
-	// Operadores relacionales
-	if ch == '<' || ch == '>' || ch == '!' || ch == '=' {
+	// Bitwise XOR
+	if ch == '^' {
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "^", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
+	}
+
+	// Bitwise NOT
+	if ch == '~' {
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "~", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
+	}
+
+	// Operadores relacionales y bit shifts
+	if ch == '<' {
+		if l.pos+1 < l.length {
+			nextCh := l.input[l.pos+1]
+			if nextCh == '<' {
+				// Left shift operator
+				l.pos += 2
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "<<", Line: l.line, Pos: l.pos, Col: l.col}
+				return l.currentToken, true
+			}
+			if nextCh == '=' {
+				l.pos += 2
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "<=", Line: l.line, Pos: l.pos, Col: l.col}
+				return l.currentToken, true
+			}
+		}
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "<", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
+	}
+
+	if ch == '>' {
+		if l.pos+1 < l.length {
+			nextCh := l.input[l.pos+1]
+			if nextCh == '>' {
+				// Right shift operator
+				l.pos += 2
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: ">>", Line: l.line, Pos: l.pos, Col: l.col}
+				return l.currentToken, true
+			}
+			if nextCh == '=' {
+				l.pos += 2
+				l.currentToken = Token{Type: TOKEN_SYMBOL, Value: ">=", Line: l.line, Pos: l.pos, Col: l.col}
+				return l.currentToken, true
+			}
+		}
+		l.nextch()
+		l.currentToken = Token{Type: TOKEN_SYMBOL, Value: ">", Line: l.line, Pos: l.pos, Col: l.col}
+		return l.currentToken, true
+	}
+
+	if ch == '!' || ch == '=' {
 		if l.pos+1 < l.length {
 			nextCh := l.input[l.pos+1]
 			if nextCh == '=' {

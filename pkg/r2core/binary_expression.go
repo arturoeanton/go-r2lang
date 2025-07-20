@@ -64,6 +64,21 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 		return equals(lv, rv)
 	case "!=":
 		return !equals(lv, rv)
+	case "&":
+		// Bitwise AND
+		return float64(int64(toFloat(lv)) & int64(toFloat(rv)))
+	case "|":
+		// Bitwise OR
+		return float64(int64(toFloat(lv)) | int64(toFloat(rv)))
+	case "^":
+		// Bitwise XOR
+		return float64(int64(toFloat(lv)) ^ int64(toFloat(rv)))
+	case "<<":
+		// Left shift
+		return float64(int64(toFloat(lv)) << uint(int64(toFloat(rv))))
+	case ">>":
+		// Right shift
+		return float64(int64(toFloat(lv)) >> uint(int64(toFloat(rv))))
 	default:
 		panic("Unsupported binary operator: " + be.Op)
 	}
@@ -109,6 +124,21 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 		return leftNum.Value == rightNum.Value
 	case "!=":
 		return leftNum.Value != rightNum.Value
+	case "&":
+		// Bitwise AND
+		return float64(int64(leftNum.Value) & int64(rightNum.Value))
+	case "|":
+		// Bitwise OR
+		return float64(int64(leftNum.Value) | int64(rightNum.Value))
+	case "^":
+		// Bitwise XOR
+		return float64(int64(leftNum.Value) ^ int64(rightNum.Value))
+	case "<<":
+		// Left shift
+		return float64(int64(leftNum.Value) << uint(int64(rightNum.Value)))
+	case ">>":
+		// Right shift
+		return float64(int64(leftNum.Value) >> uint(int64(rightNum.Value)))
 	default:
 		return nil // No es operación aritmética simple
 	}

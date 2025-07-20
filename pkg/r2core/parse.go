@@ -683,7 +683,7 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 func (p *Parser) parseUnaryExpression() Node {
 	if p.curTok.Type == TOKEN_SYMBOL {
 		switch p.curTok.Value {
-		case "!", "-", "+":
+		case "!", "-", "+", "~":
 			operator := p.curTok.Value
 			p.nextToken()
 			right := p.parseUnaryExpression()
@@ -699,12 +699,20 @@ func getPrecedence(op string) int {
 		return 1
 	case "&&":
 		return 2
-	case "==", "!=", "<", ">", "<=", ">=":
+	case "|":
 		return 3
-	case "+", "-":
+	case "^":
 		return 4
-	case "*", "/", "%":
+	case "&":
 		return 5
+	case "==", "!=", "<", ">", "<=", ">=":
+		return 6
+	case "<<", ">>":
+		return 7
+	case "+", "-":
+		return 8
+	case "*", "/", "%":
+		return 9
 	default:
 		return 0
 	}

@@ -274,7 +274,7 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 }
 
 func isBinaryOp(op string) bool {
-	ops := []string{"+", "-", "*", "/", "%", "<", ">", "<=", ">=", "==", "!=", "&&", "||"}
+	ops := []string{"+", "-", "*", "/", "%", "<", ">", "<=", ">=", "==", "!=", "&&", "||", "&", "|", "^", "<<", ">>"}
 	for _, o := range ops {
 		if op == o {
 			return true

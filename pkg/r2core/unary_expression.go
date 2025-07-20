@@ -35,6 +35,18 @@ func (ue *UnaryExpression) Eval(env *Environment) interface{} {
 		default:
 			panic("Invalid operand for unary plus: " + toString(val))
 		}
+	case "~":
+		// Handle bitwise NOT
+		switch val := right.(type) {
+		case float64:
+			return float64(^int64(val))
+		case int:
+			return float64(^int64(val))
+		default:
+			// Try to convert to number first
+			num := toFloat(val)
+			return float64(^int64(num))
+		}
 	default:
 		panic("Unknown unary operator: " + ue.Operator)
 	}
