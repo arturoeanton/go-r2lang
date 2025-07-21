@@ -1,5 +1,7 @@
 package r2core
 
+import "fmt"
+
 // UnaryExpression represents unary operations like !expr, -expr, +expr
 type UnaryExpression struct {
 	Operator string
@@ -20,7 +22,7 @@ func (ue *UnaryExpression) Eval(env *Environment) interface{} {
 		case int:
 			return -float64(val)
 		default:
-			panic("Invalid operand for unary minus: " + toString(val))
+			panic(fmt.Sprintf("Invalid operand for unary minus: expected number, got %s (value: %v)", typeof(val), val))
 		}
 	case "+":
 		// Handle unary plus (convert to number)
@@ -33,7 +35,7 @@ func (ue *UnaryExpression) Eval(env *Environment) interface{} {
 			// Try to convert string to number using existing toFloat function
 			return toFloat(val)
 		default:
-			panic("Invalid operand for unary plus: " + toString(val))
+			panic(fmt.Sprintf("Invalid operand for unary plus: expected number or convertible string, got %s (value: %v)", typeof(val), val))
 		}
 	case "~":
 		// Handle bitwise NOT
@@ -48,8 +50,9 @@ func (ue *UnaryExpression) Eval(env *Environment) interface{} {
 			return float64(^int64(num))
 		}
 	default:
-		panic("Unknown unary operator: " + ue.Operator)
+		panic(fmt.Sprintf("Unknown unary operator: %s", ue.Operator))
 	}
+	return nil // This line should never be reached due to panics above
 }
 
 // isTruthy determines the truthiness of a value following JavaScript-like rules

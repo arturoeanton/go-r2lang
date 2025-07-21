@@ -1,5 +1,7 @@
 package r2core
 
+import "fmt"
+
 type BinaryExpression struct {
 	Left  Node
 	Op    string
@@ -91,6 +93,7 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 	default:
 		panic("Unsupported binary operator: " + be.Op)
 	}
+	return 0 // This line should never be reached due to panic above
 }
 
 // tryFastArithmetic intenta resolver operaciones aritméticas simples sin evaluación completa
@@ -261,12 +264,13 @@ func (be *BinaryExpression) evaluatePipeline(leftValue, rightFunction interface{
 				case func(...interface{}) interface{}:
 					return fn(leftValue)
 				default:
-					panic("Pipeline operator |> requires a function on the right side")
+					panic(fmt.Sprintf("Pipeline operator |>: expected function, got %s (value: %v)", typeof(fnValue), fnValue))
 				}
 			} else {
-				panic("Function '" + identifier.Name + "' not found in pipeline")
+				panic(fmt.Sprintf("Pipeline operator |>: function '%s' not found", identifier.Name))
 			}
 		}
-		panic("Pipeline operator |> requires a function on the right side")
+		panic(fmt.Sprintf("Pipeline operator |>: expected function on right side, got %s", typeof(be.Right)))
 	}
+	return nil // This line should never be reached due to panics above
 }
