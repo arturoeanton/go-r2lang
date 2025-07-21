@@ -3,11 +3,34 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
 func main() {
+	// Add error handling for R2Lang panics
+	defer func() {
+		if r := recover(); r != nil {
+			errorStr := fmt.Sprintf("%v", r)
+			// Check if this is an R2Lang error with call stack
+			if strings.Contains(errorStr, "R2Lang call stack") {
+				// Extract just the R2Lang error message and stack
+				lines := strings.Split(errorStr, "\n")
+				for _, line := range lines {
+					if line == "" {
+						break // Stop at first empty line (before Go stack trace)
+					}
+					fmt.Fprintln(os.Stderr, line)
+				}
+				os.Exit(1)
+			} else {
+				// For other errors, show full panic
+				panic(r)
+			}
+		}
+	}()
+
 	filename := ""
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
