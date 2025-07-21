@@ -8,6 +8,7 @@ import (
 type interfaceSlice []interface{}
 
 type AccessExpression struct {
+	BaseNode
 	Object Node
 	Member string
 }
@@ -34,6 +35,8 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalMemberAccess(obj, ae.Member)
 	case map[string]interface{}:
 		return evalMapAccess(obj, ae.Member)
+	case map[string]*Variable:
+		return evalVariableMapAccess(obj, ae.Member)
 	case interfaceSlice:
 		return evalArrayAccess(obj, ae.Member, env)
 	case []interface{}:
@@ -45,7 +48,11 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 	case string:
 		return evalStringAccess(obj, ae.Member)
 	default:
-		panic(fmt.Sprintf("access to property in unsupported type: %T", objVal))
+		if ae.Position != nil && env.CurrentFile != "" {
+			ae.Position.Filename = env.CurrentFile
+		}
+		PanicWithStack(ae.Position, fmt.Sprintf("access to property in unsupported type: %T", objVal), env.callStack)
+		return nil
 	}
 }
 
@@ -63,6 +70,14 @@ func evalMapAccess(m map[string]interface{}, member string) interface{} {
 		panic("The map does not have the key:" + member)
 	}
 	return val
+}
+
+func evalVariableMapAccess(m map[string]*Variable, member string) interface{} {
+	variable, exists := m[member]
+	if !exists {
+		panic("The module does not have the member: " + member)
+	}
+	return variable.Value
 }
 
 func evalArrayAccess(arr interfaceSlice, member string, env *Environment) interface{} {

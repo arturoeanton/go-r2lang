@@ -19,11 +19,14 @@ type Variable struct {
 }
 
 type Environment struct {
-	store    map[string]*Variable
-	outer    *Environment
-	imported map[string]bool
-	Dir      string
-	CurrenFx string
+	store       map[string]*Variable
+	outer       *Environment
+	imported    map[string]bool
+	importStack []string   // Track import chain for cyclic detection
+	callStack   *CallStack // Track R2Lang function call stack
+	Dir         string
+	CurrenFx    string
+	CurrentFile string // Track current file for error reporting
 
 	// Cache optimizado para lookup frecuente
 	lookupCache   map[string]interface{}
@@ -41,6 +44,8 @@ func NewEnvironment() *Environment {
 		store:       make(map[string]*Variable),
 		outer:       nil,
 		imported:    make(map[string]bool),
+		importStack: make([]string, 0),
+		callStack:   &CallStack{Frames: make([]StackFrame, 0)},
 		lookupCache: make(map[string]interface{}),
 		limiter:     NewExecutionLimiter(),
 		context:     context.Background(),
@@ -51,8 +56,11 @@ func NewInnerEnv(outer *Environment) *Environment {
 	return &Environment{
 		store:       make(map[string]*Variable),
 		outer:       outer,
-		imported:    make(map[string]bool),
+		imported:    outer.imported,    // Share imported map to prevent duplicates
+		importStack: outer.importStack, // Share import stack for cyclic detection
+		callStack:   outer.callStack,   // Share call stack for debugging
 		Dir:         outer.Dir,
+		CurrentFile: outer.CurrentFile,
 		lookupCache: make(map[string]interface{}),
 		limiter:     outer.limiter, // Compartir limiter con el outer environment
 		context:     outer.context,
@@ -261,4 +269,33 @@ func (e *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) inter
 	case <-ctx.Done():
 		panic(NewTimeoutError("execution_timeout", ctx))
 	}
+}
+
+// IsImportCycle checks if adding the given file would create a circular import
+func (e *Environment) IsImportCycle(filePath string) bool {
+	for _, importedFile := range e.importStack {
+		if importedFile == filePath {
+			return true
+		}
+	}
+	return false
+}
+
+// PushImport adds a file to the import stack
+func (e *Environment) PushImport(filePath string) {
+	e.importStack = append(e.importStack, filePath)
+}
+
+// PopImport removes the last file from the import stack
+func (e *Environment) PopImport() {
+	if len(e.importStack) > 0 {
+		e.importStack = e.importStack[:len(e.importStack)-1]
+	}
+}
+
+// GetImportChain returns the current import chain for error reporting
+func (e *Environment) GetImportChain() []string {
+	chain := make([]string, len(e.importStack))
+	copy(chain, e.importStack)
+	return chain
 }

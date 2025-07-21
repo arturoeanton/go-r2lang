@@ -10,14 +10,22 @@ import (
 type Parser struct {
 	lexer *Lexer
 	//savTok  Token
-	prevTok Token
-	curTok  Token
-	peekTok Token
-	baseDir string // Directorio base para importaciones
+	prevTok  Token
+	curTok   Token
+	peekTok  Token
+	baseDir  string // Directorio base para importaciones
+	filename string // Archivo actual para tracking de posición
 }
 
 func NewParser(input string) *Parser {
-	p := &Parser{lexer: NewLexer(input)}
+	return NewParserWithFile(input, "")
+}
+
+func NewParserWithFile(input string, filename string) *Parser {
+	p := &Parser{
+		lexer:    NewLexer(input),
+		filename: filename,
+	}
 	p.nextToken()
 	p.nextToken()
 	p.baseDir = ""
@@ -384,11 +392,12 @@ func (p *Parser) parseConstStatement() Node {
 
 // parseFunctionDeclaration => "func nombre(args) { ... }"
 func (p *Parser) parseFunctionDeclaration() Node {
+	funcToken := p.curTok
 	p.nextToken() // consumir "func"
-	return p.parseFunctionDeclaratioWithoutFunc()
+	return p.parseFunctionDeclaratioWithoutFunc(funcToken)
 }
 
-func (p *Parser) parseFunctionDeclaratioWithoutFunc() Node {
+func (p *Parser) parseFunctionDeclaratioWithoutFunc(funcToken Token) Node {
 	if p.curTok.Type != TOKEN_IDENT {
 		p.except("Function name expected after 'func'/'function'")
 	}
@@ -406,7 +415,11 @@ func (p *Parser) parseFunctionDeclaratioWithoutFunc() Node {
 		args = append(args, param.Name)
 	}
 
-	return &FunctionDeclaration{Name: funcName, Args: args, Params: params, Body: body}
+	return &FunctionDeclaration{
+		BaseNode: BaseNode{
+			Position: CreatePositionInfo(funcToken, p.filename),
+		},
+		Name: funcName, Args: args, Params: params, Body: body}
 }
 
 func (p *Parser) parseIfStatement() Node {
@@ -550,7 +563,8 @@ func (p *Parser) parseObjectDeclaration() Node {
 		} else if p.curTok.Value == FUNC || p.curTok.Value == FUNCTION || p.curTok.Value == METHOD {
 			members = append(members, p.parseFunctionDeclaration())
 		} else if p.curTok.Type == TOKEN_IDENT {
-			members = append(members, p.parseFunctionDeclaratioWithoutFunc())
+			methodToken := p.curTok
+			members = append(members, p.parseFunctionDeclaratioWithoutFunc(methodToken))
 		} else {
 			p.except("Inside " + OBJECT + " only 'let', 'var', 'func', 'function' or 'method' are allowed")
 		}
@@ -679,9 +693,15 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 	left := p.parseUnaryExpression()
 	for (p.curTok.Type == TOKEN_SYMBOL || p.curTok.Type == TOKEN_NULL_COALESCING || p.curTok.Type == TOKEN_PIPE) && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
 		op := p.curTok.Value
+		opToken := p.curTok // Capture operator token position
 		p.nextToken()
 		right := p.parseBinaryExpression(getPrecedence(op) + 1)
-		left = &BinaryExpression{Left: left, Op: op, Right: right}
+		left = &BinaryExpression{
+			BaseNode: BaseNode{Position: CreatePositionInfo(opToken, p.filename)},
+			Left:     left,
+			Op:       op,
+			Right:    right,
+		}
 	}
 	return left
 }
@@ -798,8 +818,14 @@ func (p *Parser) parseFactor() Node {
 		}
 		// normal ident
 		idName := p.curTok.Value
+		token := p.curTok
 		p.nextToken()
-		identNode := &Identifier{Name: idName}
+		identNode := &Identifier{
+			BaseNode: BaseNode{
+				Position: CreatePositionInfo(token, p.filename),
+			},
+			Name: idName,
+		}
 		return p.parsePostfix(identNode)
 
 	case TOKEN_SYMBOL:

@@ -53,7 +53,7 @@ std.print("Lengths:", lengths)
 std.print("P4.3: Pipeline Operator")
 func triple(x) { return x * 3 }
 func addFive(x) { return x + 5 }
-let result = 10 |> triple |> addFive
+let result = 10 |> triple |>    
 std.print("10 |> triple |> addFive =", result)
 
 std.print("Todas las características implementadas!")
