@@ -11,7 +11,7 @@ type BinaryExpression struct {
 
 func (be *BinaryExpression) Eval(env *Environment) interface{} {
 	// Fast-path para operaciones aritméticas simples
-	if fastResult := be.tryFastArithmetic(); fastResult != nil {
+	if fastResult := be.tryFastArithmetic(env); fastResult != nil {
 		return fastResult
 	}
 
@@ -43,11 +43,11 @@ func (be *BinaryExpression) Eval(env *Environment) interface{} {
 	default:
 		// Para operadores aritméticos y de comparación, evaluar ambos
 		rv := be.Right.Eval(env)
-		return be.evaluateArithmeticOp(lv, rv)
+		return be.evaluateArithmeticOp(lv, rv, env)
 	}
 }
 
-func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{} {
+func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}, env *Environment) interface{} {
 	// Manejar operaciones con fechas primero
 	if dateResult := be.evalDateOperations(lv, rv); dateResult != nil {
 		return dateResult
@@ -61,9 +61,9 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 	case "*":
 		return mulValues(lv, rv)
 	case "/":
-		return be.divValuesWithPosition(lv, rv)
+		return be.divValuesWithPosition(lv, rv, env)
 	case "%":
-		return be.modValuesWithPosition(lv, rv)
+		return be.modValuesWithPosition(lv, rv, env)
 	case "<":
 		return toFloat(lv) < toFloat(rv)
 	case ">":
@@ -98,7 +98,7 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 }
 
 // tryFastArithmetic intenta resolver operaciones aritméticas simples sin evaluación completa
-func (be *BinaryExpression) tryFastArithmetic() interface{} {
+func (be *BinaryExpression) tryFastArithmetic(env *Environment) interface{} {
 	// Solo optimizar para literals numéricos directos
 	leftNum, leftOk := be.Left.(*NumberLiteral)
 	rightNum, rightOk := be.Right.(*NumberLiteral)
@@ -117,12 +117,12 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 		return leftNum.Value * rightNum.Value
 	case "/":
 		if rightNum.Value == 0 {
-			PanicWithPosition(be.GetPosition(), "Division by zero")
+			PanicWithStack(be.GetPosition(), "Division by zero", env.callStack)
 		}
 		return leftNum.Value / rightNum.Value
 	case "%":
 		if rightNum.Value == 0 {
-			PanicWithPosition(be.GetPosition(), "Modulo by zero")
+			PanicWithStack(be.GetPosition(), "Modulo by zero", env.callStack)
 		}
 		return float64(int(leftNum.Value) % int(rightNum.Value))
 	case "<":
@@ -277,12 +277,12 @@ func (be *BinaryExpression) evaluatePipeline(leftValue, rightFunction interface{
 }
 
 // divValuesWithPosition performs division with position-aware error reporting
-func (be *BinaryExpression) divValuesWithPosition(a, b interface{}) interface{} {
+func (be *BinaryExpression) divValuesWithPosition(a, b interface{}, env *Environment) interface{} {
 	// Fast path: avoid conversions if already float64
 	if af, ok := a.(float64); ok {
 		if bf, ok := b.(float64); ok {
 			if bf == 0 {
-				PanicWithPosition(be.GetPosition(), "Division by zero")
+				PanicWithStack(be.GetPosition(), "Division by zero", env.callStack)
 			}
 			return af / bf
 		}
@@ -290,18 +290,18 @@ func (be *BinaryExpression) divValuesWithPosition(a, b interface{}) interface{} 
 
 	den := toFloat(b)
 	if den == 0 {
-		PanicWithPosition(be.GetPosition(), "Division by zero")
+		PanicWithStack(be.GetPosition(), "Division by zero", env.callStack)
 	}
 	return toFloat(a) / den
 }
 
 // modValuesWithPosition performs modulo with position-aware error reporting
-func (be *BinaryExpression) modValuesWithPosition(a, b interface{}) interface{} {
+func (be *BinaryExpression) modValuesWithPosition(a, b interface{}, env *Environment) interface{} {
 	// Fast path: avoid conversions if already float64
 	if af, ok := a.(float64); ok {
 		if bf, ok := b.(float64); ok {
 			if bf == 0 {
-				PanicWithPosition(be.GetPosition(), "Modulo by zero")
+				PanicWithStack(be.GetPosition(), "Modulo by zero", env.callStack)
 			}
 			return float64(int64(af) % int64(bf))
 		}
@@ -309,7 +309,7 @@ func (be *BinaryExpression) modValuesWithPosition(a, b interface{}) interface{} 
 
 	den := toFloat(b)
 	if den == 0 {
-		PanicWithPosition(be.GetPosition(), "Modulo by zero")
+		PanicWithStack(be.GetPosition(), "Modulo by zero", env.callStack)
 	}
 	return float64(int(toFloat(a)) % int(den))
 }
