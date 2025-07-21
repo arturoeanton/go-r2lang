@@ -17,7 +17,7 @@ std.print("  Permite extraer elementos de arrays en variables individuales");
 std.print("");
 
 // Ejemplo básico
-let numbers = [1, 2, 3, 4, 5];
+let numbers = [1, 2, "third", 4, 5];
 let [first, second, third] = numbers;
 std.print("Array original:", numbers);
 std.print("first =", first);   // 1
