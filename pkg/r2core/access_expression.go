@@ -42,6 +42,8 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalDSLAccess(obj, ae.Member, env)
 	case *DSLResult:
 		return evalDSLResultAccess(obj, ae.Member, env)
+	case string:
+		return evalStringAccess(obj, ae.Member)
 	default:
 		panic(fmt.Sprintf("access to property in unsupported type: %T", objVal))
 	}
@@ -415,5 +417,15 @@ func evalDSLResultAccess(dslResult *DSLResult, member string, env *Environment) 
 		}
 	default:
 		return nil
+	}
+}
+
+// evalStringAccess handles property access on strings
+func evalStringAccess(str string, member string) interface{} {
+	switch member {
+	case "length":
+		return float64(len(str))
+	default:
+		panic(fmt.Sprintf("String has no property: %s", member))
 	}
 }

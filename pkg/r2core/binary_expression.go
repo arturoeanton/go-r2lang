@@ -14,7 +14,7 @@ func (be *BinaryExpression) Eval(env *Environment) interface{} {
 
 	lv := be.Left.Eval(env)
 
-	// Evaluación lazy para operadores lógicos
+	// Evaluación lazy para operadores lógicos y especiales
 	switch be.Op {
 	case "&&":
 		if !toBool(lv) {
@@ -28,6 +28,15 @@ func (be *BinaryExpression) Eval(env *Environment) interface{} {
 		}
 		rv := be.Right.Eval(env)
 		return toBool(rv)
+	case "??": // Null coalescing operator (P3)
+		if lv != nil {
+			return lv // Return left value if not nil
+		}
+		rv := be.Right.Eval(env)
+		return rv // Return right value if left is nil
+	case "|>": // Pipeline operator (P4)
+		rv := be.Right.Eval(env)
+		return be.evaluatePipeline(lv, rv, env)
 	default:
 		// Para operadores aritméticos y de comparación, evaluar ambos
 		rv := be.Right.Eval(env)
@@ -223,4 +232,41 @@ func (be *BinaryExpression) evalDateOperations(left, right interface{}) interfac
 	}
 
 	return nil // No es operación de fecha/duración
+}
+
+// evaluatePipeline handles the pipeline operator |> (P4)
+func (be *BinaryExpression) evaluatePipeline(leftValue, rightFunction interface{}, env *Environment) interface{} {
+	switch rightFunc := rightFunction.(type) {
+	case *UserFunction:
+		// Call user function with left value as first argument
+		return rightFunc.Call(leftValue)
+	case func(...interface{}) interface{}:
+		// Built-in function - call with left value
+		return rightFunc(leftValue)
+	case *FunctionLiteral:
+		// Anonymous function - create user function and call
+		userFunc := &UserFunction{
+			Params: rightFunc.Params,
+			Body:   rightFunc.Body,
+			Env:    env,
+		}
+		return userFunc.Call(leftValue)
+	default:
+		// Try to treat as identifier and look it up in environment
+		if identifier, ok := be.Right.(*Identifier); ok {
+			if fnValue, exists := env.Get(identifier.Name); exists {
+				switch fn := fnValue.(type) {
+				case *UserFunction:
+					return fn.Call(leftValue)
+				case func(...interface{}) interface{}:
+					return fn(leftValue)
+				default:
+					panic("Pipeline operator |> requires a function on the right side")
+				}
+			} else {
+				panic("Function '" + identifier.Name + "' not found in pipeline")
+			}
+		}
+		panic("Pipeline operator |> requires a function on the right side")
+	}
 }

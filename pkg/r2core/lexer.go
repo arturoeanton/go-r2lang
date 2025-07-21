@@ -51,6 +51,9 @@ const (
 	CONTINUE = "continue"
 	TRUE     = "true"
 	FALSE    = "false"
+	NIL      = "nil"
+	MATCH    = "match"
+	CASE     = "case"
 
 	// DSL tokens
 	DSL       = "dsl"
@@ -64,12 +67,20 @@ const (
 	TOKEN_CONTINUE  = "CONTINUE"
 	TOKEN_TRUE      = "TRUE"
 	TOKEN_FALSE     = "FALSE"
+	TOKEN_NIL       = "NIL"
 	TOKEN_DSL       = "DSL"
 	TOKEN_USE       = "USE"
 	TOKEN_SYNTAX    = "SYNTAX"
 	TOKEN_SEMANTICS = "SEMANTICS"
 	TOKEN_KEYWORDS  = "KEYWORDS"
 	TOKEN_ELLIPSIS  = "ELLIPSIS" // Para operador spread ...
+
+	// P3 and P4 tokens
+	TOKEN_OPTIONAL_CHAIN  = "OPTIONAL_CHAIN"  // ?.
+	TOKEN_NULL_COALESCING = "NULL_COALESCING" // ??
+	TOKEN_MATCH           = "MATCH"
+	TOKEN_CASE            = "CASE"
+	TOKEN_PIPE            = "PIPE" // |>
 )
 
 var (
@@ -306,6 +317,20 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 		}
 	}
 
+	// Optional chaining ?. operator (P3)
+	if ch == '?' {
+		if l.pos+1 < l.length && l.input[l.pos+1] == '.' {
+			l.currentToken = Token{Type: TOKEN_OPTIONAL_CHAIN, Value: "?.", Line: l.line, Pos: l.pos, Col: l.col}
+			l.pos += 2
+			return l.currentToken, true
+		}
+		if l.pos+1 < l.length && l.input[l.pos+1] == '?' {
+			l.currentToken = Token{Type: TOKEN_NULL_COALESCING, Value: "??", Line: l.line, Pos: l.pos, Col: l.col}
+			l.pos += 2
+			return l.currentToken, true
+		}
+	}
+
 	// Símbolos de 1 caracter
 	singleCharSymbols := []string{
 		"(", ")", "{", "}", "[", "]", ";", ",", "+", "-", "*", "/", "%", ".", ":", "?", "\n",
@@ -350,6 +375,11 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 		if l.pos+1 < l.length && l.input[l.pos+1] == '|' {
 			l.pos += 2
 			l.currentToken = Token{Type: TOKEN_SYMBOL, Value: "||", Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		}
+		if l.pos+1 < l.length && l.input[l.pos+1] == '>' {
+			l.pos += 2
+			l.currentToken = Token{Type: TOKEN_PIPE, Value: "|>", Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 		}
 		// Bitwise OR
@@ -488,6 +518,9 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 		case strings.ToLower(FALSE):
 			l.currentToken = Token{Type: TOKEN_FALSE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
+		case strings.ToLower(NIL):
+			l.currentToken = Token{Type: TOKEN_NIL, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
 		case strings.ToLower(DSL):
 			l.currentToken = Token{Type: TOKEN_DSL, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
@@ -502,6 +535,12 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case strings.ToLower(KEYWORDS):
 			l.currentToken = Token{Type: TOKEN_KEYWORDS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(MATCH):
+			l.currentToken = Token{Type: TOKEN_MATCH, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
+			return l.currentToken, true
+		case strings.ToLower(CASE):
+			l.currentToken = Token{Type: TOKEN_CASE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 			// ... otras palabras clave
 		default:
