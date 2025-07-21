@@ -6,7 +6,7 @@ Esta propuesta identifica y prioriza mejoras sintácticas para R2Lang que aument
 
 ### 🎉 Estado de Implementación (Actualizado)
 
-**✅ COMPLETADAS (8/10 características principales):**
+**✅ COMPLETADAS (13/16 características principales):**
 - ✅ Operador de negación lógica `!`
 - ✅ Operadores de asignación compuesta `+=`, `-=`, `*=`, `/=`
 - ✅ Declaraciones `const` con verificación de inmutabilidad
@@ -15,8 +15,13 @@ Esta propuesta identifica y prioriza mejoras sintácticas para R2Lang que aument
 - ✅ Operadores bitwise `&`, `|`, `^`, `<<`, `>>`, `~`
 - ✅ Destructuring básico (arrays y objetos)
 - ✅ Operador spread `...` (arrays, objetos, funciones)
+- ✅ Optional chaining `?.` (navegación segura)
+- ✅ Null coalescing `??` (valores por defecto inteligentes)
+- ✅ Pattern matching `match` (lógica condicional expresiva)
+- ✅ Array/Object comprehensions (transformaciones expresivas)
+- ✅ Pipeline operator `|>` (composición de funciones fluida)
 
-**📊 Progreso Actual:** **100% de las características P0-P2 completadas**
+**📊 Progreso Actual:** **100% de las características P0-P4 completadas**
 
 Estas implementaciones representan el **90% del beneficio** con solo el **60% del esfuerzo** total, mejorando significativamente la experiencia del desarrollador y la compatibilidad con JavaScript/TypeScript.
 
@@ -32,11 +37,11 @@ Estas implementaciones representan el **90% del beneficio** con solo el **60% de
 | Operadores bitwise | 🔥 | 🟢 Baja | P2 | ✅ **COMPLETADO** | 1-2 días |
 | Destructuring básico | 🔥🔥 | 🔴 Alta | P2 | ✅ **COMPLETADO** | 7-10 días |
 | Operador spread `...` | 🔥🔥 | 🔴 Alta | P2 | ✅ **COMPLETADO** | 5-7 días |
-| Optional chaining `?.` | 🔥 | 🔴 Alta | P3 | ⏳ **PENDIENTE** | 5-7 días |
-| Null coalescing `??` | 🔥 | 🟡 Media | P3 | ⏳ **PENDIENTE** | 2-3 días |
-| Pattern matching `match` | 🔥🔥🔥 | 🔴 Alta | P3 | ⏳ **PENDIENTE** | 10-14 días |
-| Array/Object comprehensions | 🔥🔥 | 🔴 Alta | P4 | ⏳ **PENDIENTE** | 7-10 días |
-| Pipeline operator `\|>` | 🔥🔥 | 🟡 Media | P4 | ⏳ **PENDIENTE** | 5-7 días |
+| Optional chaining `?.` | 🔥 | 🔴 Alta | P3 | ✅ **COMPLETADO** | 5-7 días |
+| Null coalescing `??` | 🔥 | 🟡 Media | P3 | ✅ **COMPLETADO** | 2-3 días |
+| Pattern matching `match` | 🔥🔥🔥 | 🔴 Alta | P3 | ✅ **COMPLETADO** | 10-14 días |
+| Array/Object comprehensions | 🔥🔥 | 🔴 Alta | P4 | ✅ **COMPLETADO** | 7-10 días |
+| Pipeline operator `\|>` | 🔥🔥 | 🟡 Media | P4 | ✅ **COMPLETADO** | 5-7 días |
 | String interpolation mejorada | 🔥 | 🟢 Baja | P5 | ⏳ **PENDIENTE** | 2-3 días |
 | Smart defaults y auto-conversion | 🔥 | 🟡 Media | P5 | ⏳ **PENDIENTE** | 3-5 días |
 | Partial application y currying | 🔥 | 🔴 Alta | P6 | ⏳ **PENDIENTE** | 7-10 días |

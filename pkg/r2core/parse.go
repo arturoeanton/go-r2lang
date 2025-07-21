@@ -659,8 +659,8 @@ func (p *Parser) parseBlockStatement() *BlockStatement {
 func (p *Parser) parseExpression() Node {
 	left := p.parseBinaryExpression(1)
 
-	// Operador ternario tiene la precedencia más baja
-	if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "?" {
+	// Operador ternario tiene la precedencia más baja (pero solo si no es ??)
+	if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "?" && p.curTok.Type != TOKEN_NULL_COALESCING {
 		p.nextToken() // consumir "?"
 		trueExpr := p.parseExpression()
 		if p.curTok.Type != TOKEN_SYMBOL || p.curTok.Value != ":" {
@@ -677,7 +677,7 @@ func (p *Parser) parseExpression() Node {
 // parseBinaryExpression => parsea operadores binarios
 func (p *Parser) parseBinaryExpression(precedence int) Node {
 	left := p.parseUnaryExpression()
-	for p.curTok.Type == TOKEN_SYMBOL && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
+	for (p.curTok.Type == TOKEN_SYMBOL || p.curTok.Type == TOKEN_NULL_COALESCING || p.curTok.Type == TOKEN_PIPE) && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
 		op := p.curTok.Value
 		p.nextToken()
 		right := p.parseBinaryExpression(getPrecedence(op) + 1)
@@ -709,24 +709,28 @@ func (p *Parser) parseUnaryExpression() Node {
 
 func getPrecedence(op string) int {
 	switch op {
-	case "||":
+	case "|>": // Pipeline operator (P4) - very low precedence
 		return 1
-	case "&&":
+	case "||":
 		return 2
-	case "|":
+	case "??": // Null coalescing (P3) - between || and &&
 		return 3
-	case "^":
+	case "&&":
 		return 4
-	case "&":
+	case "|":
 		return 5
-	case "==", "!=", "<", ">", "<=", ">=":
+	case "^":
 		return 6
-	case "<<", ">>":
+	case "&":
 		return 7
-	case "+", "-":
+	case "==", "!=", "<", ">", "<=", ">=":
 		return 8
-	case "*", "/", "%":
+	case "<<", ">>":
 		return 9
+	case "+", "-":
+		return 10
+	case "*", "/", "%":
+		return 11
 	default:
 		return 0
 	}
@@ -737,6 +741,11 @@ func (p *Parser) parseFactor() Node {
 	// ¿detectamos la anónima "func(x,y){...}"?
 	if p.curTok.Type == TOKEN_IDENT && (strings.ToLower(p.curTok.Value) == FUNC || strings.ToLower(p.curTok.Value) == FUNCTION) {
 		return p.parseAnonymousFunction()
+	}
+
+	// Match expression (P3)
+	if p.curTok.Type == TOKEN_MATCH {
+		return p.parseMatchExpression()
 	}
 
 	switch p.curTok.Type {
@@ -774,6 +783,11 @@ func (p *Parser) parseFactor() Node {
 
 	case TOKEN_FALSE:
 		node := &BooleanLiteral{Value: false}
+		p.nextToken()
+		return node
+
+	case TOKEN_NIL:
+		node := &NilLiteral{}
 		p.nextToken()
 		return node
 
@@ -836,12 +850,14 @@ func (p *Parser) parseAnonymousFunction() Node {
 
 func (p *Parser) parsePostfix(left Node) Node {
 	for {
-		switch p.curTok.Value {
-		case "(":
+		switch {
+		case p.curTok.Type == TOKEN_OPTIONAL_CHAIN && p.curTok.Value == "?.":
+			left = p.parseOptionalAccessExpression(left)
+		case p.curTok.Value == "(":
 			left = p.parseCallExpression(left)
-		case ".":
+		case p.curTok.Value == ".":
 			left = p.parseAccessExpression(left)
-		case "[":
+		case p.curTok.Value == "[":
 			left = p.parseIndexExpression(left)
 		default:
 			return left
@@ -880,6 +896,21 @@ func (p *Parser) parseAccessExpression(left Node) Node {
 	return p.parsePostfix(node)
 }
 
+func (p *Parser) parseOptionalAccessExpression(left Node) Node {
+	p.nextToken() // "?."
+	var mem string
+	if p.curTok.Type == TOKEN_IDENT {
+		mem = p.curTok.Value
+	} else if p.curTok.Type == TOKEN_USE {
+		mem = "use"
+	} else {
+		p.except("Expected identifier after '?.'")
+	}
+	p.nextToken()
+	node := &OptionalAccessExpression{Object: left, Member: mem}
+	return p.parsePostfix(node)
+}
+
 func (p *Parser) parseIndexExpression(left Node) Node {
 	p.nextToken() // "["
 	idx := p.parseExpression()
@@ -891,9 +922,16 @@ func (p *Parser) parseIndexExpression(left Node) Node {
 	return p.parsePostfix(ie)
 }
 
-// parseArrayLiteral => [ expr, expr, ...]
+// parseArrayLiteral => [ expr, expr, ...] or array comprehension
 func (p *Parser) parseArrayLiteral() Node {
 	p.nextToken() // "["
+
+	// Check if this is a comprehension by looking ahead
+	if p.isArrayComprehension() {
+		return p.parseArrayComprehension()
+	}
+
+	// Regular array literal
 	var elems []Node
 	for p.curTok.Value != "]" && p.curTok.Type != TOKEN_EOF {
 		e := p.parseExpression()
@@ -919,6 +957,11 @@ func (p *Parser) parseMapLiteral() Node {
 	// Skip newlines after opening brace
 	for p.curTok.Value == "\n" {
 		p.nextToken()
+	}
+
+	// Check if this is an object comprehension
+	if p.isObjectComprehension() {
+		return p.parseObjectComprehension()
 	}
 
 	var pairs []MapPair
@@ -1232,4 +1275,381 @@ func (p *Parser) except(msgErr string) {
 	os.Exit(1)
 	panic(msg)
 
+}
+
+// parseMatchExpression parses match expressions (P3)
+func (p *Parser) parseMatchExpression() Node {
+	p.nextToken() // consume "match"
+
+	value := p.parseExpression()
+
+	if p.curTok.Value != "{" {
+		p.except("Expected '{' after match expression")
+	}
+	p.nextToken() // consume "{"
+
+	var cases []MatchCase
+
+	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		// Skip newlines
+		if p.curTok.Value == "\n" {
+			p.nextToken()
+			continue
+		}
+
+		if p.curTok.Type != TOKEN_CASE {
+			p.except("Expected 'case' in match expression")
+		}
+		p.nextToken() // consume "case"
+
+		// Parse pattern
+		pattern := p.parsePattern()
+
+		// Parse optional guard
+		var guard Node
+		if p.curTok.Type == TOKEN_IDENT && p.curTok.Value == "if" {
+			p.nextToken() // consume "if"
+			guard = p.parseExpression()
+		}
+
+		// Expect '=>'
+		if p.curTok.Type != TOKEN_ARROW {
+			p.except("Expected '=>' after case pattern")
+		}
+		p.nextToken() // consume "=>"
+
+		// Parse body
+		body := p.parseExpression()
+
+		cases = append(cases, MatchCase{
+			Pattern: pattern,
+			Guard:   guard,
+			Body:    body,
+		})
+
+		// Skip optional comma and newlines
+		if p.curTok.Value == "," {
+			p.nextToken()
+		}
+		for p.curTok.Value == "\n" {
+			p.nextToken()
+		}
+	}
+
+	if p.curTok.Value != "}" {
+		p.except("Expected '}' at end of match expression")
+	}
+	p.nextToken() // consume "}"
+
+	return &MatchExpression{
+		Value: value,
+		Cases: cases,
+	}
+}
+
+// parsePattern parses different types of patterns
+func (p *Parser) parsePattern() Pattern {
+	switch p.curTok.Type {
+	case TOKEN_IDENT:
+		if p.curTok.Value == "_" {
+			// Wildcard pattern
+			p.nextToken()
+			return &WildcardPattern{}
+		} else {
+			// Variable pattern
+			name := p.curTok.Value
+			p.nextToken()
+			return &VariablePattern{Name: name}
+		}
+	case TOKEN_NUMBER, TOKEN_STRING, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NIL:
+		// Literal pattern
+		value := p.parseFactor()
+		return &LiteralPattern{Value: value}
+	case TOKEN_SYMBOL:
+		if p.curTok.Value == "[" {
+			// Array pattern
+			return p.parseArrayPattern()
+		}
+		if p.curTok.Value == "{" {
+			// Object pattern
+			return p.parseObjectPattern()
+		}
+	}
+
+	p.except("Expected pattern in match case")
+	return nil
+}
+
+// parseArrayPattern parses array destructuring patterns
+func (p *Parser) parseArrayPattern() Pattern {
+	p.nextToken() // consume "["
+
+	var elements []Pattern
+	for p.curTok.Value != "]" && p.curTok.Type != TOKEN_EOF {
+		pattern := p.parsePattern()
+		elements = append(elements, pattern)
+
+		if p.curTok.Value == "," {
+			p.nextToken()
+		} else if p.curTok.Value == "]" {
+			break
+		} else {
+			p.except("Expected ',' or ']' in array pattern")
+		}
+	}
+
+	if p.curTok.Value != "]" {
+		p.except("Expected ']' at end of array pattern")
+	}
+	p.nextToken() // consume "]"
+
+	return &ArrayPattern{Elements: elements}
+}
+
+// parseObjectPattern parses object destructuring patterns
+func (p *Parser) parseObjectPattern() Pattern {
+	p.nextToken() // consume "{"
+
+	fields := make(map[string]Pattern)
+	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type != TOKEN_IDENT {
+			p.except("Expected field name in object pattern")
+		}
+
+		fieldName := p.curTok.Value
+		p.nextToken()
+
+		var pattern Pattern
+		if p.curTok.Value == ":" {
+			p.nextToken() // consume ":"
+			pattern = p.parsePattern()
+		} else {
+			// Shorthand: {name} means {name: name}
+			pattern = &VariablePattern{Name: fieldName}
+		}
+
+		fields[fieldName] = pattern
+
+		if p.curTok.Value == "," {
+			p.nextToken()
+		} else if p.curTok.Value == "}" {
+			break
+		} else {
+			p.except("Expected ',' or '}' in object pattern")
+		}
+	}
+
+	if p.curTok.Value != "}" {
+		p.except("Expected '}' at end of object pattern")
+	}
+	p.nextToken() // consume "}"
+
+	return &ObjectPattern{Fields: fields}
+}
+
+// isArrayComprehension checks if the current position indicates array comprehension
+func (p *Parser) isArrayComprehension() bool {
+	// Save current position
+	savedPos := p.lexer.pos
+	savedLine := p.lexer.line
+	savedCol := p.lexer.col
+	savedCurTok := p.curTok
+	savedPeekTok := p.peekTok
+
+	// Try to parse as comprehension pattern: expression FOR
+	defer func() {
+		// Restore position
+		p.lexer.pos = savedPos
+		p.lexer.line = savedLine
+		p.lexer.col = savedCol
+		p.curTok = savedCurTok
+		p.peekTok = savedPeekTok
+	}()
+
+	// Skip the expression part (could be complex)
+	depth := 0
+	for p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Value == "[" || p.curTok.Value == "(" || p.curTok.Value == "{" {
+			depth++
+		} else if p.curTok.Value == "]" || p.curTok.Value == ")" || p.curTok.Value == "}" {
+			depth--
+		}
+
+		// If we find "for" at the same depth level, it's a comprehension
+		if depth == 0 && p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == FOR {
+			return true
+		}
+
+		// If we hit closing bracket without finding "for", it's a regular array
+		if depth < 0 {
+			return false
+		}
+
+		p.nextToken()
+	}
+
+	return false
+}
+
+// parseArrayComprehension parses array comprehension: [expr for var in iterable if condition]
+func (p *Parser) parseArrayComprehension() Node {
+	// Parse the expression
+	expression := p.parseExpression()
+
+	// Parse generators and conditions
+	generators := []Generator{}
+	conditions := []Node{}
+
+	for p.curTok.Value != "]" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == FOR {
+			// Parse generator: for var in iterable
+			p.nextToken() // consume "for"
+
+			if p.curTok.Type != TOKEN_IDENT {
+				p.except("Expected variable name after 'for'")
+			}
+			variable := p.curTok.Value
+			p.nextToken()
+
+			if p.curTok.Type != TOKEN_IDENT || strings.ToLower(p.curTok.Value) != IN {
+				p.except("Expected 'in' after variable in comprehension")
+			}
+			p.nextToken() // consume "in"
+
+			iterator := p.parseExpression()
+
+			generators = append(generators, Generator{
+				Variable: variable,
+				Iterator: iterator,
+			})
+		} else if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == IF {
+			// Parse condition: if condition
+			p.nextToken() // consume "if"
+			condition := p.parseExpression()
+			conditions = append(conditions, condition)
+		} else {
+			break
+		}
+	}
+
+	if p.curTok.Value != "]" {
+		p.except("Expected ']' at end of array comprehension")
+	}
+	p.nextToken() // consume "]"
+
+	return &ArrayComprehension{
+		Expression: expression,
+		Generators: generators,
+		Conditions: conditions,
+	}
+}
+
+// isObjectComprehension checks if this is object comprehension
+func (p *Parser) isObjectComprehension() bool {
+	// Save current position
+	savedPos := p.lexer.pos
+	savedLine := p.lexer.line
+	savedCol := p.lexer.col
+	savedCurTok := p.curTok
+	savedPeekTok := p.peekTok
+
+	defer func() {
+		// Restore position
+		p.lexer.pos = savedPos
+		p.lexer.line = savedLine
+		p.lexer.col = savedCol
+		p.curTok = savedCurTok
+		p.peekTok = savedPeekTok
+	}()
+
+	// Look for pattern: key: value for var in iterable
+	depth := 0
+	foundColon := false
+
+	for p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Value == "[" || p.curTok.Value == "(" || p.curTok.Value == "{" {
+			depth++
+		} else if p.curTok.Value == "]" || p.curTok.Value == ")" || p.curTok.Value == "}" {
+			depth--
+		}
+
+		if depth == 0 && p.curTok.Value == ":" && !foundColon {
+			foundColon = true
+		}
+
+		// If we find "for" after a colon at the same depth, it's object comprehension
+		if depth == 0 && foundColon && p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == FOR {
+			return true
+		}
+
+		if depth < 0 {
+			return false
+		}
+
+		p.nextToken()
+	}
+
+	return false
+}
+
+// parseObjectComprehension parses object comprehension: {key: value for var in iterable if condition}
+func (p *Parser) parseObjectComprehension() Node {
+	// Parse key expression
+	keyExpr := p.parseExpression()
+
+	if p.curTok.Value != ":" {
+		p.except("Expected ':' after key in object comprehension")
+	}
+	p.nextToken() // consume ":"
+
+	// Parse value expression
+	valueExpr := p.parseExpression()
+
+	// Parse generators and conditions
+	generators := []Generator{}
+	conditions := []Node{}
+
+	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
+		if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == FOR {
+			// Parse generator
+			p.nextToken() // consume "for"
+
+			if p.curTok.Type != TOKEN_IDENT {
+				p.except("Expected variable name after 'for'")
+			}
+			variable := p.curTok.Value
+			p.nextToken()
+
+			if p.curTok.Type != TOKEN_IDENT || strings.ToLower(p.curTok.Value) != IN {
+				p.except("Expected 'in' after variable in comprehension")
+			}
+			p.nextToken() // consume "in"
+
+			iterator := p.parseExpression()
+
+			generators = append(generators, Generator{
+				Variable: variable,
+				Iterator: iterator,
+			})
+		} else if p.curTok.Type == TOKEN_IDENT && strings.ToLower(p.curTok.Value) == IF {
+			// Parse condition
+			p.nextToken() // consume "if"
+			condition := p.parseExpression()
+			conditions = append(conditions, condition)
+		} else {
+			break
+		}
+	}
+
+	if p.curTok.Value != "}" {
+		p.except("Expected '}' at end of object comprehension")
+	}
+	p.nextToken() // consume "}"
+
+	return &ObjectComprehension{
+		KeyExpr:    keyExpr,
+		ValueExpr:  valueExpr,
+		Generators: generators,
+		Conditions: conditions,
+	}
 }
