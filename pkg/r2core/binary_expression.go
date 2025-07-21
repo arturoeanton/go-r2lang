@@ -3,6 +3,7 @@ package r2core
 import "fmt"
 
 type BinaryExpression struct {
+	BaseNode
 	Left  Node
 	Op    string
 	Right Node
@@ -60,9 +61,9 @@ func (be *BinaryExpression) evaluateArithmeticOp(lv, rv interface{}) interface{}
 	case "*":
 		return mulValues(lv, rv)
 	case "/":
-		return divValues(lv, rv)
+		return be.divValuesWithPosition(lv, rv)
 	case "%":
-		return modValues(lv, rv)
+		return be.modValuesWithPosition(lv, rv)
 	case "<":
 		return toFloat(lv) < toFloat(rv)
 	case ">":
@@ -116,12 +117,12 @@ func (be *BinaryExpression) tryFastArithmetic() interface{} {
 		return leftNum.Value * rightNum.Value
 	case "/":
 		if rightNum.Value == 0 {
-			panic("Division by zero")
+			PanicWithPosition(be.GetPosition(), "Division by zero")
 		}
 		return leftNum.Value / rightNum.Value
 	case "%":
 		if rightNum.Value == 0 {
-			panic("Modulo by zero")
+			PanicWithPosition(be.GetPosition(), "Modulo by zero")
 		}
 		return float64(int(leftNum.Value) % int(rightNum.Value))
 	case "<":
@@ -273,4 +274,42 @@ func (be *BinaryExpression) evaluatePipeline(leftValue, rightFunction interface{
 		panic(fmt.Sprintf("Pipeline operator |>: expected function on right side, got %s", typeof(be.Right)))
 	}
 	return nil // This line should never be reached due to panics above
+}
+
+// divValuesWithPosition performs division with position-aware error reporting
+func (be *BinaryExpression) divValuesWithPosition(a, b interface{}) interface{} {
+	// Fast path: avoid conversions if already float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			if bf == 0 {
+				PanicWithPosition(be.GetPosition(), "Division by zero")
+			}
+			return af / bf
+		}
+	}
+
+	den := toFloat(b)
+	if den == 0 {
+		PanicWithPosition(be.GetPosition(), "Division by zero")
+	}
+	return toFloat(a) / den
+}
+
+// modValuesWithPosition performs modulo with position-aware error reporting
+func (be *BinaryExpression) modValuesWithPosition(a, b interface{}) interface{} {
+	// Fast path: avoid conversions if already float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			if bf == 0 {
+				PanicWithPosition(be.GetPosition(), "Modulo by zero")
+			}
+			return float64(int64(af) % int64(bf))
+		}
+	}
+
+	den := toFloat(b)
+	if den == 0 {
+		PanicWithPosition(be.GetPosition(), "Modulo by zero")
+	}
+	return float64(int(toFloat(a)) % int(den))
 }

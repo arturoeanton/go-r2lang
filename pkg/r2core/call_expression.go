@@ -3,6 +3,7 @@ package r2core
 import "fmt"
 
 type CallExpression struct {
+	BaseNode
 	Callee Node
 	Args   []Node
 }
@@ -53,6 +54,10 @@ func (ce *CallExpression) Eval(env *Environment) interface{} {
 		}
 		return cv("")
 	default:
-		panic("Attempt to call something that is neither a function nor a blueprint [" + fmt.Sprintf("%T", ce.Callee) + "]")
+		if ce.Position != nil && env.CurrentFile != "" {
+			ce.Position.Filename = env.CurrentFile
+		}
+		PanicWithStack(ce.Position, "Attempt to call something that is neither a function nor a blueprint ["+fmt.Sprintf("%T", ce.Callee)+"]", env.callStack)
+		return nil
 	}
 }

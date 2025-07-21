@@ -13,6 +13,7 @@ type UserFunction struct {
 	Env      *Environment
 	IsMethod bool
 	code     string
+	position *PositionInfo
 }
 
 func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{}) interface{} {
@@ -22,6 +23,30 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	} else {
 		newEnv = currentEnv
 	}
+
+	// Add function to R2Lang call stack for error tracing
+	functionName := uf.code
+	if functionName == "" {
+		if uf.IsMethod {
+			functionName = "<method>"
+		} else {
+			functionName = "<anonymous>"
+		}
+	}
+
+	// Use function position if available, otherwise create basic position info
+	pos := uf.position
+	if pos == nil && newEnv.CurrentFile != "" {
+		pos = &PositionInfo{
+			Filename: newEnv.CurrentFile,
+			Line:     0,
+			Col:      0,
+		}
+	}
+
+	// Push frame to call stack
+	newEnv.callStack.PushFrame(functionName, pos, args)
+	defer newEnv.callStack.PopFrame()
 
 	// Detección de recursión infinita
 	limiter := newEnv.GetLimiter()

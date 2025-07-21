@@ -24,6 +24,7 @@ func RunCode(filename string) {
 	env.Set("nil", nil)
 	env.Set("null", nil)
 	env.Dir = filepath.Dir(filename)
+	env.CurrentFile = filename // Set for position-aware errors
 
 	// Registrar otras librerías si las tienes:
 	r2libs.RegisterLib(env)
@@ -51,6 +52,6 @@ func RunCode(filename string) {
 	r2libs.RegisterCSV(env)
 	r2libs.RegisterJWT(env)
 	r2libs.RegisterConsole(env)
-	parser := r2core.NewParser(code)
+	parser := r2core.NewParserWithFile(code, filename)
 	env.Run(parser)
 }
