@@ -15,7 +15,7 @@ func RegisterMath(env *r2core.Environment) {
 		// Basic math functions
 		"sin": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
-				panic("sin needs (number)")
+				ArgumentError("sin", "1 argument (number)", len(args))
 			}
 			x := toFloat(args[0])
 			return math.Sin(x)
@@ -23,7 +23,7 @@ func RegisterMath(env *r2core.Environment) {
 
 		"cos": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
-				panic("cos needs (number)")
+				ArgumentError("cos", "1 argument (number)", len(args))
 			}
 			x := toFloat(args[0])
 			return math.Cos(x)
@@ -96,11 +96,11 @@ func RegisterMath(env *r2core.Environment) {
 
 		"sqrt": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
-				panic("sqrt needs (number)")
+				ArgumentError("sqrt", "1 argument (number)", len(args))
 			}
 			x := toFloat(args[0])
 			if x < 0 {
-				panic("sqrt: could not calculate square root of negative number")
+				MathError("sqrt", "cannot calculate square root of negative number", x)
 			}
 			return math.Sqrt(x)
 		}),
