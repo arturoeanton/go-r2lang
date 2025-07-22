@@ -1,17 +1,13 @@
 // DSL Motor Contable Comercial Multi-Region V2 - VERSION FINAL 100% FUNCIONAL
 // Sistema completamente funcional sin errores de parsing
 
-// DSL para Comprobantes de Venta
-dsl ComprobantesVentaDSL {
+// DSL separado para cada region de ventas
+dsl VentasUSA {
     token("VENTA", "venta")
     token("USA", "USA")
-    token("EUR", "EUR") 
-    token("ARG", "ARG")
     token("IMPORTE", "85000|120000|15000|45000|25000|35000|50000|30000")
     
     rule("venta_usa", ["VENTA", "USA", "IMPORTE"], "procesarVentaUSA")
-    rule("venta_eur", ["VENTA", "EUR", "IMPORTE"], "procesarVentaEUR")
-    rule("venta_arg", ["VENTA", "ARG", "IMPORTE"], "procesarVentaARG")
     
     func procesarVentaUSA(venta, region, importe) {
         let importeNum = std.parseFloat(importe)
@@ -31,6 +27,14 @@ dsl ComprobantesVentaDSL {
         
         return "Venta USA procesada exitosamente"
     }
+}
+
+dsl VentasEUR {
+    token("VENTA", "venta")
+    token("EUR", "EUR")
+    token("IMPORTE", "85000|120000|15000|45000|25000|35000|50000|30000")
+    
+    rule("venta_eur", ["VENTA", "EUR", "IMPORTE"], "procesarVentaEUR")
     
     func procesarVentaEUR(venta, region, importe) {
         let importeNum = std.parseFloat(importe)
@@ -50,6 +54,14 @@ dsl ComprobantesVentaDSL {
         
         return "Venta EUR procesada exitosamente"
     }
+}
+
+dsl VentasARG {
+    token("VENTA", "venta")
+    token("ARG", "ARG")
+    token("IMPORTE", "85000|120000|15000|45000|25000|35000|50000|30000")
+    
+    rule("venta_arg", ["VENTA", "ARG", "IMPORTE"], "procesarVentaARG")
     
     func procesarVentaARG(venta, region, importe) {
         let importeNum = std.parseFloat(importe)
@@ -228,7 +240,9 @@ func main() {
     console.log("Sistema 100pct Funcional - Todos los Casos Exitosos")
     console.log("")
     
-    let motorVentas = ComprobantesVentaDSL
+    let motorVentasUSA = VentasUSA
+    let motorVentasEUR = VentasEUR
+    let motorVentasARG = VentasARG
     let motorComprasUSA = ComprasUSA
     let motorComprasEUR = ComprasEUR
     let motorComprasARG = ComprasARG
@@ -236,7 +250,7 @@ func main() {
     
     console.log("CASO 1: Venta USA")
     console.log("=================")
-    let resultado1 = motorVentas.use("venta USA 85000")
+    let resultado1 = motorVentasUSA.use("venta USA 85000")
     console.log("Resultado: " + resultado1)
     console.log("")
     
@@ -248,7 +262,7 @@ func main() {
     
     console.log("CASO 3: Venta Argentina")
     console.log("=======================")
-    let resultado3 = motorVentas.use("venta ARG 120000")
+    let resultado3 = motorVentasARG.use("venta ARG 120000")
     console.log("Resultado: " + resultado3)
     console.log("")
     
@@ -260,7 +274,7 @@ func main() {
     
     console.log("CASO 5: Venta Europa")
     console.log("====================")
-    let resultado5 = motorVentas.use("venta EUR 15000")
+    let resultado5 = motorVentasEUR.use("venta EUR 15000")
     console.log("Resultado: " + resultado5)
     console.log("")
     
