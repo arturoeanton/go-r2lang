@@ -7,13 +7,14 @@ import (
 
 // DSLDefinition represents a DSL definition block
 type DSLDefinition struct {
-	Token     Token
-	Name      *Identifier
-	Body      *BlockStatement
-	Grammar   *DSLGrammar
-	Functions map[string]*FunctionDeclaration
-	IsActive  bool
-	GlobalEnv *Environment
+	Token               Token
+	Name                *Identifier
+	Body                *BlockStatement
+	Grammar             *DSLGrammar
+	Functions           map[string]*FunctionDeclaration
+	IsActive            bool
+	GlobalEnv           *Environment
+	currentExecutionEnv *Environment // Current execution environment for actions
 }
 
 func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
@@ -58,8 +59,12 @@ func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
 			if context == nil {
 				context = make(map[string]interface{})
 			}
-			env.Set("context", context)
-			return dsl.evaluateDSLCode(code, env)
+
+			// Create a new inner environment for this DSL execution
+			// This ensures isolation and prevents state pollution
+			execEnv := NewInnerEnv(env)
+			execEnv.Set("context", context)
+			return dsl.evaluateDSLCode(code, execEnv)
 		},
 		"grammar":   dsl.Grammar,
 		"functions": dsl.Functions,
@@ -98,7 +103,12 @@ func (dsl *DSLDefinition) collectGrammarDefinitions(env *Environment) {
 
 				// Also add as grammar action
 				dsl.Grammar.AddAction(node.Name, func(args []interface{}) interface{} {
-					return dsl.callDSLFunction(node, args, env)
+					// Use current execution environment, or fall back to global environment
+					execEnv := dsl.currentExecutionEnv
+					if execEnv == nil {
+						execEnv = dsl.GlobalEnv
+					}
+					return dsl.callDSLFunction(node, args, execEnv)
 				})
 			}
 		}
@@ -137,10 +147,92 @@ func (dsl *DSLDefinition) extractToken(call *CallExpression) {
 			if patternStr, ok := call.Args[1].(*StringLiteral); ok {
 				name := strings.Trim(nameStr.Value, "\"'")
 				pattern := strings.Trim(patternStr.Value, "\"'")
-				dsl.Grammar.AddToken(name, pattern)
+
+				// Auto-detect if this is a keyword token (literal string without regex patterns)
+				if dsl.isKeywordToken(pattern) {
+					dsl.Grammar.AddKeywordToken(name, pattern)
+				} else {
+					// Improve pattern by auto-escaping problematic single characters if needed
+					improvedPattern := dsl.improveRegexPattern(pattern)
+					err := dsl.Grammar.AddToken(name, improvedPattern)
+					if err != nil {
+						// If the improved pattern fails, try the original
+						dsl.Grammar.AddToken(name, pattern)
+					}
+				}
 			}
 		}
 	}
+}
+
+// isKeywordToken detects if a pattern is a simple keyword (no regex metacharacters)
+func (dsl *DSLDefinition) isKeywordToken(pattern string) bool {
+	// Check if pattern contains regex metacharacters
+	regexMetachars := []string{"[", "]", "(", ")", "*", "+", "?", ".", "^", "$", "|", "\\", "{", "}"}
+	for _, meta := range regexMetachars {
+		if strings.Contains(pattern, meta) {
+			return false
+		}
+	}
+
+	// Single character operators should be treated as regex patterns, not keywords
+	if len(pattern) == 1 {
+		singleCharOperators := []string{"-", "/", "*", "+", "^", "$", ".", "|", "?", "(", ")", "[", "]", "{", "}"}
+		for _, op := range singleCharOperators {
+			if pattern == op {
+				return false // Force regex pattern handling
+			}
+		}
+	}
+
+	// Simple string with only letters, numbers, and basic punctuation = keyword
+	return len(pattern) > 0 && pattern != ""
+}
+
+// improveRegexPattern improves regex patterns by escaping problematic single characters
+func (dsl *DSLDefinition) improveRegexPattern(pattern string) string {
+	// Handle single-character operators that can be problematic in regex
+	if len(pattern) == 1 {
+		switch pattern {
+		case "-":
+			return "\\-"
+		case "/":
+			return "\\/"
+		case "^":
+			return "\\^"
+		case "$":
+			return "\\$"
+		case ".":
+			return "\\."
+		case "|":
+			return "\\|"
+		case "?":
+			return "\\?"
+		case "*":
+			return "\\*"
+		case "+":
+			return "\\+"
+		case "(":
+			return "\\("
+		case ")":
+			return "\\)"
+		case "[":
+			return "\\["
+		case "]":
+			return "\\]"
+		case "{":
+			return "\\{"
+		case "}":
+			return "\\}"
+		}
+	}
+
+	// For already escaped patterns, don't double-escape
+	if strings.HasPrefix(pattern, "\\") && len(pattern) == 2 {
+		return pattern
+	}
+
+	return pattern
 }
 
 func (dsl *DSLDefinition) extractAction(call *CallExpression, env *Environment) {
@@ -162,8 +254,11 @@ func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interfa
 		dsl.GlobalEnv = env
 	}
 
-	// Create parser for this DSL
-	parser := NewDSLParser(dsl.Grammar)
+	// Store the execution environment for actions to use
+	dsl.currentExecutionEnv = env
+
+	// Create parser for this DSL - always create a new one to ensure clean state
+	parser := NewDSLParserWithContext(dsl.Grammar, dsl)
 
 	// Parse the DSL code
 	ast, err := parser.Parse(code)
@@ -190,9 +285,16 @@ func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interfa
 }
 
 func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interface{}, env *Environment) interface{} {
+	// Use the current execution environment if available, otherwise use the provided environment
+	baseEnv := env
+	if dsl.currentExecutionEnv != nil {
+		baseEnv = dsl.currentExecutionEnv
+	} else if dsl.GlobalEnv != nil {
+		baseEnv = dsl.GlobalEnv
+	}
 
-	// Create new environment for function execution that inherits from global environment
-	fnEnv := NewInnerEnv(dsl.GlobalEnv)
+	// Create new environment for function execution
+	fnEnv := NewInnerEnv(baseEnv)
 
 	// Bind parameters to arguments
 	for i, param := range fn.Args {
@@ -212,7 +314,7 @@ func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interf
 		}
 	}
 
-	// Execute function body
+	// Execute function body with proper error handling
 	result := fn.Body.Eval(fnEnv)
 
 	// Handle return values

@@ -28,9 +28,10 @@ type DSLAlternative struct {
 
 // DSLToken representa un token en la gramática
 type DSLToken struct {
-	Name    string
-	Pattern string
-	Regex   *regexp.Regexp
+	Name     string
+	Pattern  string
+	Regex    *regexp.Regexp
+	Priority int // Higher priority = matched first (0 = lowest, 100 = highest)
 }
 
 // DSLParser parsea código DSL usando una gramática específica
@@ -38,6 +39,7 @@ type DSLParser struct {
 	Grammar *DSLGrammar
 	Tokens  []DSLTokenMatch
 	Pos     int
+	DSL     *DSLDefinition // Reference to the DSL definition for environment access
 }
 
 // DSLTokenMatch representa un token encontrado en el código
@@ -90,20 +92,33 @@ func (g *DSLGrammar) AddRule(name string, alternatives []string, action string) 
 	}
 }
 
-// AddToken agrega un token a la gramática
+// AddToken agrega un token a la gramática con prioridad predeterminada
 func (g *DSLGrammar) AddToken(name, pattern string) error {
+	return g.AddTokenWithPriority(name, pattern, 0) // Default priority
+}
+
+// AddTokenWithPriority agrega un token con prioridad específica
+func (g *DSLGrammar) AddTokenWithPriority(name, pattern string, priority int) error {
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return err
 	}
 
 	g.Tokens[name] = &DSLToken{
-		Name:    name,
-		Pattern: pattern,
-		Regex:   regex,
+		Name:     name,
+		Pattern:  pattern,
+		Regex:    regex,
+		Priority: priority,
 	}
 
 	return nil
+}
+
+// AddKeywordToken agrega un token de keyword con alta prioridad
+func (g *DSLGrammar) AddKeywordToken(name, keyword string) error {
+	// Keywords have high priority (90) and must match exactly
+	pattern := "(?i)\\b" + regexp.QuoteMeta(keyword) + "\\b"
+	return g.AddTokenWithPriority(name, pattern, 90)
 }
 
 // AddAction agrega una acción semántica
@@ -117,6 +132,17 @@ func NewDSLParser(grammar *DSLGrammar) *DSLParser {
 		Grammar: grammar,
 		Tokens:  []DSLTokenMatch{},
 		Pos:     0,
+		DSL:     nil, // Will be set when used within a DSL context
+	}
+}
+
+// NewDSLParserWithContext crea un nuevo parser DSL con contexto de DSL
+func NewDSLParserWithContext(grammar *DSLGrammar, dsl *DSLDefinition) *DSLParser {
+	return &DSLParser{
+		Grammar: grammar,
+		Tokens:  []DSLTokenMatch{},
+		Pos:     0,
+		DSL:     dsl,
 	}
 }
 
@@ -136,12 +162,39 @@ func (p *DSLParser) Tokenize(code string) error {
 		bestMatch := DSLTokenMatch{}
 		bestLength := 0
 
-		// Find the longest matching token (greedy matching)
-		for tokenName, token := range p.Grammar.Tokens {
+		// Find the best matching token based on priority and length
+		// Use a sorted approach to ensure deterministic iteration order
+		bestPriority := -1
+		tokenNames := make([]string, 0, len(p.Grammar.Tokens))
+		for tokenName := range p.Grammar.Tokens {
+			tokenNames = append(tokenNames, tokenName)
+		}
+
+		// Sort token names for deterministic behavior
+		for i := 0; i < len(tokenNames); i++ {
+			for j := i + 1; j < len(tokenNames); j++ {
+				if tokenNames[i] > tokenNames[j] {
+					tokenNames[i], tokenNames[j] = tokenNames[j], tokenNames[i]
+				}
+			}
+		}
+
+		for _, tokenName := range tokenNames {
+			token := p.Grammar.Tokens[tokenName]
 			if matches := token.Regex.FindStringIndex(code[pos:]); matches != nil && matches[0] == 0 {
 				matchLength := matches[1]
-				if matchLength > bestLength {
+
+				// Priority-based matching: higher priority wins, then longer match wins
+				shouldReplace := false
+				if token.Priority > bestPriority {
+					shouldReplace = true
+				} else if token.Priority == bestPriority && matchLength > bestLength {
+					shouldReplace = true
+				}
+
+				if shouldReplace {
 					bestLength = matchLength
+					bestPriority = token.Priority
 					bestMatch = DSLTokenMatch{
 						Type:  tokenName,
 						Value: code[pos : pos+matchLength],
@@ -168,6 +221,10 @@ func (p *DSLParser) Tokenize(code string) error {
 
 // Parse parsea los tokens usando la gramática
 func (p *DSLParser) Parse(code string) (interface{}, error) {
+	// Reset parser state to ensure deterministic behavior
+	p.Tokens = []DSLTokenMatch{}
+	p.Pos = 0
+
 	err := p.Tokenize(code)
 	if err != nil {
 		return nil, err
