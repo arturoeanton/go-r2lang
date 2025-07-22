@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Contable LATAM - Demo R2Lang DSL</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+        }
+        .region-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .region-card:hover {
+            transform: translateY(-2px);
+        }
+        .result-card {
+            border-left: 4px solid #28a745;
+        }
+        .loading {
+            display: none;
+        }
+        .demo-header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            margin-top: 3rem;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-calculator me-2"></i>
+                Sistema Contable LATAM
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text">
+                    <i class="fas fa-code me-1"></i>
+                    Powered by R2Lang DSL
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="demo-header text-center">
+        <div class="container">
+            <h1 class="display-4"><i class="fas fa-globe-americas me-3"></i>Demo R2Lang DSL</h1>
+            <p class="lead">Sistema de Localización Contable para ERPs LATAM</p>
+            <p class="mb-0">Demostración para <strong>Siigo</strong> - Automatización de procesos contables multi-región</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Stats Row -->
+        <div class="row mb-4" id="statsRow">
+            <div class="col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-globe fa-2x mb-2"></i>
+                        <h5 id="totalRegions">7</h5>
+                        <small>Regiones LATAM</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-receipt fa-2x mb-2"></i>
+                        <h5 id="totalTransactions">0</h5>
+                        <small>Transacciones</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                        <h5 id="totalAmount">$0</h5>
+                        <small>Monto Total</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <h5 id="systemStatus">ACTIVO</h5>
+                        <small>Estado Sistema</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-play-circle me-2"></i>Panel de Control
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-success btn-lg w-100 mb-3" onclick="runCompleteDemo()">
+                            <i class="fas fa-rocket me-2"></i>Demo Completo
+                        </button>
+                        
+                        <button class="btn btn-primary btn-lg w-100 mb-3" onclick="loadRegions()">
+                            <i class="fas fa-sync me-2"></i>Cargar Regiones
+                        </button>
+                        
+                        <button class="btn btn-info btn-lg w-100 mb-3" onclick="loadStats()">
+                            <i class="fas fa-chart-bar me-2"></i>Actualizar Stats
+                        </button>
+                        
+                        <button class="btn btn-warning btn-lg w-100" onclick="clearResults()">
+                            <i class="fas fa-trash me-2"></i>Limpiar Resultados
+                        </button>
+                        
+                        <div class="loading mt-3 text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <div class="mt-2">Procesando...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Transaction -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-edit me-2"></i>Transacción Manual
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-control" id="transactionType">
+                                <option value="sale">Venta</option>
+                                <option value="purchase">Compra</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Región</label>
+                            <select class="form-control" id="regionSelect">
+                                <option value="">Seleccionar...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Monto</label>
+                            <input type="number" class="form-control" id="amountInput" placeholder="10000">
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="processManualTransaction()">
+                            <i class="fas fa-calculator me-2"></i>Procesar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-8">
+                <!-- Regions Display -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-map me-2"></i>Regiones LATAM Soportadas
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="regionsContainer">
+                            <div class="col-12 text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando regiones...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Display -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-list me-2"></i>Resultados de Transacciones
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContainer">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                                <p>No hay transacciones aún. Ejecuta el demo completo o procesa una transacción manual.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DSL Command Interface -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-terminal me-2"></i>Interfaz DSL Directa
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Ejecuta comandos DSL directamente para probar la funcionalidad:</p>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <select class="form-control" id="dslEngine">
+                                        <option value="ventas">Motor Ventas</option>
+                                        <option value="compras">Motor Compras</option>
+                                        <option value="consultas">Motor Consultas</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="dslCommand" placeholder="Ejemplo: venta COL 50000">
+                                    <button class="btn btn-dark" onclick="executeDSL()">
+                                        <i class="fas fa-play me-2"></i>Ejecutar DSL
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">
+                                    <strong>Ejemplos:</strong><br>
+                                    venta MX 10000<br>
+                                    compra AR 5000<br>
+                                    consultar config PE
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3" id="dslResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-code me-2"></i>R2Lang DSL Demo</h5>
+                    <p class="mb-0">Sistema de demostración para localización de ERPs en LATAM</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0">
+                        <strong>Regiones:</strong> México, Colombia, Argentina, Chile, Uruguay, Ecuador, Perú<br>
+                        <strong>Target:</strong> Siigo ERP Localization
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

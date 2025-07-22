@@ -52,6 +52,7 @@ func RunCode(filename string) {
 	r2libs.RegisterCSV(env)
 	r2libs.RegisterJWT(env)
 	r2libs.RegisterConsole(env)
+	r2libs.RegisterWeb(env)
 	parser := r2core.NewParserWithFile(code, filename)
 	env.Run(parser)
 }
