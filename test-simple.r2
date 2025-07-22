@@ -1,1 +1,0 @@
-std.print("Hello from std.print")
