@@ -40,15 +40,18 @@ func TestDSLBasicFunctionality(t *testing.T) {
 	}
 
 	// Test that DSL object has the expected structure
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
-		if dslDef.Name.Name != "TestDSL" {
-			t.Fatalf("Expected DSL name 'TestDSL', got '%s'", dslDef.Name.Name)
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		if _, exists := dslMap["use"]; !exists {
+			t.Fatal("DSL should have a 'use' method")
 		}
-		if dslDef.Grammar == nil {
+		if _, exists := dslMap["grammar"]; !exists {
 			t.Fatal("DSL should have a grammar")
 		}
+		if _, exists := dslMap["functions"]; !exists {
+			t.Fatal("DSL should have functions")
+		}
 	} else {
-		t.Fatalf("Expected DSL object to be *DSLDefinition, got %T", dslObj)
+		t.Fatalf("Expected DSL object to be map[string]interface{}, got %T", dslObj)
 	}
 }
 
@@ -89,20 +92,25 @@ func TestDSLParameterPassing(t *testing.T) {
 		t.Fatal("DSL 'CalcDSL' not found in environment")
 	}
 
-	// Test that DSL object is a DSLDefinition
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
-		if dslDef.Name.Name != "CalcDSL" {
-			t.Fatalf("Expected DSL name 'CalcDSL', got '%s'", dslDef.Name.Name)
+	// Test that DSL object is a map with expected structure
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		if _, exists := dslMap["use"]; !exists {
+			t.Fatal("DSL should have a 'use' method")
 		}
-		if dslDef.Grammar == nil {
+		if grammar, exists := dslMap["grammar"]; exists {
+			if dslGrammar, ok := grammar.(*DSLGrammar); ok {
+				// Test that grammar has the expected rules
+				if _, exists := dslGrammar.Rules["operation"]; !exists {
+					t.Fatal("DSL should have 'operation' rule")
+				}
+			} else {
+				t.Fatal("Grammar should be *DSLGrammar")
+			}
+		} else {
 			t.Fatal("DSL should have a grammar")
 		}
-		// Test that grammar has the expected rules
-		if _, exists := dslDef.Grammar.Rules["operation"]; !exists {
-			t.Fatal("DSL should have 'operation' rule")
-		}
 	} else {
-		t.Fatalf("Expected DSL object to be *DSLDefinition, got %T", dslObj)
+		t.Fatalf("Expected DSL object to be map[string]interface{}, got %T", dslObj)
 	}
 }
 
@@ -306,8 +314,9 @@ func TestDSLParameterFormatting(t *testing.T) {
 		t.Fatal("DSL 'ParamTestDSL' not found")
 	}
 
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
-		result := dslDef.evaluateDSLCode("a + b", env)
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		useFunc := dslMap["use"].(func(...interface{}) interface{})
+		result := useFunc("a + b")
 
 		if dslResult, ok := result.(*DSLResult); ok {
 			if dslResult.Output != "a+b" {
@@ -317,7 +326,7 @@ func TestDSLParameterFormatting(t *testing.T) {
 			t.Errorf("Expected DSLResult, got %T", result)
 		}
 	} else {
-		t.Fatalf("Expected DSLDefinition, got %T", dslObj)
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
 	}
 }
 
@@ -345,8 +354,9 @@ func TestDSLResultAccess(t *testing.T) {
 		t.Fatal("DSL 'ResultTestDSL' not found")
 	}
 
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
-		result := dslDef.evaluateDSLCode("5", env)
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		useFunc := dslMap["use"].(func(...interface{}) interface{})
+		result := useFunc("5")
 
 		if dslResult, ok := result.(*DSLResult); ok {
 			// Test Output property
@@ -458,7 +468,9 @@ func TestDSLComplexCalculation(t *testing.T) {
 		t.Fatal("DSL 'CalculatorDSL' not found")
 	}
 
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		useFunc := dslMap["use"].(func(...interface{}) interface{})
+
 		testCases := []struct {
 			expression string
 			expected   string
@@ -471,7 +483,7 @@ func TestDSLComplexCalculation(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.expression, func(t *testing.T) {
-				result := dslDef.evaluateDSLCode(tc.expression, env)
+				result := useFunc(tc.expression)
 
 				if dslResult, ok := result.(*DSLResult); ok {
 					if dslResult.Output != tc.expected {
@@ -483,7 +495,7 @@ func TestDSLComplexCalculation(t *testing.T) {
 			})
 		}
 	} else {
-		t.Fatalf("Expected DSLDefinition, got %T", dslObj)
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
 	}
 }
 
@@ -514,8 +526,9 @@ func TestDSLReturnValueUnpacking(t *testing.T) {
 		t.Fatal("DSL 'UnpackTestDSL' not found")
 	}
 
-	if dslDef, ok := dslObj.(*DSLDefinition); ok {
-		result := dslDef.evaluateDSLCode("a b", env)
+	if dslMap, ok := dslObj.(map[string]interface{}); ok {
+		useFunc := dslMap["use"].(func(...interface{}) interface{})
+		result := useFunc("a b")
 
 		if dslResult, ok := result.(*DSLResult); ok {
 			expected := "a:b"
@@ -526,6 +539,367 @@ func TestDSLReturnValueUnpacking(t *testing.T) {
 			t.Errorf("Expected DSLResult, got %T", result)
 		}
 	} else {
-		t.Fatalf("Expected DSLDefinition, got %T", dslObj)
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
+	}
+}
+
+func TestDSLContextSupport(t *testing.T) {
+	// Test case 13: DSL with context support
+	env := NewEnvironment()
+	// Register standard functions needed for tests
+	env.Set("std", map[string]interface{}{
+		"parseInt": func(s interface{}) interface{} {
+			switch v := s.(type) {
+			case string:
+				// Simple integer parsing for tests
+				if v == "10" {
+					return 10
+				}
+				if v == "20" {
+					return 20
+				}
+				if v == "5" {
+					return 5
+				}
+				return 0
+			default:
+				return 0
+			}
+		},
+	})
+
+	dslCode := `
+	dsl ContextDSL {
+		token("VAR", "[a-zA-Z]+")
+		token("PLUS", "\\+")
+		token("NUMBER", "[0-9]+")
+		
+		rule("expression", ["VAR", "PLUS", "NUMBER"], "addToVar")
+		rule("simple", ["VAR"], "getVar")
+		
+		func addToVar(varName, plus, number) {
+			let varValue = context[varName]
+			if (varValue != nil) {
+				let numValue = std.parseInt(number)
+				let result = std.parseInt(varValue) + numValue
+				return result
+			}
+			return "undefined"
+		}
+		
+		func getVar(varName) {
+			let varValue = context[varName]
+			if (varValue != nil) {
+				return varValue
+			}
+			return "undefined"
+		}
+	}
+	`
+
+	parser := NewParser(dslCode)
+	program := parser.ParseProgram()
+	program.Eval(env)
+
+	// Get DSL object and evaluate it
+	dslObj, exists := env.Get("ContextDSL")
+	if !exists {
+		t.Fatal("DSL 'ContextDSL' not found")
+	}
+
+	// Get the DSL object directly (it should already be a map)
+	var dslMap map[string]interface{}
+	if resultMap, ok := dslObj.(map[string]interface{}); ok {
+		dslMap = resultMap
+	} else {
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
+	}
+
+	useFunc, exists := dslMap["use"]
+	if !exists {
+		t.Fatal("DSL should have 'use' method")
+	}
+
+	useMethod, ok := useFunc.(func(...interface{}) interface{})
+	if !ok {
+		t.Fatalf("Expected use method to be func(...interface{}) interface{}, got %T", useFunc)
+	}
+
+	// Test 1: Simple variable access with context
+	context1 := map[string]interface{}{
+		"x": "10",
+		"y": "20",
+	}
+
+	result1 := useMethod("x", context1)
+	if dslResult, ok := result1.(*DSLResult); ok {
+		if dslResult.Output != "10" {
+			t.Errorf("Expected '10', got %v", dslResult.Output)
+		}
+	} else {
+		t.Errorf("Expected DSLResult, got %T", result1)
+	}
+
+	// Test 2: Addition with context
+	result2 := useMethod("x + 5", context1)
+	if dslResult, ok := result2.(*DSLResult); ok {
+		expected := 15 // 10 + 5
+		if dslResult.Output != expected {
+			t.Errorf("Expected %v, got %v", expected, dslResult.Output)
+		}
+	} else {
+		t.Errorf("Expected DSLResult, got %T", result2)
+	}
+
+	// Test 3: Variable not in context
+	result3 := useMethod("z", context1)
+	if dslResult, ok := result3.(*DSLResult); ok {
+		if dslResult.Output != "undefined" {
+			t.Errorf("Expected 'undefined', got %v", dslResult.Output)
+		}
+	} else {
+		t.Errorf("Expected DSLResult, got %T", result3)
+	}
+
+	// Test 4: Call without context (should use empty context)
+	result4 := useMethod("x")
+	if dslResult, ok := result4.(*DSLResult); ok {
+		if dslResult.Output != "undefined" {
+			t.Errorf("Expected 'undefined', got %v", dslResult.Output)
+		}
+	} else {
+		t.Errorf("Expected DSLResult, got %T", result4)
+	}
+}
+
+func TestDSLContextVariableCalculator(t *testing.T) {
+	// Test case 14: Calculator DSL with variable support from context
+	env := NewEnvironment()
+	// Register standard functions needed for tests
+	env.Set("std", map[string]interface{}{
+		"parseInt": func(s interface{}) interface{} {
+			switch v := s.(type) {
+			case string:
+				// Simple integer parsing for tests
+				if v == "10" {
+					return 10
+				}
+				if v == "20" {
+					return 20
+				}
+				if v == "25" {
+					return 25
+				}
+				if v == "15" {
+					return 15
+				}
+				if v == "5" {
+					return 5
+				}
+				if v == "7" {
+					return 7
+				}
+				if v == "8" {
+					return 8
+				}
+				if v == "0" {
+					return 0
+				}
+				return 0
+			case int:
+				return v
+			default:
+				return 0
+			}
+		},
+	})
+
+	dslCode := `
+	dsl CalcWithVars {
+		token("VARIABLE", "[a-zA-Z][a-zA-Z0-9]*")
+		token("NUMERO", "[0-9]+")
+		token("SUMA", "\\+")
+		token("RESTA", "-")
+		token("MULT", "\\*")
+		token("DIV", "/")
+		
+		rule("operacion", ["operando", "operador", "operando"], "calcular")
+		rule("operando", ["NUMERO"], "numero")
+		rule("operando", ["VARIABLE"], "variable")
+		rule("operador", ["SUMA"], "op_suma")
+		rule("operador", ["RESTA"], "op_resta")
+		rule("operador", ["MULT"], "op_mult")
+		rule("operador", ["DIV"], "op_div")
+		
+		func calcular(val1, op, val2) {
+			let n1 = std.parseInt(val1)
+			let n2 = std.parseInt(val2)
+			
+			if (op == "+") {
+				return n1 + n2
+			}
+			if (op == "-") {
+				return n1 - n2
+			}
+			if (op == "*") {
+				return n1 * n2
+			}
+			if (op == "/") {
+				return n1 / n2
+			}
+			return 0
+		}
+		
+		func numero(token) { 
+			return token 
+		}
+		
+		func variable(token) {
+			if (context[token] != nil) {
+				return context[token]
+			}
+			return "0"
+		}
+		
+		func op_suma(token) { return "+" }
+		func op_resta(token) { return "-" }
+		func op_mult(token) { return "*" }
+		func op_div(token) { return "/" }
+	}
+	`
+
+	parser := NewParser(dslCode)
+	program := parser.ParseProgram()
+	program.Eval(env)
+
+	// Get DSL object and evaluate it
+	dslObj, exists := env.Get("CalcWithVars")
+	if !exists {
+		t.Fatal("DSL 'CalcWithVars' not found")
+	}
+
+	// Get the DSL object directly (it should already be a map)
+	var dslMap map[string]interface{}
+	if resultMap, ok := dslObj.(map[string]interface{}); ok {
+		dslMap = resultMap
+	} else {
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
+	}
+
+	useFunc, exists := dslMap["use"]
+	if !exists {
+		t.Fatal("DSL should have 'use' method")
+	}
+
+	useMethod, ok := useFunc.(func(...interface{}) interface{})
+	if !ok {
+		t.Fatalf("Expected use method to be variadic function, got %T", useFunc)
+	}
+
+	// Test cases
+	testCases := []struct {
+		expression string
+		context    map[string]interface{}
+		expected   interface{}
+	}{
+		{"5 + 3", nil, 8}, // Numbers only, no context needed
+		{"a + b", map[string]interface{}{"a": "10", "b": "20"}, 30}, // Variables from context
+		{"x * y", map[string]interface{}{"x": "7", "y": "8"}, 56},   // Multiplication with context
+		{"a + 15", map[string]interface{}{"a": "25"}, 40},           // Mixed variable and number
+		{"z - 5", map[string]interface{}{}, -5},                     // Variable not in context (defaults to 0)
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.expression, func(t *testing.T) {
+			var result interface{}
+			if tc.context != nil {
+				result = useMethod(tc.expression, tc.context)
+			} else {
+				result = useMethod(tc.expression)
+			}
+
+			if dslResult, ok := result.(*DSLResult); ok {
+				if dslResult.Output != tc.expected {
+					t.Errorf("Test case %d: Expected %v, got %v", i+1, tc.expected, dslResult.Output)
+				}
+			} else {
+				t.Errorf("Test case %d: Expected DSLResult, got %T", i+1, result)
+			}
+		})
+	}
+}
+
+func TestDSLContextErrorHandling(t *testing.T) {
+	// Test case 15: Error handling with context
+	env := NewEnvironment()
+
+	dslCode := `
+	dsl ErrorTestDSL {
+		token("A", "a")
+		rule("test", ["A"], "testFunc")
+		
+		func testFunc(token) {
+			return "ok"
+		}
+	}
+	`
+
+	parser := NewParser(dslCode)
+	program := parser.ParseProgram()
+	program.Eval(env)
+
+	dslObj, exists := env.Get("ErrorTestDSL")
+	if !exists {
+		t.Fatal("DSL 'ErrorTestDSL' not found")
+	}
+
+	// Get the DSL object directly (it should already be a map)
+	var dslMap map[string]interface{}
+	if resultMap, ok := dslObj.(map[string]interface{}); ok {
+		dslMap = resultMap
+	} else {
+		t.Fatalf("Expected map[string]interface{}, got %T", dslObj)
+	}
+
+	useFunc := dslMap["use"].(func(...interface{}) interface{})
+
+	// Test 1: No arguments should return error
+	result1 := useFunc()
+	if errResult, ok := result1.(error); ok {
+		if !strings.Contains(errResult.Error(), "at least one argument") {
+			t.Errorf("Expected error about missing arguments, got: %v", errResult)
+		}
+	} else {
+		t.Errorf("Expected error, got %T", result1)
+	}
+
+	// Test 2: Non-string first argument should return error
+	result2 := useFunc(123)
+	if errResult, ok := result2.(error); ok {
+		if !strings.Contains(errResult.Error(), "first argument must be a string") {
+			t.Errorf("Expected error about string argument, got: %v", errResult)
+		}
+	} else {
+		t.Errorf("Expected error, got %T", result2)
+	}
+
+	// Test 3: Non-map second argument should return error
+	result3 := useFunc("a", "not-a-map")
+	if errResult, ok := result3.(error); ok {
+		if !strings.Contains(errResult.Error(), "second argument must be a map") {
+			t.Errorf("Expected error about map argument, got: %v", errResult)
+		}
+	} else {
+		t.Errorf("Expected error, got %T", result3)
+	}
+
+	// Test 4: Valid call should work
+	result4 := useFunc("a", map[string]interface{}{})
+	if dslResult, ok := result4.(*DSLResult); ok {
+		if dslResult.Output != "ok" {
+			t.Errorf("Expected 'ok', got %v", dslResult.Output)
+		}
+	} else {
+		t.Errorf("Expected DSLResult, got %T", result4)
 	}
 }

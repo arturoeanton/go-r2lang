@@ -20,9 +20,8 @@ func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
 	// Create a new DSL environment
 	dslEnv := NewInnerEnv(env)
 
-	// Register the DSL in the environment
+	// Get DSL name for later registration
 	dslName := dsl.Name.Name
-	env.Set(dslName, dsl)
 
 	// Initialize grammar
 	dsl.Grammar = NewDSLGrammar()
@@ -32,12 +31,42 @@ func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
 
 	// Create a DSL object with a 'use' method
 	dslObject := map[string]interface{}{
-		"use": func(code string) interface{} {
+		"use": func(args ...interface{}) interface{} {
+			var code string
+			var context map[string]interface{}
+
+			if len(args) == 0 {
+				return fmt.Errorf("DSL use: at least one argument (code) is required")
+			}
+
+			// First argument is always the code string
+			if codeStr, ok := args[0].(string); ok {
+				code = codeStr
+			} else {
+				return fmt.Errorf("DSL use: first argument must be a string")
+			}
+
+			// Second argument (optional) is the context map
+			if len(args) > 1 {
+				if ctx, ok := args[1].(map[string]interface{}); ok {
+					context = ctx
+				} else {
+					return fmt.Errorf("DSL use: second argument must be a map")
+				}
+			}
+
+			if context == nil {
+				context = make(map[string]interface{})
+			}
+			env.Set("context", context)
 			return dsl.evaluateDSLCode(code, env)
 		},
 		"grammar":   dsl.Grammar,
 		"functions": dsl.Functions,
 	}
+
+	// Register the DSL object in the environment
+	env.Set(dslName, dslObject)
 
 	return dslObject
 }

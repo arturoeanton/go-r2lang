@@ -133,19 +133,29 @@ func (p *DSLParser) Tokenize(code string) error {
 		}
 
 		matched := false
+		bestMatch := DSLTokenMatch{}
+		bestLength := 0
+
+		// Find the longest matching token (greedy matching)
 		for tokenName, token := range p.Grammar.Tokens {
 			if matches := token.Regex.FindStringIndex(code[pos:]); matches != nil && matches[0] == 0 {
-				value := code[pos : pos+matches[1]]
-				p.Tokens = append(p.Tokens, DSLTokenMatch{
-					Type:  tokenName,
-					Value: value,
-					Start: pos,
-					End:   pos + matches[1],
-				})
-				pos += matches[1]
-				matched = true
-				break
+				matchLength := matches[1]
+				if matchLength > bestLength {
+					bestLength = matchLength
+					bestMatch = DSLTokenMatch{
+						Type:  tokenName,
+						Value: code[pos : pos+matchLength],
+						Start: pos,
+						End:   pos + matchLength,
+					}
+					matched = true
+				}
 			}
+		}
+
+		if matched {
+			p.Tokens = append(p.Tokens, bestMatch)
+			pos += bestLength
 		}
 
 		if !matched {

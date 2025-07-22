@@ -156,6 +156,200 @@ std.print("  App nombre:", aplicacion.info.nombre);
 std.print("  DB timeout:", aplicacion.base_datos.credenciales.timeout);
 
 // ============================================================================
+// 4B. VECTORES DE MAPAS MULTILINEA Y PIPELINE MULTILINEA 🆕
+// ============================================================================
+std.print("\n4️⃣B VECTORES DE MAPAS MULTILINEA Y PIPELINE MULTILINEA 🆕");
+
+// Vectores de mapas multilinea - casos complejos
+let empleados = [
+    {
+        nombre: "Ana García",
+        edad: 28,
+        departamento: "IT",
+        habilidades: ["JavaScript", "Python", "React"],
+        activo: true,
+        salario: 75000
+    },
+    {
+        nombre: "Carlos López", 
+        edad: 35,
+        departamento: "Marketing",
+        habilidades: ["SEO", "Analytics", "Content"],
+        activo: true,
+        salario: 65000
+    },
+    {
+        nombre: "María Rodríguez",
+        edad: 42,
+        departamento: "IT", 
+        habilidades: ["Java", "Spring", "Docker"],
+        activo: false,
+        salario: 85000
+    },
+    {
+        nombre: "Pedro Martínez",
+        edad: 31,
+        departamento: "Ventas",
+        habilidades: ["CRM", "Communication", "Analytics"],
+        activo: true,
+        salario: 55000
+    }
+];
+
+std.print("✓ Vectores de mapas multilinea:");
+std.print("  Total empleados:", std.len(empleados));
+std.print("  Primer empleado:", empleados[0].nombre, "- Dept:", empleados[0].departamento);
+std.print("  Empleado inactivo:", empleados[2].nombre, "- Activo:", empleados[2].activo);
+
+// Funciones helper para demostrar pipeline multilinea
+func filtrarActivos(lista) {
+    let resultado = [];
+    for (empleado in lista) {
+        if ($v.activo == true) {
+            resultado = resultado + [$v];
+        }
+    }
+    return resultado;
+}
+
+func filtrarPorDepartamento(lista, dept) {
+    let resultado = [];
+    for (empleado in lista) {
+        if ($v.departamento == dept) {
+            resultado = resultado + [$v];
+        }
+    }
+    return resultado;
+}
+
+func extraerNombres(lista) {
+    let nombres = [];
+    for (empleado in lista) {
+        nombres = nombres + [$v.nombre];
+    }
+    return nombres;
+}
+
+func calcularSalarioPromedio(lista) {
+    let suma = 0;
+    for (empleado in lista) {
+        suma = suma + $v.salario;
+    }
+    return suma / std.len(lista);
+}
+
+// Pipeline multilinea - NUEVA CARACTERÍSTICA
+std.print("✓ Pipeline multilinea (|>):");
+
+// Ejemplo 1: Pipeline tradicional (una línea)
+let nombresIT_una_linea = empleados |> (x => filtrarActivos(x)) |> (x => filtrarPorDepartamento(x, "IT")) |> (x => extraerNombres(x));
+std.print("  IT activos (una línea):", nombresIT_una_linea);
+
+// Ejemplo 2: Pipeline multilinea - caso básico
+let nombresIT_multilinea = empleados 
+    |> (x => filtrarActivos(x))
+    |> (x => filtrarPorDepartamento(x, "IT")) 
+    |> (x => extraerNombres(x));
+
+std.print("  IT activos (multilinea):", nombresIT_multilinea);
+
+// Ejemplo 3: Pipeline multilinea con espacios extra
+let salarioPromedioActivos = empleados
+    |> 
+    (x => filtrarActivos(x))
+    |>
+    (x => calcularSalarioPromedio(x));
+
+std.print("  Salario promedio activos:", salarioPromedioActivos);
+
+// Ejemplo 4: Pipeline complejo multilinea con múltiples operaciones
+let analisisCompleto = empleados
+    |> (x => filtrarActivos(x))
+    |> (x => {
+        let resultado = [];
+        for (emp in x) {
+            if ($v.edad > 30) {
+                resultado = resultado + [$v];
+            }
+        }
+        return resultado;
+    })
+    |> (x => {
+        let procesados = [];
+        for (emp in x) {
+            procesados = procesados + [{
+                nombre: $v.nombre,
+                info: $v.departamento + " - " + $v.edad + " años",
+                categoria: $v.salario > 70000 ? "Senior" : "Regular"
+            }];
+        }
+        return procesados;
+    });
+
+std.print("  Análisis complejo:");
+for (resultado in analisisCompleto) {
+    std.print("    " + $v.nombre + ": " + $v.info + " (" + $v.categoria + ")");
+}
+
+// Vector complejo de configuraciones multilinea
+let configuraciones_sistemas = [
+    {
+        sistema: "Producción",
+        config: {
+            servidor: {
+                host: "prod.example.com",
+                puerto: 443,
+                ssl: true,
+                certificado: {
+                    tipo: "wildcard",
+                    expira: "2025-12-31",
+                    issuer: "GlobalSign"
+                }
+            },
+            base_datos: {
+                host: "db-prod.example.com", 
+                puerto: 5432,
+                ssl: true,
+                replicas: 3,
+                backup: {
+                    frecuencia: "diaria",
+                    retencion: "30 días",
+                    ubicacion: "s3://backups-prod"
+                }
+            }
+        }
+    },
+    {
+        sistema: "Testing",
+        config: {
+            servidor: {
+                host: "test.example.com",
+                puerto: 80,
+                ssl: false,
+                certificado: null
+            },
+            base_datos: {
+                host: "db-test.example.com",
+                puerto: 5432, 
+                ssl: false,
+                replicas: 1,
+                backup: {
+                    frecuencia: "semanal",
+                    retencion: "7 días",
+                    ubicacion: "local"
+                }
+            }
+        }
+    }
+];
+
+std.print("✓ Configuraciones complejas multilinea:");
+std.print("  Sistemas configurados:", std.len(configuraciones_sistemas));
+std.print("  Prod SSL:", configuraciones_sistemas[0].config.servidor.ssl);
+std.print("  Test replicas:", configuraciones_sistemas[1].config.base_datos.replicas);
+std.print("  Prod backup:", configuraciones_sistemas[0].config.base_datos.backup.frecuencia);
+
+// ============================================================================
 // 5. CONTROL DE FLUJO CON 'else if' (NUEVA CARACTERÍSTICA)
 // ============================================================================
 std.print("\n5️⃣ CONTROL DE FLUJO CON 'else if' 🆕");
@@ -957,6 +1151,10 @@ std.print("\n🆕 NUEVAS CARACTERÍSTICAS 2025 VALIDADAS:");
 std.print("   ✅ Mapas multilinea con sintaxis mejorada");
 std.print("   ✅ Separadores mixtos (comas + newlines)");
 std.print("   ✅ Mapas anidados multilinea complejos");
+std.print("   ✅ Vectores de mapas multilinea complejos");
+std.print("   ✅ Pipeline multilinea (|>) con saltos de línea");
+std.print("   ✅ Pipeline con espacios y formateo flexible");
+std.print("   ✅ Pipeline complejo multilinea con lambdas");
 std.print("   ✅ Sintaxis 'else if' para mejor legibilidad");
 std.print("   ✅ Cadenas complejas de 'else if'");
 std.print("   ✅ Operador módulo '%' en múltiples contextos");
@@ -996,7 +1194,8 @@ std.print("   Si este test se ejecuta sin errores, R2Lang está");
 std.print("   funcionando correctamente en TODAS sus características");
 std.print("   incluyendo los nuevos módulos profesionales.");
 
-std.print("\nTotal de características probadas: 80+");
+std.print("\nTotal de características probadas: 90+");
 std.print("Módulos nuevos incluidos: 5");
+std.print("Características multilinea: 4 nuevas");
 std.print("Estado: 🟢 TODOS LOS TESTS PASARON");
 std.print("Versión: 🔥 PREMIUM 2025 EDITION");
