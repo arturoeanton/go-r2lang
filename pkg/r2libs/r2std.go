@@ -170,6 +170,53 @@ func RegisterStd(env *r2core.Environment) {
 			return arr
 		}),
 
+		"contains": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("contains needs 2 arguments: (str, substr)")
+			}
+			s, ok1 := args[0].(string)
+			substr, ok2 := args[1].(string)
+			if !ok1 || !ok2 {
+				panic("contains: args should be string, string")
+			}
+			return strings.Contains(s, substr)
+		}),
+
+		"replace": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 3 {
+				panic("replace needs 3 arguments: (str, old, new)")
+			}
+			s, ok1 := args[0].(string)
+			old, ok2 := args[1].(string)
+			new, ok3 := args[2].(string)
+			if !ok1 || !ok2 || !ok3 {
+				panic("replace: args should be string, string, string")
+			}
+			return strings.ReplaceAll(s, old, new)
+		}),
+
+		"toUpperCase": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("toUpperCase needs 1 argument")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("toUpperCase: arg should be string")
+			}
+			return strings.ToUpper(s)
+		}),
+
+		"toLowerCase": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("toLowerCase needs 1 argument")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("toLowerCase: arg should be string")
+			}
+			return strings.ToLower(s)
+		}),
+
 		"eval": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				panic("eval needs 1 argument (code string)")

@@ -85,4 +85,31 @@ func TestStdFunctions(t *testing.T) {
 			t.Errorf("is: expected UserFunction to be function")
 		}
 	})
+
+	// Test contains
+	t.Run("contains", func(t *testing.T) {
+		containsFunc := stdModule["contains"].(r2core.BuiltinFunction)
+
+		// Test basic functionality
+		if !containsFunc("hello world", "world").(bool) {
+			t.Errorf("contains: expected 'hello world' to contain 'world'")
+		}
+		if containsFunc("hello world", "foo").(bool) {
+			t.Errorf("contains: expected 'hello world' not to contain 'foo'")
+		}
+		if !containsFunc("test=value", "=").(bool) {
+			t.Errorf("contains: expected 'test=value' to contain '='")
+		}
+
+		// Test edge cases
+		if !containsFunc("", "").(bool) {
+			t.Errorf("contains: expected empty string to contain empty string")
+		}
+		if !containsFunc("abc", "").(bool) {
+			t.Errorf("contains: expected 'abc' to contain empty string")
+		}
+		if containsFunc("", "a").(bool) {
+			t.Errorf("contains: expected empty string not to contain 'a'")
+		}
+	})
 }
