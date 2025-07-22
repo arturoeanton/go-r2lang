@@ -410,7 +410,12 @@ func evalArrayJoin(arr interfaceSlice) interface{} {
 func evalDSLAccess(dsl *DSLDefinition, member string, env *Environment) interface{} {
 	switch member {
 	case "use":
-		return func(code string) interface{} {
+		return func(code string, context map[string]interface{}) interface{} {
+			if context == nil {
+				context = make(map[string]interface{})
+			}
+			env.Set("context", context)
+
 			return dsl.evaluateDSLCode(code, env)
 		}
 	default:

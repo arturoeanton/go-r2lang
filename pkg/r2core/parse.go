@@ -691,10 +691,27 @@ func (p *Parser) parseExpression() Node {
 // parseBinaryExpression => parsea operadores binarios
 func (p *Parser) parseBinaryExpression(precedence int) Node {
 	left := p.parseUnaryExpression()
-	for (p.curTok.Type == TOKEN_SYMBOL || p.curTok.Type == TOKEN_NULL_COALESCING || p.curTok.Type == TOKEN_PIPE) && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence {
+
+	for {
+		// Skip newlines before checking for operators (especially for pipeline |>)
+		for p.curTok.Value == "\n" {
+			p.nextToken()
+		}
+
+		// Check if current token is a binary operator
+		if !((p.curTok.Type == TOKEN_SYMBOL || p.curTok.Type == TOKEN_NULL_COALESCING || p.curTok.Type == TOKEN_PIPE) && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence) {
+			break
+		}
+
 		op := p.curTok.Value
 		opToken := p.curTok // Capture operator token position
 		p.nextToken()
+
+		// Skip newlines after the operator as well
+		for p.curTok.Value == "\n" {
+			p.nextToken()
+		}
+
 		right := p.parseBinaryExpression(getPrecedence(op) + 1)
 		left = &BinaryExpression{
 			BaseNode: BaseNode{Position: CreatePositionInfo(opToken, p.filename)},
@@ -957,17 +974,37 @@ func (p *Parser) parseArrayLiteral() Node {
 		return p.parseArrayComprehension()
 	}
 
+	// Skip newlines after opening bracket
+	for p.curTok.Value == "\n" {
+		p.nextToken()
+	}
+
 	// Regular array literal
 	var elems []Node
+	if p.curTok.Value == "]" {
+		p.nextToken()
+		return &ArrayLiteral{Elements: elems}
+	}
+
 	for p.curTok.Value != "]" && p.curTok.Type != TOKEN_EOF {
 		e := p.parseExpression()
 		elems = append(elems, e)
+
 		if p.curTok.Value == "," {
 			p.nextToken()
+			// Skip newlines after comma
+			for p.curTok.Value == "\n" {
+				p.nextToken()
+			}
+		} else if p.curTok.Value == "\n" {
+			// Allow newlines instead of commas
+			for p.curTok.Value == "\n" {
+				p.nextToken()
+			}
 		} else if p.curTok.Value == "]" {
 			break
 		} else {
-			p.except("Expected ',' or ']' in array literal")
+			p.except("Expected ',', newline, or ']' in array literal")
 		}
 	}
 	if p.curTok.Value != "]" {
