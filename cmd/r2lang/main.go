@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/arturoeliasanton/go-r2lang/pkg/r2lang"
+	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
 const version = "1.0.0"
