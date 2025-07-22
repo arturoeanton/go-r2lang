@@ -3,6 +3,7 @@ package r2core
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -74,8 +75,8 @@ func toFloat(val interface{}) float64 {
 		}
 		commonsStringCacheMu.RUnlock()
 
-		// Parsear y cachear
-		f, err := strconv.ParseFloat(v, 64)
+		// Smart conversion: try to parse as number
+		f, err := smartParseFloat(v)
 		if err != nil {
 			panic("Cannot convert string to number:" + v)
 		}
@@ -146,6 +147,12 @@ func addValues(a, b interface{}) interface{} {
 		}
 	}
 
+	// P5 Feature: Smart auto-conversion
+	// Handle mixed types and smart numeric strings
+	if shouldUseP5SmartConversion(a, b) {
+		return smartToFloat(a) + smartToFloat(b)
+	}
+
 	if isNumeric(a) && isNumeric(b) {
 		// Object pool desactivado para operaciones simples
 		return toFloat(a) + toFloat(b)
@@ -162,24 +169,9 @@ func addValues(a, b interface{}) interface{} {
 		return append([]interface{}{a}, ab...)
 	}
 
-	// Si uno es string => concatenar (optimización mejorada)
-	if sa, ok := a.(string); ok {
-		sb := toStringOptimized(b)
-		// Usar optimización para strings medianos y grandes
-		if len(sa)+len(sb) > 32 {
-			return OptimizedStringConcat2(sa, sb)
-		}
-		return sa + sb
-	}
-	if sb, ok := b.(string); ok {
-		sa := toStringOptimized(a)
-		// Usar optimización para strings medianos y grandes
-		if len(sa)+len(sb) > 32 {
-			return OptimizedStringConcat2(sa, sb)
-		}
-		return sa + sb
-	}
-	return toFloat(a) + toFloat(b)
+	// P5 Feature: Smart string concatenation with fallback
+	// Use smart conversion for better string handling
+	return smartStringConcat(a, b)
 }
 func subValues(a, b interface{}) interface{} {
 	// Fast path: evitar conversiones si ya son float64
@@ -332,4 +324,203 @@ func toStringOptimized(val interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// smartParseFloat intelligently parses strings to float with enhanced conversion
+func smartParseFloat(s string) (float64, error) {
+	// Trim whitespace
+	s = strings.TrimSpace(s)
+
+	// Handle empty string
+	if s == "" {
+		return 0, nil
+	}
+
+	// Handle boolean-like strings
+	switch strings.ToLower(s) {
+	case "true", "yes", "on", "1":
+		return 1, nil
+	case "false", "no", "off", "0":
+		return 0, nil
+	}
+
+	// Remove common non-numeric characters for smart conversion
+	cleaned := strings.ReplaceAll(s, ",", "")      // Remove commas from numbers like "1,000"
+	cleaned = strings.ReplaceAll(cleaned, "$", "") // Remove currency symbols
+	cleaned = strings.ReplaceAll(cleaned, " ", "") // Remove spaces
+
+	// Handle percentage
+	if strings.HasSuffix(cleaned, "%") {
+		cleaned = cleaned[:len(cleaned)-1]
+		if f, err := strconv.ParseFloat(cleaned, 64); err == nil {
+			return f / 100, nil
+		}
+	}
+
+	// Try standard parsing
+	return strconv.ParseFloat(cleaned, 64)
+}
+
+// smartAddValues performs intelligent addition with enhanced type coercion
+func smartAddValues(a, b interface{}) interface{} {
+	// Fast path: both already float64
+	if af, ok := a.(float64); ok {
+		if bf, ok := b.(float64); ok {
+			return af + bf
+		}
+	}
+
+	// Smart numeric conversion
+	if isSmartNumeric(a) && isSmartNumeric(b) {
+		return smartToFloat(a) + smartToFloat(b)
+	}
+
+	// Array concatenation
+	if aa, ok := a.([]interface{}); ok {
+		if bb, ok := b.([]interface{}); ok {
+			return append(aa, bb...)
+		}
+		return append(aa, b)
+	}
+
+	if ab, ok := b.([]interface{}); ok {
+		return append([]interface{}{a}, ab...)
+	}
+
+	// String concatenation with smart conversion
+	return smartStringConcat(a, b)
+}
+
+// isSmartNumeric checks if a value can be intelligently converted to a number
+func isSmartNumeric(val interface{}) bool {
+	switch v := val.(type) {
+	case float64, int, bool:
+		return true
+	case string:
+		_, err := smartParseFloat(v)
+		return err == nil
+	default:
+		return false
+	}
+}
+
+// smartToFloat converts values to float with intelligent parsing
+func smartToFloat(val interface{}) float64 {
+	switch v := val.(type) {
+	case float64:
+		return v
+	case int:
+		return float64(v)
+	case bool:
+		if v {
+			return 1
+		}
+		return 0
+	case string:
+		if f, err := smartParseFloat(v); err == nil {
+			return f
+		}
+		// Fallback to 0 for non-numeric strings in arithmetic context
+		return 0
+	default:
+		return 0
+	}
+}
+
+// smartStringConcat intelligently concatenates values as strings
+func smartStringConcat(a, b interface{}) interface{} {
+	sa := smartToString(a)
+	sb := smartToString(b)
+
+	// Use optimized concatenation for larger strings
+	if len(sa)+len(sb) > 32 {
+		return OptimizedStringConcat(sa, sb)
+	}
+	return sa + sb
+}
+
+// smartToString converts values to string with intelligent formatting
+func smartToString(val interface{}) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// Smart number formatting: avoid unnecessary decimals
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%.0f", v)
+		}
+		return fmt.Sprintf("%g", v)
+	case int:
+		return strconv.Itoa(v)
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// shouldUseP5SmartConversion determines if P5 smart conversion should be applied
+func shouldUseP5SmartConversion(a, b interface{}) bool {
+	// Handle string + numeric or boolean + numeric cases
+	if isSmartNumeric(a) && isSmartNumeric(b) {
+		// Both can be converted to numbers
+
+		// Special case: avoid converting simple single-digit strings that might be DSL tokens
+		sa, aIsString := a.(string)
+		sb, bIsString := b.(string)
+
+		if aIsString && bIsString {
+			// If both are simple single-digit strings, be conservative
+			if len(sa) == 1 && len(sb) == 1 &&
+				isNumericChar(sa[0]) && isNumericChar(sb[0]) {
+				return false // Let it concatenate for DSL compatibility
+			}
+		}
+
+		return true
+	}
+
+	return false
+}
+
+// isNumericChar checks if a byte is a digit
+func isNumericChar(b byte) bool {
+	return b >= '0' && b <= '9'
+}
+
+// isObviouslyNumericString checks if a string is obviously meant to be a number
+func isObviouslyNumericString(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	// Simple numeric strings (pure digits) are considered numeric for P5
+	// unless they look like they could be identifiers or other non-numeric context
+	trimmed := strings.TrimSpace(s)
+
+	// Check for obvious numeric formatting first
+	if strings.Contains(trimmed, ",") || // Has commas like "1,000"
+		strings.HasPrefix(trimmed, "$") || // Currency like "$100"
+		strings.HasSuffix(trimmed, "%") || // Percentage like "50%"
+		strings.Contains(trimmed, ".") || // Decimal like "123.45"
+		strings.ToLower(trimmed) == "true" || // Boolean strings
+		strings.ToLower(trimmed) == "false" ||
+		strings.ToLower(trimmed) == "yes" ||
+		strings.ToLower(trimmed) == "no" {
+		return true
+	}
+
+	// Simple numeric strings (pure digits or floating point) are also considered numeric
+	// but with a length check to avoid treating long identifiers as numbers
+	if len(trimmed) <= 10 { // Reasonable limit for numeric strings
+		_, err := strconv.ParseFloat(trimmed, 64)
+		return err == nil
+	}
+
+	return false
 }
