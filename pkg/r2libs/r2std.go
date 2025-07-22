@@ -214,6 +214,10 @@ func RegisterStd(env *r2core.Environment) {
 			fmt.Println()
 			return nil
 		}),
+
+		// P6 Feature: Partial Application and Currying
+		"curry":   r2core.BuiltinFunction(r2core.CurryFunction),
+		"partial": r2core.BuiltinFunction(r2core.PartialBuiltin),
 	}
 
 	RegisterModule(env, "std", functions)
