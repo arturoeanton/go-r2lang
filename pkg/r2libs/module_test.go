@@ -66,8 +66,8 @@ func TestModuleSystem(t *testing.T) {
 			expected: "r2core.BuiltinFunction",
 		},
 		{
-			name:     "print module functions exist",
-			code:     `return std.typeOf(print.printBox);`,
+			name:     "r2printer module functions exist",
+			code:     `return std.typeOf(r2printer.printBox);`,
 			expected: "r2core.BuiltinFunction",
 		},
 		{
