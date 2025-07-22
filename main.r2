@@ -56,13 +56,13 @@ class Velocista extends Empleado {
 
 
 func main(){
+    std.print("\n👤 1. Clases y Objetos:");
     e =  Velocista("Juan", 30, 1000, 100);
     std.print(e.nombre);
     std.print(e.edad);
     std.print(e.salario);
     e.velocidad();
     e.superVelocidad();
-
 
     let fecha0 = @1980-09-12; // Fecha sin hora
     std.print("Fecha 0: ", fecha0);

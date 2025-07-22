@@ -339,5 +339,5 @@ func RegisterPrint(env *r2core.Environment) {
 		}),
 	}
 
-	RegisterModule(env, "print", functions)
+	RegisterModule(env, "r2printer", functions)
 }

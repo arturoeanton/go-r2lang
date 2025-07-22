@@ -8,14 +8,6 @@ import (
 
 func RegisterLib(env *r2core.Environment) {
 	builtins := map[string]r2core.BuiltinFunction{
-		"print": func(args ...interface{}) interface{} {
-			for _, a := range args {
-				fmt.Print(a, " ")
-			}
-			fmt.Println()
-			return nil
-		},
-
 		"r2": func(args ...interface{}) interface{} {
 			if len(args) < 1 {
 				panic("r2 need at least one function as argument")
