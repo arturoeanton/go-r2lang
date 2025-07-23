@@ -14,11 +14,16 @@ func (gas *GenericAssignStatement) Eval(env *Environment) interface{} {
 		return val
 	case *AccessExpression:
 		objVal := left.Object.Eval(env)
-		instance, ok := objVal.(*ObjectInstance)
-		if !ok {
-			panic("Closing quote of string expected")
+		switch obj := objVal.(type) {
+		case *ObjectInstance:
+			obj.Env.Set(left.Member, val)
+			return val
+		case map[string]interface{}:
+			obj[left.Member] = val
+			return val
+		default:
+			panic("Cannot assign to property of non-object type")
 		}
-		instance.Env.Set(left.Member, val)
 		return val
 	case *IndexExpression:
 		return assignIndexExpression(left, val, env)

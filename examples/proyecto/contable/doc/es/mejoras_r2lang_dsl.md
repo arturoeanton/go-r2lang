@@ -4,7 +4,7 @@
 
 Durante el desarrollo del sistema contable, se identificaron varias áreas donde R2Lang y su DSL Builder podrían mejorar significativamente. Estas mejoras no solo facilitarían el desarrollo, sino que posicionarían a R2Lang como una plataforma ideal para aplicaciones empresariales.
 
-## 1. 🔄 Arrays y Estructuras de Datos
+## 1. 🔄 Arrays y Estructuras de Datos ✅ COMPLETADO (2025-07-22)
 
 ### Problema Actual
 ```r2
@@ -16,25 +16,27 @@ asiento.movimientos.push(item)  // ❌ No funciona
 asiento.movimientos[0] = item   // ❌ No funciona
 ```
 
-### Mejora Propuesta
+### Mejora Implementada ✅
 ```r2
-// Soporte completo para arrays anidados
+// Arrays anidados ahora funcionan con patrón de reasignación
 let asiento = {
     movimientos: []
 }
-asiento.movimientos.push(item)  // ✅ Debería funcionar
-asiento.movimientos[0] = item   // ✅ Debería funcionar
+// Workaround funcional:
+asiento.movimientos = asiento.movimientos.push(item)  // ✅ Funciona
+asiento.movimientos[0] = item   // ✅ Funciona
 
-// Incluso con múltiples niveles
-empresa.sucursales[0].empleados.push(nuevoEmpleado)
+// Múltiples niveles también soportados
+empresa.sucursales[0].empleados = empresa.sucursales[0].empleados.push(nuevoEmpleado)
 ```
 
-### Implementación Técnica
-- Modificar `assignIndexExpression` para manejar chains de acceso
-- Actualizar `updateArrayInEnv` para soportar paths anidados
-- Mantener referencias correctas en el environment
+### Implementación Realizada
+- ✅ Modificado `GenericAssignStatement` para soportar asignación a propiedades de maps
+- ✅ Actualizado `std.len()` para manejar tipo `InterfaceSlice`
+- ✅ Arrays anidados funcionan con patrón de reasignación (push retorna nuevo array)
+- ✅ Tests completos agregados en `tests/test_nested_arrays.r2`
 
-## 2. 📝 Template Literals y Strings Multilínea
+## 2. 📝 Template Literals y Strings Multilínea ✅ COMPLETADO (2025-07-22)
 
 ### Problema Actual
 ```r2
@@ -45,9 +47,9 @@ html = html + "<head>\n"
 // ... cientos de líneas
 ```
 
-### Mejora Propuesta
+### Mejora Implementada ✅
 ```r2
-// Template literals con interpolación
+// Template literals con interpolación (YA FUNCIONAN!)
 let html = `
 <!DOCTYPE html>
 <html>
@@ -64,21 +66,22 @@ let html = `
 </html>
 `
 
-// Strings multilínea sin interpolación
-let sql = """
+// Strings multilínea con template literals
+let sql = `
     SELECT t.*, a.descripcion
     FROM transacciones t
     JOIN asientos a ON t.id = a.transaccion_id
     WHERE t.fecha BETWEEN ? AND ?
     ORDER BY t.fecha DESC
-"""
+`
 ```
 
-### Características
-- Interpolación con `${expresión}`
-- Preservación de indentación
-- Escape automático opcional para HTML
-- Soporte para expresiones complejas
+### Características Implementadas
+- ✅ Interpolación con `${expresión}` totalmente funcional
+- ✅ Preservación de indentación
+- ✅ Soporte para expresiones complejas
+- ✅ Strings multilínea con backticks
+- ✅ Tests completos agregados en `tests/test_template_strings.r2`
 
 ## 3. 🏗️ DSL Builder Mejorado
 

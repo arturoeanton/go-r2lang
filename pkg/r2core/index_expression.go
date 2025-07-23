@@ -36,7 +36,7 @@ func (ie *IndexExpression) Eval(env *Environment) interface{} {
 			panic(fmt.Sprintf("index out of range: %d len of array %d", idx, len(container)))
 		}
 		return container[idx]
-	case interfaceSlice:
+	case InterfaceSlice:
 		fIndex, ok := indexVal.(float64)
 		if !ok {
 			panic("index must be numeric for array")

@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-type interfaceSlice []interface{}
+type InterfaceSlice []interface{}
 
 type AccessExpression struct {
 	BaseNode
@@ -37,7 +37,7 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalMapAccess(obj, ae.Member)
 	case map[string]*Variable:
 		return evalVariableMapAccess(obj, ae.Member)
-	case interfaceSlice:
+	case InterfaceSlice:
 		return evalArrayAccess(obj, ae.Member, env)
 	case []interface{}:
 		return evalArrayAccess(obj, ae.Member, env)
@@ -80,7 +80,7 @@ func evalVariableMapAccess(m map[string]*Variable, member string) interface{} {
 	return variable.Value
 }
 
-func evalArrayAccess(arr interfaceSlice, member string, env *Environment) interface{} {
+func evalArrayAccess(arr InterfaceSlice, member string, env *Environment) interface{} {
 	switch member {
 	case "len", "length", "size":
 		return evalArrayLen(arr)
@@ -109,7 +109,7 @@ func evalArrayAccess(arr interfaceSlice, member string, env *Environment) interf
 	}
 }
 
-func evalArrayLen(arr interfaceSlice) interface{} {
+func evalArrayLen(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) != 0 {
 			panic("len: only one argument is accepted")
@@ -119,12 +119,12 @@ func evalArrayLen(arr interfaceSlice) interface{} {
 	})
 }
 
-func evalArrayDelete(arr interfaceSlice) interface{} {
+func evalArrayDelete(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 1 {
 			panic("delete: at least one argument is required")
 		}
-		var result interfaceSlice
+		var result InterfaceSlice
 		for i, v := range arr {
 			flag := false
 			for _, arg := range args {
@@ -141,17 +141,17 @@ func evalArrayDelete(arr interfaceSlice) interface{} {
 	})
 }
 
-func evalArrayPush(arr interfaceSlice) interface{} {
+func evalArrayPush(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
-		var result interfaceSlice
-		result = make(interfaceSlice, len(arr))
+		var result InterfaceSlice
+		result = make(InterfaceSlice, len(arr))
 		copy(result, arr)
 		result = append(result, args...)
 		return result
 	})
 }
 
-func evalArrayInsertAt(arr interfaceSlice) interface{} {
+func evalArrayInsertAt(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			panic("insert_in: at least two arguments are required")
@@ -160,7 +160,7 @@ func evalArrayInsertAt(arr interfaceSlice) interface{} {
 		if index < 0 || index >= len(arr) {
 			panic("insert_in: index out of range")
 		}
-		var result interfaceSlice
+		var result InterfaceSlice
 		for i, v := range arr {
 			if i == index {
 				result = append(result, args[1:]...)
@@ -171,10 +171,10 @@ func evalArrayInsertAt(arr interfaceSlice) interface{} {
 	})
 }
 
-func evalArrayMap(arr interfaceSlice, env *Environment) interface{} {
+func evalArrayMap(arr InterfaceSlice, env *Environment) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
-		var result interfaceSlice
-		result = make(interfaceSlice, len(arr))
+		var result InterfaceSlice
+		result = make(InterfaceSlice, len(arr))
 		for i, v := range arr {
 			if bf, ok := args[0].(BuiltinFunction); ok {
 				result[i] = bf(v)
@@ -190,9 +190,9 @@ func evalArrayMap(arr interfaceSlice, env *Environment) interface{} {
 	})
 }
 
-func evalArrayFilter(arr interfaceSlice, env *Environment) interface{} {
+func evalArrayFilter(arr InterfaceSlice, env *Environment) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
-		var result interfaceSlice
+		var result InterfaceSlice
 		for _, v := range arr {
 
 			flag := false
@@ -214,10 +214,10 @@ func evalArrayFilter(arr interfaceSlice, env *Environment) interface{} {
 	})
 }
 
-func evalArrayReverse(arr interfaceSlice) interface{} {
+func evalArrayReverse(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
-		var result interfaceSlice
-		result = make(interfaceSlice, len(arr))
+		var result InterfaceSlice
+		result = make(InterfaceSlice, len(arr))
 		for i, v := range arr {
 			result[len(arr)-1-i] = v
 		}
@@ -225,10 +225,10 @@ func evalArrayReverse(arr interfaceSlice) interface{} {
 	})
 }
 
-func evalArraySort(arr interfaceSlice, env *Environment) interface{} {
+func evalArraySort(arr InterfaceSlice, env *Environment) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
-		var result interfaceSlice
-		result = make(interfaceSlice, len(arr))
+		var result InterfaceSlice
+		result = make(InterfaceSlice, len(arr))
 		copy(result, arr)
 		if len(args) == 0 {
 			sort.Slice(result, func(i, j int) bool {
@@ -250,10 +250,10 @@ func evalArraySort(arr interfaceSlice, env *Environment) interface{} {
 	})
 }
 
-func evalArrayFind(arr interfaceSlice, member string, env *Environment) interface{} {
+func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		flagAll := member == "find_all" || member == "indexes"
-		var out interfaceSlice
+		var out InterfaceSlice
 		if len(arr) == 0 {
 			panic("find: at least one argument is required and optionally a function find([fx], elem)")
 		}
@@ -353,7 +353,7 @@ func evalArrayFind(arr interfaceSlice, member string, env *Environment) interfac
 	})
 }
 
-func evalArrayReduce(arr interfaceSlice, env *Environment) interface{} {
+func evalArrayReduce(arr InterfaceSlice, env *Environment) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(arr) == 0 {
 			return nil
@@ -374,7 +374,7 @@ func evalArrayReduce(arr interfaceSlice, env *Environment) interface{} {
 	})
 }
 
-func evalArrayJoin(arr interfaceSlice) interface{} {
+func evalArrayJoin(arr InterfaceSlice) interface{} {
 	return BuiltinFunction(func(args ...interface{}) interface{} {
 		sep := ""
 		if len(args) == 1 {

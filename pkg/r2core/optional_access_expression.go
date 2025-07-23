@@ -38,8 +38,8 @@ func (oae *OptionalAccessExpression) Eval(env *Environment) interface{} {
 		return evalMemberAccessOptional(obj, oae.Member)
 	case map[string]interface{}:
 		return evalMapAccessOptional(obj, oae.Member)
-	case interfaceSlice:
-		return evalArrayAccessOptional(obj, oae.Member, env)
+	case InterfaceSlice:
+		return evalArrayAccessOptional([]interface{}(obj), oae.Member, env)
 	case []interface{}:
 		return evalArrayAccessOptional(obj, oae.Member, env)
 	default:
