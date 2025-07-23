@@ -31,6 +31,8 @@ func RegisterStd(env *r2core.Environment) {
 				return float64(len(v))
 			case []interface{}:
 				return float64(len(v))
+			case r2core.InterfaceSlice:
+				return float64(len(v))
 			case map[string]interface{}:
 				return float64(len(v))
 			default:

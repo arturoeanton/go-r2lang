@@ -4,9 +4,9 @@
 
 Esta propuesta identifica y prioriza mejoras sintácticas para R2Lang que aumentarían significativamente la familiaridad y productividad de desarrolladores provenientes de JavaScript/TypeScript. Las mejoras están organizadas por **impacto**, **complejidad de implementación**, y **prioridad**.
 
-### 🎉 Estado de Implementación (Actualizado)
+### 🎉 Estado de Implementación (Actualizado 2025-07-22)
 
-**✅ COMPLETADAS (17/17 características principales):**
+**✅ COMPLETADAS (19/19 características principales):**
 - ✅ Operador de negación lógica `!`
 - ✅ Operadores de asignación compuesta `+=`, `-=`, `*=`, `/=`
 - ✅ Declaraciones `const` con verificación de inmutabilidad
@@ -24,8 +24,10 @@ Esta propuesta identifica y prioriza mejoras sintácticas para R2Lang que aument
 - ✅ Smart defaults y auto-conversion (conversiones inteligentes)
 - ✅ **Partial application y currying** (programación funcional avanzada)
 - ✅ **DSL Builder nativo** (creación de lenguajes específicos de dominio)
+- ✅ **Arrays anidados y asignación a propiedades de maps** (estructuras de datos complejas)
+- ✅ **Template literals con interpolación y strings multilínea** (mejor manejo de strings)
 
-**📊 Progreso Actual:** **100% de las características P0-P7 completadas incluyendo P6**
+**📊 Progreso Actual:** **100% de las características esenciales completadas**
 
 Estas implementaciones representan el **90% del beneficio** con solo el **60% del esfuerzo** total, mejorando significativamente la experiencia del desarrollador y la compatibilidad con JavaScript/TypeScript.
 
@@ -1869,5 +1871,79 @@ Con P0-P7 completadas, R2Lang ya se ha convertido en:
 
 ### **🎯 Implementación Completa:**
 **P6 (Partial Application y Currying)** ha sido **completamente implementado**, completando el paradigma funcional avanzado de R2Lang y estableciendo el lenguaje como **líder absoluto** en características modernas.
+
+---
+
+## 📝 Actualizaciones Recientes (2025-07-22)
+
+### **Arrays Anidados y Asignación a Propiedades de Maps**
+
+**Implementación:**
+```r2
+// Asignación a propiedades de maps
+let myObj = { prop: "initial" }
+myObj.prop = "updated"  // ✅ Funciona!
+
+// Arrays anidados con patrón de reasignación
+let asiento = {
+    movimientos: []
+}
+// Push retorna nuevo array, se debe reasignar
+asiento.movimientos = asiento.movimientos.push({
+    cuenta: "1105",
+    tipo: "DEBE",
+    monto: 1000
+})  // ✅ Funciona!
+
+// Múltiples niveles
+empresa.sucursales[0].empleados = empresa.sucursales[0].empleados.push(nuevoEmpleado)
+```
+
+**Detalles técnicos:**
+- Modificado `GenericAssignStatement` para soportar maps
+- Actualizado `std.len()` para manejar `InterfaceSlice`
+- Patrón inmutable para arrays (push retorna nuevo array)
+- Tests completos en `tests/test_nested_arrays.r2`
+
+### **Template Literals y Strings Multilínea**
+
+**Implementación:**
+```r2
+// Template literals con interpolación completa
+let nombre = "R2Lang"
+let version = 2025
+let mensaje = `Bienvenido a ${nombre} v${version}!`
+
+// Multiline con interpolación
+let html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>${titulo}</title>
+</head>
+<body>
+    <h1>${mensaje}</h1>
+    <p>Total: $${precio * (1 + tax)}</p>
+</body>
+</html>
+`
+
+// SQL queries legibles
+let query = `
+    SELECT * FROM usuarios
+    WHERE region = '${region}'
+    AND activo = true
+    ORDER BY fecha DESC
+`
+```
+
+**Características:**
+- Interpolación con `${expresión}`
+- Expresiones complejas soportadas
+- Preservación de indentación
+- Acceso a propiedades de objetos
+- Tests completos en `tests/test_template_strings.r2`
+
+**Nota:** Estas mejoras fueron solicitadas en un proyecto contable real y mejoran significativamente la experiencia de desarrollo en R2Lang.
 
 **🏆 Realidad 2025:** R2Lang ahora **supera completamente** a lenguajes establecidos como JavaScript, TypeScript, Python y Rust en expresividad, robustez, productividad del desarrollador, paradigma funcional completo, y características únicas como el DSL Builder nativo.

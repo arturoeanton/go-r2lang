@@ -39,7 +39,7 @@ func (fs *ForStatement) evalForIn(env *Environment) interface{} {
 	raw, _ := env.Get(fs.inArray)
 	env.Set("$c", raw)
 
-	if arr, ok := raw.(interfaceSlice); ok {
+	if arr, ok := raw.(InterfaceSlice); ok {
 		for i, v := range arr {
 			// Verificar límites antes de cada iteración
 			if limiter.Enabled {
