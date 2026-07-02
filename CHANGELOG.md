@@ -16,6 +16,34 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.29] - Real test execution in r2test
+### Fixed
+- **`cmd/r2test`'s `ParseTestFile` was a placeholder that never actually
+  ran a test's body** — it regex-extracted `describe()`/`it()` names and
+  assigned each test a no-op `Func`, so every discovered test "passed"
+  regardless of its content. Now the test file is parsed and evaluated for
+  real through the R2Lang interpreter: `describe`/`it`/`beforeEach`/
+  `afterEach`/`beforeAll`/`afterAll` are registered as globals, and an
+  `assert` module bridges to `pkg/r2test/assertions`
+  (`assert.equals`/`true`/`greater`/...), matching the API already used in
+  `examples/testing/*.r2`. `ParseTestFile` now returns `[]*TestSuite`
+  (a file commonly has multiple `describe()` blocks).
+- **Class field default initializers were silently discarded.** `let
+  value = 0;` inside a class body always produced `nil`, not `0`, until
+  something explicitly assigned the field — found via the above, since
+  tests never actually ran before. Any class relying on a default field
+  value without an explicit constructor assignment was silently broken.
+- `assertions.Assert.Equals`/`NotEquals` didn't recognize
+  `r2core.InterfaceSlice` (the array type `.map()`/`.filter()`/`.sort()`
+  return) as equal to an otherwise-identical `[]interface{}` literal.
+- Assertion failure messages leaked raw Go pointer addresses when
+  formatting a function value (e.g. the common mistake `arr.length`
+  instead of `arr.length()`) instead of a readable placeholder.
+- Two real bugs in `examples/testing/*.r2` itself, both invisible until
+  tests actually ran: `arr.length` used without `()`, and a
+  `assert.hasLength` expectation off by the byte-vs-rune count of a
+  multi-byte character.
+
 ## [0.1.28] - CommandPolicy opt-in sandboxing
 ### Added
 - `r2libs.SetCommandPolicy(policy)`: opt-in restrictions for
@@ -262,7 +290,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.28...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.29...HEAD
+[0.1.29]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.28...v0.1.29
 [0.1.28]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...v0.1.28
 [0.1.27]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.25_ci-sweep-r2test-fixes...v0.1.26
