@@ -914,7 +914,7 @@ std.print(dateObj.format(now, "YYYY-MM-DD HH:mm:ss"));
 - All month arguments across this entire module are **0-based** (January = `0`), matching JavaScript's `Date`, not calendar convention.
 - Setters (`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`) mutate the `DateValue` object in place and return a number (new millis) — they do **not** return the mutated `Date` object itself, unlike the `add*`/`startOf*`/`endOf*` family which return new `Date` objects and leave the input untouched. Mixing these two mutation styles up is an easy mistake.
 - `.diff(...)` with `unit: "years"` or `"months"` is a fixed-average approximation (`/365.25` or `/30.44` days), not a calendar-aware difference — don't rely on it for exact month/year counts across variable-length months.
-- Comparison operators (`<`, `==`, etc.) work directly on `Date` values without needing a `date.*` helper (confirmed by `test_date_smoke.r2` in the repo root), since `r2core.DateValue` implements the language's comparison protocol natively.
+- Comparison operators (`<`, `==`, etc.) work directly on `Date` values without needing a `date.*` helper (confirmed by `smoke_tests/test_date_smoke.r2`), since `r2core.DateValue` implements the language's comparison protocol natively.
 ## Data Formats & Protocols
 
 Serialization formats (`json`, `xml`, `csv`), encoding/identifiers
