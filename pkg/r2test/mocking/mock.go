@@ -122,8 +122,12 @@ func (m *Mock) Call(functionName string, args ...interface{}) ([]interface{}, er
 		}
 	}
 
-	// Check if we've exceeded max calls
-	if expectation.MaxCalls > 0 && expectation.CallCount >= expectation.MaxCalls {
+	// Check if we've exceeded max calls. MaxCalls == -1 means unlimited;
+	// MaxCalls == 0 is a valid, meaningful bound set by Times(0)/AtMost(0)
+	// ("this function must never be called"), so the guard must accept 0,
+	// not just positive values, or an exact-zero expectation silently
+	// allows unlimited calls.
+	if expectation.MaxCalls >= 0 && expectation.CallCount >= expectation.MaxCalls {
 		return nil, &MockVerificationError{
 			Message: fmt.Sprintf("function %s called too many times (max: %d)", functionName, expectation.MaxCalls),
 		}
@@ -170,7 +174,7 @@ func (m *Mock) Verify() error {
 			}
 		}
 
-		if expectation.MaxCalls > 0 && expectation.CallCount > expectation.MaxCalls {
+		if expectation.MaxCalls >= 0 && expectation.CallCount > expectation.MaxCalls {
 			return &MockVerificationError{
 				Message: fmt.Sprintf("function %s was called %d times, expected at most %d",
 					funcName, expectation.CallCount, expectation.MaxCalls),

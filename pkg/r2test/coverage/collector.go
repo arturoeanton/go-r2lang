@@ -457,9 +457,14 @@ func (cc *CoverageCollector) GetSortedFiles() []*FileCoverage {
 	}
 
 	sort.Slice(files, func(i, j int) bool {
-		percentageI := float64(files[i].CoveredLines) / float64(files[i].TotalLines) * 100
-		percentageJ := float64(files[j].CoveredLines) / float64(files[j].TotalLines) * 100
-		return percentageI < percentageJ
+		// Use GetFilePercentage(), which treats TotalLines == 0 as 0%,
+		// instead of dividing directly: a file with no trackable code
+		// lines (e.g. only a function/statement was registered but no
+		// line hit was ever recorded) would otherwise compute 0/0 == NaN,
+		// and NaN comparisons are always false, which corrupts the sort
+		// order (violates sort.Interface's required strict weak ordering)
+		// and disagrees with the 0% shown everywhere else for that file.
+		return files[i].GetFilePercentage() < files[j].GetFilePercentage()
 	})
 
 	return files

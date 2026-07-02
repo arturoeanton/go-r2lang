@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -176,9 +177,21 @@ func (fm *FixtureManager) Load(name string) (*Fixture, error) {
 	// Find fixture file
 	fixturePath := filepath.Join(fm.basePath, name)
 
-	// Try different extensions if no extension provided
+	// Try different extensions if no extension provided. fm.loaders is a
+	// map, and Go map iteration order is randomized per-run, so ranging
+	// over it directly here made the chosen extension (and thus which
+	// fixture file's data actually gets loaded, when e.g. both
+	// "data.json" and "data.txt" exist for the same base name) different
+	// from run to run. Try extensions in a fixed, deterministic order
+	// instead so Load("name") always resolves to the same file.
 	if filepath.Ext(name) == "" {
+		exts := make([]string, 0, len(fm.loaders))
 		for ext := range fm.loaders {
+			exts = append(exts, ext)
+		}
+		sort.Strings(exts)
+
+		for _, ext := range exts {
 			testPath := fixturePath + ext
 			if _, err := os.Stat(testPath); err == nil {
 				fixturePath = testPath

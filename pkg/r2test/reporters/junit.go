@@ -345,21 +345,21 @@ func GenerateJUnitReport(outputPath string, testResults *core.TestResults) error
 }
 
 // GenerateJUnitReportWithProperties generates a JUnit XML report with custom properties
+// attached to every test suite.
 func GenerateJUnitReportWithProperties(outputPath string, testResults *core.TestResults, properties map[string]string) error {
+	if testResults == nil {
+		return fmt.Errorf("test results cannot be nil")
+	}
+
 	reporter := NewJUnitReporter(outputPath)
 
-	// Generate the base report
-	if err := reporter.Generate(testResults); err != nil {
-		return err
+	testSuites := reporter.convertTestResults(testResults)
+
+	if len(properties) > 0 {
+		for _, suite := range testSuites.TestSuites {
+			suite.AddProperties(properties)
+		}
 	}
 
-	// If no properties, we're done
-	if len(properties) == 0 {
-		return nil
-	}
-
-	// Read the generated XML and add properties
-	// This is a simple implementation - for complex scenarios, you might want to
-	// modify the Generate method to accept properties directly
-	return nil
+	return reporter.writeXMLFile(testSuites)
 }

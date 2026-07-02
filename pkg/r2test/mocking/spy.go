@@ -176,7 +176,7 @@ func (s *Spy) Call(args ...interface{}) ([]interface{}, error) {
 }
 
 // callOriginal calls the original function using reflection
-func (s *Spy) callOriginal(args ...interface{}) ([]interface{}, error) {
+func (s *Spy) callOriginal(args ...interface{}) (returnValues []interface{}, err error) {
 	if s.originalFunc == nil {
 		return nil, fmt.Errorf("no original function to call")
 	}
@@ -188,23 +188,68 @@ func (s *Spy) callOriginal(args ...interface{}) ([]interface{}, error) {
 		return nil, fmt.Errorf("original is not a function")
 	}
 
-	// Convert args to reflect.Value
+	// Any other reflection edge case (unexpected argument type that slips
+	// past the checks below, etc.) becomes a call error instead of an
+	// unrecoverable-looking panic surfacing out of Spy.Call.
+	defer func() {
+		if r := recover(); r != nil {
+			returnValues = nil
+			err = fmt.Errorf("spy call-through to original function panicked: %v", r)
+		}
+	}()
+
+	numIn := funcType.NumIn()
+	if !funcType.IsVariadic() && len(args) != numIn {
+		return nil, fmt.Errorf("original function expects %d argument(s), got %d", numIn, len(args))
+	}
+	if funcType.IsVariadic() && len(args) < numIn-1 {
+		return nil, fmt.Errorf("original function expects at least %d argument(s), got %d", numIn-1, len(args))
+	}
+
+	// Convert args to reflect.Value. A nil interface{} arg (very common
+	// when bridging from R2Lang) must map to the zero value of the
+	// expected parameter type: reflect.ValueOf(nil) is the invalid zero
+	// Value, and passing it to funcValue.Call panics with "reflect: Call
+	// using zero Value argument".
 	in := make([]reflect.Value, len(args))
 	for i, arg := range args {
-		in[i] = reflect.ValueOf(arg)
+		var paramType reflect.Type
+		switch {
+		case funcType.IsVariadic() && i >= numIn-1:
+			paramType = funcType.In(numIn - 1).Elem()
+		case i < numIn:
+			paramType = funcType.In(i)
+		}
+
+		if arg == nil {
+			if paramType == nil {
+				return nil, fmt.Errorf("cannot determine parameter type for nil argument %d", i)
+			}
+			in[i] = reflect.Zero(paramType)
+			continue
+		}
+
+		v := reflect.ValueOf(arg)
+		if paramType != nil && !v.Type().AssignableTo(paramType) {
+			if v.Type().ConvertibleTo(paramType) {
+				v = v.Convert(paramType)
+			} else {
+				return nil, fmt.Errorf("argument %d of type %s is not assignable to parameter type %s", i, v.Type(), paramType)
+			}
+		}
+		in[i] = v
 	}
 
 	// Call the function
 	results := funcValue.Call(in)
 
 	// Convert results to interface{}
-	returnValues := make([]interface{}, len(results))
+	returnValues = make([]interface{}, len(results))
 	for i, result := range results {
 		returnValues[i] = result.Interface()
 	}
 
 	// Check if last return value is an error
-	var err error
 	if len(results) > 0 {
 		if lastResult := results[len(results)-1]; lastResult.Type().Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 			if !lastResult.IsNil() {
