@@ -33,6 +33,7 @@ func RunCode(filename string) {
 	r2libs.RegisterHTTPClient(env)
 	r2libs.RegisterRequests(env)
 	r2libs.RegisterString(env)
+	r2libs.RegisterRegex(env)
 	r2libs.RegisterMath(env)
 	r2libs.RegisterRand(env)
 	r2libs.RegisterTest(env)

@@ -978,6 +978,8 @@ func (p *Parser) parseAccessExpression(left Node) Node {
 		mem = p.curTok.Value
 	} else if p.curTok.Type == TOKEN_USE {
 		mem = "use"
+	} else if p.curTok.Type == TOKEN_MATCH {
+		mem = "match"
 	} else {
 		p.except("Expected identifier after '.'")
 	}
@@ -993,6 +995,8 @@ func (p *Parser) parseOptionalAccessExpression(left Node) Node {
 		mem = p.curTok.Value
 	} else if p.curTok.Type == TOKEN_USE {
 		mem = "use"
+	} else if p.curTok.Type == TOKEN_MATCH {
+		mem = "match"
 	} else {
 		p.except("Expected identifier after '?.'")
 	}
