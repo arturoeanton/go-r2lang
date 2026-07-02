@@ -58,6 +58,9 @@ type ArrayPattern struct {
 }
 
 func (ap *ArrayPattern) MatchValue(value interface{}, env *Environment) (bool, map[string]interface{}) {
+	if is, ok := value.(InterfaceSlice); ok {
+		value = []interface{}(is)
+	}
 	arr, ok := value.([]interface{})
 	if !ok {
 		return false, nil

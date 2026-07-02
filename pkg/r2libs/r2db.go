@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 
@@ -16,8 +17,14 @@ import (
 
 // r2db.go: Database connectivity functions for R2Lang
 
-// Global map to store database connections
-var dbConnections = make(map[string]*sql.DB)
+// Global map to store database connections. R2Lang scripts can call db
+// builtins concurrently from multiple "r2"/goroutines, so access is guarded
+// by dbConnectionsMu.
+var (
+	dbConnections   = make(map[string]*sql.DB)
+	dbConnectionsMu sync.RWMutex
+	dbConnCounter   int
+)
 
 func RegisterDB(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
@@ -52,9 +59,15 @@ func RegisterDB(env *r2core.Environment) {
 				panic(fmt.Sprintf("dbConnect: failed to ping database: %v", err))
 			}
 
-			// Generate connection ID
-			connId := fmt.Sprintf("conn_%d", len(dbConnections))
+			dbConnectionsMu.Lock()
+			// Use a monotonic counter, not len(dbConnections): once
+			// connections are closed, len() can produce an id that
+			// collides with one still in the map, silently overwriting
+			// (and leaking) that live *sql.DB.
+			dbConnCounter++
+			connId := fmt.Sprintf("conn_%d", dbConnCounter)
 			dbConnections[connId] = db
+			dbConnectionsMu.Unlock()
 
 			return connId
 		}),
@@ -66,7 +79,9 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 			query := toString(args[1])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbQuery: connection '%s' not found", connId))
 			}
@@ -133,7 +148,9 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 			query := toString(args[1])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbExec: connection '%s' not found", connId))
 			}
@@ -163,7 +180,9 @@ func RegisterDB(env *r2core.Environment) {
 			}
 			connId := toString(args[0])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbClose: connection '%s' not found", connId))
 			}
@@ -173,7 +192,9 @@ func RegisterDB(env *r2core.Environment) {
 				panic(fmt.Sprintf("dbClose: %v", err))
 			}
 
+			dbConnectionsMu.Lock()
 			delete(dbConnections, connId)
+			dbConnectionsMu.Unlock()
 			return true
 		}),
 
@@ -183,19 +204,29 @@ func RegisterDB(env *r2core.Environment) {
 			}
 			connId := toString(args[0])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbBegin: connection '%s' not found", connId))
 			}
 
-			_, err := db.Begin()
+			tx, err := db.Begin()
 			if err != nil {
 				panic(fmt.Sprintf("dbBegin: %v", err))
 			}
 
-			// For now, return a simple transaction ID
-			// In a real implementation, you would store the *sql.Tx separately
-			txId := fmt.Sprintf("tx_%s_%d", connId, len(dbConnections))
+			// The returned id is a placeholder (there's no dbCommit/dbRollback
+			// yet to reference it), so roll back right away instead of
+			// leaking the pooled connection the Tx holds onto forever.
+			if err := tx.Rollback(); err != nil {
+				panic(fmt.Sprintf("dbBegin: %v", err))
+			}
+
+			dbConnectionsMu.RLock()
+			n := len(dbConnections)
+			dbConnectionsMu.RUnlock()
+			txId := fmt.Sprintf("tx_%s_%d", connId, n)
 			return txId
 		}),
 
@@ -206,7 +237,9 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 			query := toString(args[1])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbLastInsertId: connection '%s' not found", connId))
 			}
@@ -236,7 +269,9 @@ func RegisterDB(env *r2core.Environment) {
 			}
 			connId := toString(args[0])
 
+			dbConnectionsMu.RLock()
 			db, exists := dbConnections[connId]
+			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbPing: connection '%s' not found", connId))
 			}
@@ -255,6 +290,9 @@ func RegisterDB(env *r2core.Environment) {
 		}),
 
 		"dbGetConnections": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			dbConnectionsMu.RLock()
+			defer dbConnectionsMu.RUnlock()
+
 			var connIds []interface{}
 			for connId := range dbConnections {
 				if !strings.HasPrefix(connId, "tx_") { // Exclude transaction IDs

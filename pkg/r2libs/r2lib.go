@@ -42,6 +42,11 @@ func RegisterLib(env *r2core.Environment) {
 			}
 			// Ejecutar la función en una goroutine
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Println("Error en goroutine:", r)
+					}
+				}()
 				fn.Call(args[1:]...)
 			}()
 			return nil

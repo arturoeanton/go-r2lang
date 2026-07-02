@@ -534,17 +534,38 @@ func convertJSONObjectToR2(obj map[string]interface{}) map[string]interface{} {
 }
 
 func convertR2ToJSON(value interface{}) interface{} {
+	return convertR2ToJSONSeen(value, make(map[uintptr]bool))
+}
+
+// seen tracks the active ancestor chain (by underlying pointer) to reject
+// self-referential maps/arrays, which would otherwise recurse forever and
+// crash the process with an unrecoverable stack overflow.
+func convertR2ToJSONSeen(value interface{}, seen map[uintptr]bool) interface{} {
 	switch v := value.(type) {
 	case map[string]interface{}:
+		ptr := reflect.ValueOf(v).Pointer()
+		if seen[ptr] {
+			panic("JSON.stringify: circular reference detected")
+		}
+		seen[ptr] = true
 		result := make(map[string]interface{})
 		for key, val := range v {
-			result[key] = convertR2ToJSON(val)
+			result[key] = convertR2ToJSONSeen(val, seen)
 		}
+		delete(seen, ptr)
 		return result
 	case []interface{}:
+		if len(v) > 0 {
+			ptr := reflect.ValueOf(v).Pointer()
+			if seen[ptr] {
+				panic("JSON.stringify: circular reference detected")
+			}
+			seen[ptr] = true
+			defer delete(seen, ptr)
+		}
 		result := make([]interface{}, len(v))
 		for i, val := range v {
-			result[i] = convertR2ToJSON(val)
+			result[i] = convertR2ToJSONSeen(val, seen)
 		}
 		return result
 	case float64:

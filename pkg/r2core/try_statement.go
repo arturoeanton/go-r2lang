@@ -32,7 +32,14 @@ func (ts *TryStatement) Eval(env *Environment) interface{} {
 	}()
 
 	if ts.FinallyBlock != nil {
-		ts.FinallyBlock.Eval(env)
+		finallyResult := ts.FinallyBlock.Eval(env)
+		// A return/break/continue executed inside finally overrides any
+		// pending result or exception from the try/catch block, matching
+		// standard try/finally semantics (JS, Java, Python).
+		switch finallyResult.(type) {
+		case ReturnValue, BreakValue, ContinueValue:
+			return finallyResult
+		}
 	}
 
 	if unhandled {

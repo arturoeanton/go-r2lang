@@ -266,6 +266,29 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 		}
 		container[idx] = newVal
 		return newVal
+	case InterfaceSlice:
+		idxF, ok := indexVal.(float64)
+		if !ok {
+			panic("assignIndexExpression: array index must be a number")
+		}
+		idx := int(idxF)
+		if idx < 0 {
+			idx = len(container) + idx
+		}
+		if idx < 0 {
+			panic(fmt.Sprintf("assignIndexExpression: index out of range: %d len of array %d", idx, len(container)))
+		}
+		// auto-extender
+		if idx >= len(container) {
+			for len(container) <= idx {
+				container = append(container, nil)
+			}
+			// Need to update the variable that holds the array
+			// since append might have created a new slice
+			updateArrayInEnv(idxExpr.Left, []interface{}(container), env)
+		}
+		container[idx] = newVal
+		return newVal
 	default:
 		panic("Not a map or array to assign index")
 	}
@@ -288,6 +311,13 @@ func updateArrayInEnv(node Node, newArray []interface{}, env *Environment) {
 		indexVal := n.Index.Eval(env)
 		switch container := leftVal.(type) {
 		case []interface{}:
+			if idxF, ok := indexVal.(float64); ok {
+				idx := int(idxF)
+				if idx >= 0 && idx < len(container) {
+					container[idx] = newArray
+				}
+			}
+		case InterfaceSlice:
 			if idxF, ok := indexVal.(float64); ok {
 				idx := int(idxF)
 				if idx >= 0 && idx < len(container) {

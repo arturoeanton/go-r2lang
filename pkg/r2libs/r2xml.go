@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
@@ -439,10 +440,24 @@ func escapeXMLAttr(s string) string {
 }
 
 func convertR2ToXMLString(obj map[string]interface{}, indent string, pretty bool) string {
+	return convertR2ToXMLStringSeen(obj, indent, pretty, make(map[uintptr]bool))
+}
+
+// seen tracks the active ancestor chain (by underlying map pointer) to reject
+// self-referential nodes (e.g. via XML.addChild(node, node)), which would
+// otherwise recurse forever and crash the process with a stack overflow.
+func convertR2ToXMLStringSeen(obj map[string]interface{}, indent string, pretty bool, seen map[uintptr]bool) string {
 	name, hasName := obj["name"].(string)
 	if !hasName {
 		return ""
 	}
+
+	ptr := reflect.ValueOf(obj).Pointer()
+	if seen[ptr] {
+		panic("XML.stringify: circular reference detected")
+	}
+	seen[ptr] = true
+	defer delete(seen, ptr)
 
 	var result strings.Builder
 
@@ -489,7 +504,7 @@ func convertR2ToXMLString(obj map[string]interface{}, indent string, pretty bool
 
 		for _, child := range children {
 			if childObj, ok := child.(map[string]interface{}); ok {
-				result.WriteString(convertR2ToXMLString(childObj, nextIndent, pretty))
+				result.WriteString(convertR2ToXMLStringSeen(childObj, nextIndent, pretty, seen))
 			}
 		}
 
@@ -561,6 +576,17 @@ func simpleXPath(root map[string]interface{}, xpath string) []interface{} {
 }
 
 func findAllByTagName(node map[string]interface{}, tagName string) []interface{} {
+	return findAllByTagNameSeen(node, tagName, make(map[uintptr]bool))
+}
+
+func findAllByTagNameSeen(node map[string]interface{}, tagName string, seen map[uintptr]bool) []interface{} {
+	ptr := reflect.ValueOf(node).Pointer()
+	if seen[ptr] {
+		panic("XML.xpath: circular reference detected")
+	}
+	seen[ptr] = true
+	defer delete(seen, ptr)
+
 	var results []interface{}
 
 	if name, hasName := node["name"].(string); hasName && name == tagName {
@@ -570,7 +596,7 @@ func findAllByTagName(node map[string]interface{}, tagName string) []interface{}
 	if children, hasChildren := node["children"].([]interface{}); hasChildren {
 		for _, child := range children {
 			if childObj, ok := child.(map[string]interface{}); ok {
-				results = append(results, findAllByTagName(childObj, tagName)...)
+				results = append(results, findAllByTagNameSeen(childObj, tagName, seen)...)
 			}
 		}
 	}
@@ -579,6 +605,17 @@ func findAllByTagName(node map[string]interface{}, tagName string) []interface{}
 }
 
 func convertXMLToJSON(xmlObj map[string]interface{}) map[string]interface{} {
+	return convertXMLToJSONSeen(xmlObj, make(map[uintptr]bool))
+}
+
+func convertXMLToJSONSeen(xmlObj map[string]interface{}, seen map[uintptr]bool) map[string]interface{} {
+	ptr := reflect.ValueOf(xmlObj).Pointer()
+	if seen[ptr] {
+		panic("XML.toJSON: circular reference detected")
+	}
+	seen[ptr] = true
+	defer delete(seen, ptr)
+
 	result := make(map[string]interface{})
 
 	if name, hasName := xmlObj["name"].(string); hasName {
@@ -597,7 +634,7 @@ func convertXMLToJSON(xmlObj map[string]interface{}) map[string]interface{} {
 		if children, hasChildren := xmlObj["children"].([]interface{}); hasChildren {
 			for _, child := range children {
 				if childObj, ok := child.(map[string]interface{}); ok {
-					childJSON := convertXMLToJSON(childObj)
+					childJSON := convertXMLToJSONSeen(childObj, seen)
 					for key, value := range childJSON {
 						if existing, exists := nodeData[key]; exists {
 							if existingList, isList := existing.([]interface{}); isList {
@@ -620,9 +657,20 @@ func convertXMLToJSON(xmlObj map[string]interface{}) map[string]interface{} {
 }
 
 func convertJSONToXML(jsonObj map[string]interface{}) map[string]interface{} {
+	return convertJSONToXMLSeen(jsonObj, make(map[uintptr]bool))
+}
+
+func convertJSONToXMLSeen(jsonObj map[string]interface{}, seen map[uintptr]bool) map[string]interface{} {
 	// This is a simplified conversion - real implementation would be more complex
 	for key, value := range jsonObj {
 		if valueMap, ok := value.(map[string]interface{}); ok {
+			ptr := reflect.ValueOf(valueMap).Pointer()
+			if seen[ptr] {
+				panic("XML.fromJSON: circular reference detected")
+			}
+			seen[ptr] = true
+			defer delete(seen, ptr)
+
 			result := map[string]interface{}{
 				"name":       key,
 				"content":    "",
@@ -643,7 +691,7 @@ func convertJSONToXML(jsonObj map[string]interface{}) map[string]interface{} {
 				} else {
 					// Child element
 					if childMap, ok := subValue.(map[string]interface{}); ok {
-						child := convertJSONToXML(map[string]interface{}{subKey: childMap})
+						child := convertJSONToXMLSeen(map[string]interface{}{subKey: childMap}, seen)
 						if children, ok := result["children"].([]interface{}); ok {
 							result["children"] = append(children, child)
 						}

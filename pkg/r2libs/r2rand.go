@@ -31,11 +31,18 @@ func RegisterRand(env *r2core.Environment) {
 			if len(args) < 2 {
 				panic("randInt needs (min, max)")
 			}
-			min := int(toFloat(args[0]))
-			max := int(toFloat(args[1]))
-			if max < min {
+			minF := toFloat(args[0])
+			maxF := toFloat(args[1])
+			if maxF < minF {
 				panic("randInt: max < min")
 			}
+			// keep bounds well inside int64 so max-min+1 below can't wrap around and panic in Intn
+			const randIntBound = 1e15
+			if minF < -randIntBound || maxF > randIntBound {
+				panic("randInt: min/max out of supported range")
+			}
+			min := int(minF)
+			max := int(maxF)
 			randMu.Lock()
 			defer randMu.Unlock()
 			return float64(localRand.Intn(max-min+1) + min)

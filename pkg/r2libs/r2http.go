@@ -13,6 +13,11 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
+// maxRequestBodyBytes bounds how much of an incoming request body serve()
+// will read. It's generous enough for typical JSON/form API payloads while
+// preventing an unbounded body from exhausting memory.
+const maxRequestBodyBytes = 64 << 20 // 64MB
+
 // Definiremos una estructura para guardar las rutas
 type r2Route struct {
 	method  string
@@ -69,9 +74,14 @@ func RegisterHTTP(env *r2core.Environment) {
 				// Leemos body (simple, para requests tipo POST/PUT)
 				var bodyStr string
 				if r.Method == "POST" || r.Method == "PUT" {
+					r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 					data, err := io.ReadAll(r.Body)
 					if err == nil {
 						bodyStr = string(data)
+					} else {
+						w.WriteHeader(http.StatusRequestEntityTooLarge)
+						fmt.Fprintf(w, "413 Request Entity Too Large\n")
+						return
 					}
 				}
 				// Buscamos una ruta que coincida con r.Method y r.URL.Path
@@ -111,16 +121,24 @@ func RegisterHTTP(env *r2core.Environment) {
 					header, ok := data["header"].(map[string]interface{})
 					if ok {
 						for k, v := range header {
-							w.Header().Set(k, v.(string))
+							if vs, ok := v.(string); ok {
+								w.Header().Set(k, vs)
+							}
 						}
 					}
 					status, ok := data["status"]
 					if ok {
-						w.WriteHeader(status.(int))
+						if statusInt, ok := status.(int); ok {
+							w.WriteHeader(statusInt)
+						}
 					}
 					body, ok := data["body"]
 					if ok {
-						fmt.Fprint(w, body.(string))
+						if bodyStr, ok := body.(string); ok {
+							fmt.Fprint(w, bodyStr)
+						} else {
+							fmt.Fprintf(w, "%v", body)
+						}
 						return
 					}
 					fmt.Fprintf(w, "%v", respVal)

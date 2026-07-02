@@ -1197,6 +1197,16 @@ func (stream *GRPCStream) callbacks() (func(interface{}), func(error), func()) {
 	return stream.onReceive, stream.onError, stream.onClose
 }
 
+// safeInvokeCallback runs an onReceive/onError/onClose callback recovering
+// any panic. These callbacks run arbitrary R2Lang script code; since
+// receiveMessages executes on a bare goroutine with no other recover in its
+// call chain, a panicking callback would otherwise crash the whole process
+// instead of just failing the current script.
+func safeInvokeCallback(fn func()) {
+	defer func() { recover() }()
+	fn()
+}
+
 // receiveMessages receives messages from server streaming
 func (stream *GRPCStream) receiveMessages() {
 	defer func() {
@@ -1206,7 +1216,7 @@ func (stream *GRPCStream) receiveMessages() {
 
 		_, _, onClose := stream.callbacks()
 		if onClose != nil {
-			onClose()
+			safeInvokeCallback(onClose)
 		}
 	}()
 
@@ -1226,7 +1236,7 @@ func (stream *GRPCStream) receiveMessages() {
 			} else {
 				_, onError, _ := stream.callbacks()
 				if onError != nil {
-					onError(fmt.Errorf("invalid stream type for receiving"))
+					safeInvokeCallback(func() { onError(fmt.Errorf("invalid stream type for receiving")) })
 				}
 				return
 			}
@@ -1237,7 +1247,7 @@ func (stream *GRPCStream) receiveMessages() {
 				}
 				_, onError, _ := stream.callbacks()
 				if onError != nil {
-					onError(err)
+					safeInvokeCallback(func() { onError(err) })
 				}
 				return
 			}
@@ -1249,14 +1259,14 @@ func (stream *GRPCStream) receiveMessages() {
 				if err != nil {
 					_, onError, _ := stream.callbacks()
 					if onError != nil {
-						onError(err)
+						safeInvokeCallback(func() { onError(err) })
 					}
 					return
 				}
 			} else {
 				_, onError, _ := stream.callbacks()
 				if onError != nil {
-					onError(fmt.Errorf("unexpected message type: %T", msg))
+					safeInvokeCallback(func() { onError(fmt.Errorf("unexpected message type: %T", msg)) })
 				}
 				return
 			}
@@ -1264,7 +1274,7 @@ func (stream *GRPCStream) receiveMessages() {
 			// Call receive callback
 			onReceive, _, _ := stream.callbacks()
 			if onReceive != nil {
-				onReceive(result)
+				safeInvokeCallback(func() { onReceive(result) })
 			}
 		}
 	}

@@ -738,7 +738,10 @@ func (client *SOAPClient) sendRequest(soapAction, envelope string) (string, erro
 	// setHeader/setAuth/setTLSConfig/setTimeout calls from other goroutines
 	// don't race with this request.
 	client.mu.Lock()
-	tlsConfig := client.TLSConfig
+	// Clone, don't alias: client.TLSConfig is a pointer whose fields
+	// setTLSConfig mutates in place, so copying just the pointer would leave
+	// this in-flight request racing with later setTLSConfig calls.
+	tlsConfig := client.TLSConfig.Clone()
 	timeout := client.HTTPTimeout
 	serviceURL := client.ServiceURL
 	auth := client.Auth
