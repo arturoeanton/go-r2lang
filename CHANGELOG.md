@@ -16,6 +16,24 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.34] - Repo hygiene: stop tracking generated artifacts
+### Removed
+- Three ~29MB compiled binaries (`go-r2lang`, `r2`, `r2lang`) that had been
+  committed at the repo root.
+- `vscode_syntax_highlighting/node_modules/` — an entire committed npm
+  dependency tree (6871 files, 119MB), fully regenerable via the existing
+  `package.json`/`package-lock.json`. Also removed its `out/` (TypeScript
+  build output) and packaged `*.vsix`.
+- `.DS_Store`, `.r2lang_history` (local REPL history), `test-results/`
+  (generated `cmd/r2test` output), `performance_report.md` (regenerates
+  with different content on every local benchmark run).
+### Changed
+- Expanded `.gitignore` at the root and added one inside
+  `vscode_syntax_highlighting/` to prevent all of the above from being
+  re-tracked.
+- Moved the two remaining root-level `debug_tokenization*.r2` scratch
+  scripts into `smoke_tests/`.
+
 ## [0.1.33] - Organize root-level smoke test scripts
 ### Changed
 - Moved 16 ad-hoc `test_*.r2` smoke-test scripts that had accumulated at
@@ -327,7 +345,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.33...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.34...HEAD
+[0.1.34]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.33...v0.1.34
 [0.1.33]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.32...v0.1.33
 [0.1.32]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.31...v0.1.32
 [0.1.31]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.30...v0.1.31
