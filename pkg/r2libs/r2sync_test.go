@@ -82,6 +82,53 @@ func TestMutexConcurrentIncrement(t *testing.T) {
 	}
 }
 
+// TestMutexUnlockWithoutLockPanicsCleanly guards against a regression of a
+// real crash bug: calling unlock() on a mutex that was never locked (or
+// double-unlocking one) used to fall straight through to Go's
+// sync.Mutex.Unlock, which calls the runtime's fatal() on that condition.
+// fatal() is NOT a recoverable panic -- it kills the whole process even from
+// inside a script's try/catch, so an R2Lang script could crash the entire
+// interpreter with nothing but `sync.Mutex().unlock()`. MutexObject now
+// tracks its own lock state and must turn this into an ordinary, recoverable
+// Go panic instead of ever reaching the real Unlock() call in that state.
+func TestMutexUnlockWithoutLockPanicsCleanly(t *testing.T) {
+	mod := syncModule(t)
+	mu := callBuiltin(t, mod, "Mutex")
+	unlock := method(t, mu, "unlock")
+
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("expected unlock() of a never-locked mutex to panic")
+			}
+		}()
+		unlock()
+	}()
+}
+
+// TestMutexDoubleUnlockPanicsCleanly is the same regression guard but for the
+// double-unlock case: lock() once, unlock() twice.
+func TestMutexDoubleUnlockPanicsCleanly(t *testing.T) {
+	mod := syncModule(t)
+	mu := callBuiltin(t, mod, "Mutex")
+	lock := method(t, mu, "lock")
+	unlock := method(t, mu, "unlock")
+
+	lock()
+	unlock()
+
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("expected second unlock() to panic")
+			}
+		}()
+		unlock()
+	}()
+}
+
 // TestMutexTryLock checks that tryLock reports false while held and true once
 // released.
 func TestMutexTryLock(t *testing.T) {
@@ -221,4 +268,36 @@ func TestOnceRunsExactlyOnce(t *testing.T) {
 	if runs != 1 {
 		t.Fatalf("Once.do executed %d times, want exactly 1", runs)
 	}
+}
+
+// TestMutexHammerFromManyGoroutines drives lock/unlock/tryLock on a single
+// shared MutexObject from many goroutines in a tight loop, the kind of abuse
+// a script fanning out via r2()/go() could produce. Run with -race; this is
+// meant to catch data races in MutexObject's own bookkeeping (the `locked`
+// field added to detect unlock-of-unlocked-mutex), not just in the
+// underlying sync.Mutex.
+func TestMutexHammerFromManyGoroutines(t *testing.T) {
+	mod := syncModule(t)
+	mu := callBuiltin(t, mod, "Mutex")
+	lock := method(t, mu, "lock")
+	unlock := method(t, mu, "unlock")
+	tryLock := method(t, mu, "tryLock")
+
+	const workers = 50
+	const iterations = 200
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				lock()
+				unlock()
+				if tryLock().(bool) {
+					unlock()
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }

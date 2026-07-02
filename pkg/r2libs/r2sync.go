@@ -2,6 +2,7 @@ package r2libs
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
@@ -9,8 +10,18 @@ import (
 // MutexObject wraps a *sync.Mutex. The field must be a pointer (not sync.Mutex
 // by value) because R2Lang values get copied around by the interpreter (map
 // assignment, closures, etc.); a copied sync.Mutex loses its shared lock state.
+//
+// locked tracks whether the mutex is currently held, so unlock() can detect
+// "unlock of unlocked mutex" itself and turn it into a normal, recoverable
+// R2Lang panic. This is not just cosmetic: Go's sync.Mutex.Unlock calls the
+// runtime's fatal() on that condition, which is NOT a catchable panic -- it
+// terminates the whole process even from inside a script's try/catch or
+// inside the recover() wrapping r2()/go() goroutines. By gating the real
+// Unlock() call behind an atomic CAS, we make sure we only ever call it when
+// we are certain the mutex is actually held, so the fatal path is never hit.
 type MutexObject struct {
-	mu *sync.Mutex
+	mu     *sync.Mutex
+	locked int32 // atomic: 1 while locked, 0 while free
 }
 
 func (m *MutexObject) Eval(env *r2core.Environment) interface{} {
@@ -22,16 +33,24 @@ func (m *MutexObject) Getattr(name string) (r2core.Node, bool) {
 	case "lock":
 		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
 			m.mu.Lock()
+			atomic.StoreInt32(&m.locked, 1)
 			return nil
 		}}, true
 	case "unlock":
 		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			if !atomic.CompareAndSwapInt32(&m.locked, 1, 0) {
+				panic("Mutex.unlock: unlock of unlocked mutex")
+			}
 			m.mu.Unlock()
 			return nil
 		}}, true
 	case "tryLock":
 		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
-			return m.mu.TryLock()
+			ok := m.mu.TryLock()
+			if ok {
+				atomic.StoreInt32(&m.locked, 1)
+			}
+			return ok
 		}}, true
 	}
 	return nil, false
