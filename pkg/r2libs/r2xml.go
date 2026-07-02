@@ -51,6 +51,13 @@ func RegisterXML(env *r2core.Environment) {
 					}
 
 					for _, attr := range element.Attr {
+						// xmlns / xmlns:prefix declarations are namespace
+						// plumbing, not user-facing content attributes; keeping
+						// them out of Attributes avoids leaking them into
+						// scripts that iterate/read attributes.
+						if attr.Name.Space == "xmlns" || (attr.Name.Space == "" && attr.Name.Local == "xmlns") {
+							continue
+						}
 						node.Attributes[attr.Name.Local] = attr.Value
 					}
 
@@ -664,46 +671,76 @@ func convertJSONToXMLSeen(jsonObj map[string]interface{}, seen map[uintptr]bool)
 	// This is a simplified conversion - real implementation would be more complex
 	for key, value := range jsonObj {
 		if valueMap, ok := value.(map[string]interface{}); ok {
-			ptr := reflect.ValueOf(valueMap).Pointer()
-			if seen[ptr] {
-				panic("XML.fromJSON: circular reference detected")
-			}
-			seen[ptr] = true
-			defer delete(seen, ptr)
-
-			result := map[string]interface{}{
-				"name":       key,
-				"content":    "",
-				"attributes": make(map[string]interface{}),
-				"children":   []interface{}{},
-			}
-
-			for subKey, subValue := range valueMap {
-				if strings.HasPrefix(subKey, "@") {
-					// Attribute
-					attrName := strings.TrimPrefix(subKey, "@")
-					result["attributes"].(map[string]interface{})[attrName] = subValue
-				} else if subKey == "_text" {
-					// Text content
-					if str, ok := subValue.(string); ok {
-						result["content"] = str
-					}
-				} else {
-					// Child element
-					if childMap, ok := subValue.(map[string]interface{}); ok {
-						child := convertJSONToXMLSeen(map[string]interface{}{subKey: childMap}, seen)
-						if children, ok := result["children"].([]interface{}); ok {
-							result["children"] = append(children, child)
-						}
-					}
-				}
-			}
-
-			return result
+			return buildXMLNodeFromJSONObject(key, valueMap, seen)
 		}
 	}
 
 	return nil
+}
+
+func buildXMLNodeFromJSONObject(name string, valueMap map[string]interface{}, seen map[uintptr]bool) map[string]interface{} {
+	ptr := reflect.ValueOf(valueMap).Pointer()
+	if seen[ptr] {
+		panic("XML.fromJSON: circular reference detected")
+	}
+	seen[ptr] = true
+	defer delete(seen, ptr)
+
+	result := map[string]interface{}{
+		"name":       name,
+		"content":    "",
+		"attributes": make(map[string]interface{}),
+		"children":   []interface{}{},
+	}
+
+	for subKey, subValue := range valueMap {
+		if strings.HasPrefix(subKey, "@") {
+			// Attribute
+			attrName := strings.TrimPrefix(subKey, "@")
+			result["attributes"].(map[string]interface{})[attrName] = subValue
+		} else if subKey == "_text" {
+			// Text content
+			if str, ok := subValue.(string); ok {
+				result["content"] = str
+			}
+		} else {
+			// Child element(s): may be a single object, a plain scalar
+			// (text-only element), or an array (repeated sibling tags, the
+			// shape XML.toJSON itself produces for repeated elements).
+			children := result["children"].([]interface{})
+			children = append(children, jsonValueToXMLChildren(subKey, subValue, seen)...)
+			result["children"] = children
+		}
+	}
+
+	return result
+}
+
+func jsonValueToXMLChildren(name string, value interface{}, seen map[uintptr]bool) []interface{} {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		return []interface{}{buildXMLNodeFromJSONObject(name, v, seen)}
+	case []interface{}:
+		children := make([]interface{}, 0, len(v))
+		for _, item := range v {
+			children = append(children, jsonValueToXMLChildren(name, item, seen)...)
+		}
+		return children
+	case nil:
+		return []interface{}{map[string]interface{}{
+			"name":       name,
+			"content":    "",
+			"attributes": make(map[string]interface{}),
+			"children":   []interface{}{},
+		}}
+	default:
+		return []interface{}{map[string]interface{}{
+			"name":       name,
+			"content":    fmt.Sprintf("%v", v),
+			"attributes": make(map[string]interface{}),
+			"children":   []interface{}{},
+		}}
+	}
 }
 
 func formatXMLPretty(xmlStr string, indent string) string {

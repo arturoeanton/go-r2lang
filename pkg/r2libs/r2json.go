@@ -579,7 +579,7 @@ func convertR2ToJSONSeen(value interface{}, seen map[uintptr]bool) interface{} {
 	case *r2core.DateValue:
 		return v.Time.Format("2006-01-02T15:04:05Z07:00")
 	default:
-		return fmt.Sprintf("%v", v)
+		panic(fmt.Sprintf("JSON.stringify: cannot convert value of type %T to JSON", v))
 	}
 }
 

@@ -363,3 +363,26 @@ func TestJSONMinify(t *testing.T) {
 		t.Error("Expected minified JSON to not contain whitespace")
 	}
 }
+
+func TestJSONStringifyUnsupportedType(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterJSON(env)
+
+	jsonModule, _ := env.Get("json")
+	module := jsonModule.(map[string]interface{})
+	stringifyFunc := module["stringify"].(r2core.BuiltinFunction)
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("Expected JSON.stringify to panic on a non-serializable value instead of emitting a garbage string")
+		}
+		msg, ok := r.(string)
+		if !ok || !strings.Contains(msg, "JSON.stringify") {
+			t.Errorf("Expected a JSON.stringify error message, got: %v", r)
+		}
+	}()
+
+	fn := &r2core.UserFunction{}
+	stringifyFunc(map[string]interface{}{"f": fn})
+}
