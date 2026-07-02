@@ -16,6 +16,13 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.33] - Organize root-level smoke test scripts
+### Changed
+- Moved 16 ad-hoc `test_*.r2` smoke-test scripts that had accumulated at
+  the repo root into `smoke_tests/` (a new directory, distinct from the
+  existing `tests/`, since two scripts collided by name with unrelated
+  `tests/` content).
+
 ## [0.1.32] - Stdlib bugs found while documenting it
 ### Fixed
 - `math.LOG10E` was set as a bare global but never copied into the `math.*`
@@ -320,7 +327,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.32...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.33...HEAD
+[0.1.33]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.32...v0.1.33
 [0.1.32]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.31...v0.1.32
 [0.1.31]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.30...v0.1.31
 [0.1.30]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.29...v0.1.30
