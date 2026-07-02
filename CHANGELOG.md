@@ -16,6 +16,23 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.35] - Fix broken CI
+### Fixed
+- The 4 CI jobs (`test`, `lint`, `integration`, `security`) were pinned to
+  Go 1.22/1.23, but `go.mod` requires ≥1.24.5 — the CI build failed
+  outright (`go.mod requires go >= 1.24.5 (running go 1.23.12)`). Aligned
+  all 4 jobs to 1.24.5, and corrected the stale Go 1.23 prerequisite in
+  the README.
+- `TestDSLActionInfiniteRecursionIsCaught` (`pkg/r2core`) was genuinely
+  flaky on CI hardware: it waited on hitting the default 1000-level
+  recursion-depth limit within a hardcoded 5-second wall-clock window, but
+  each level does real work (a full DSL parse+evaluate cycle) — ~2s
+  locally, comfortably over 5s on slower/shared CI runners. Fixed by
+  giving the test its own `ExecutionLimiter` with a much smaller
+  `MaxRecursionDepth` (50), making the test's runtime bounded by an
+  iteration count instead of wall-clock time (~2s → ~0.01s locally,
+  deterministic regardless of hardware).
+
 ## [0.1.34] - Repo hygiene: stop tracking generated artifacts
 ### Removed
 - Three ~29MB compiled binaries (`go-r2lang`, `r2`, `r2lang`) that had been
@@ -345,7 +362,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.34...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.35...HEAD
+[0.1.35]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.34...v0.1.35
 [0.1.34]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.33...v0.1.34
 [0.1.33]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.32...v0.1.33
 [0.1.32]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.31...v0.1.32
