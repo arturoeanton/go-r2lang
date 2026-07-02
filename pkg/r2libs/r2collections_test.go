@@ -274,6 +274,26 @@ func TestCollectionsExtendedFunctions(t *testing.T) {
 		}
 	})
 
+	t.Run("flatten rejects depth beyond safety cap on self-referential array", func(t *testing.T) {
+		selfRef := make([]interface{}, 1)
+		selfRef[0] = selfRef
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic for depth beyond maxFlattenDepth")
+			}
+		}()
+		flattenFunc(selfRef, float64(maxFlattenDepth+1))
+	})
+
+	t.Run("flatten allows self-referential array up to the safety cap", func(t *testing.T) {
+		selfRef := make([]interface{}, 1)
+		selfRef[0] = selfRef
+		result := flattenFunc(selfRef, float64(maxFlattenDepth)).([]interface{})
+		if len(result) != 1 {
+			t.Fatalf("expected length 1, got %d", len(result))
+		}
+	})
+
 	t.Run("chunk splits into groups", func(t *testing.T) {
 		result := chunkFunc([]interface{}{1.0, 2.0, 3.0, 4.0, 5.0}, 2.0).([]interface{})
 		if len(result) != 3 {

@@ -196,6 +196,51 @@ func TestMathExtendedFunctions(t *testing.T) {
 		}()
 		nthRootFunc(-4.0, 2.0)
 	})
+
+	t.Run("isPrime NaN panics instead of relying on undefined float-to-int conversion", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		isPrimeFunc(math.NaN())
+	})
+
+	t.Run("isEven NaN panics instead of returning an implementation-defined result", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		isEvenFunc(math.NaN())
+	})
+
+	t.Run("isEven +Inf panics", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		isEvenFunc(math.Inf(1))
+	})
+
+	t.Run("isOdd NaN panics instead of returning an implementation-defined result", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		isOddFunc(math.NaN())
+	})
+
+	t.Run("roundTo decimals large enough to overflow 10^decimals panics", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		roundToFunc(3.14159, 1000.0)
+	})
 }
 
 func TestMathConstants(t *testing.T) {

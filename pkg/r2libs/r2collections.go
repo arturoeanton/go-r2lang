@@ -314,6 +314,9 @@ func RegisterCollections(env *r2core.Environment) {
 				}
 				depth = int(d)
 			}
+			if depth > maxFlattenDepth {
+				panic("flatten: depth demasiado grande (máximo permitido: 10000)")
+			}
 			return flattenArray(arr, depth)
 		}),
 
@@ -451,6 +454,12 @@ func RegisterCollections(env *r2core.Environment) {
 
 	RegisterModule(env, "collections", functions)
 }
+
+// maxFlattenDepth bounds recursion in flattenArray so that a deeply nested
+// (or self-referential, e.g. built via `a[0] = a`) array cannot trigger an
+// unrecoverable Go "stack overflow" fatal error, which panic/recover cannot
+// catch.
+const maxFlattenDepth = 10000
 
 func flattenArray(arr []interface{}, depth int) []interface{} {
 	if depth <= 0 {

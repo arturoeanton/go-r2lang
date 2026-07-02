@@ -636,6 +636,9 @@ func RegisterMath(env *r2core.Environment) {
 				panic("roundTo: decimals must be non-negative")
 			}
 			factor := math.Pow(10, float64(decimals))
+			if math.IsInf(factor, 0) {
+				panic("roundTo: decimals is too large, causes overflow")
+			}
 			return math.Round(x*factor) / factor
 		}),
 
@@ -643,7 +646,11 @@ func RegisterMath(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("isPrime needs (number)")
 			}
-			n := int(toFloat(args[0]))
+			f := toFloat(args[0])
+			if math.IsNaN(f) || math.IsInf(f, 0) {
+				panic("isPrime: number must be a finite value")
+			}
+			n := int(f)
 			return isPrime(n)
 		}),
 
@@ -651,7 +658,11 @@ func RegisterMath(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("isEven needs (number)")
 			}
-			n := int(toFloat(args[0]))
+			f := toFloat(args[0])
+			if math.IsNaN(f) || math.IsInf(f, 0) {
+				panic("isEven: number must be a finite value")
+			}
+			n := int(f)
 			return n%2 == 0
 		}),
 
@@ -659,7 +670,11 @@ func RegisterMath(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("isOdd needs (number)")
 			}
-			n := int(toFloat(args[0]))
+			f := toFloat(args[0])
+			if math.IsNaN(f) || math.IsInf(f, 0) {
+				panic("isOdd: number must be a finite value")
+			}
+			n := int(f)
 			return n%2 != 0
 		}),
 
