@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,6 +62,14 @@ message ChatMessage {
     string user_id = 1;
     string message = 2;
     int64 timestamp = 3;
+}
+
+message RepeatedFieldsTest {
+    repeated string tags = 1;
+    repeated int32 scores = 2;
+    repeated GetUserResponse users = 3;
+    map<string, string> labels = 4;
+    map<string, int32> counts = 5;
 }`
 
 // Mock gRPC server for testing
@@ -191,6 +200,48 @@ func startMockServer(t *testing.T, fd *desc.FileDescriptor) (*grpc.Server, strin
 		t.Fatalf("Service not found in proto file")
 	}
 
+	go server.Serve(listener)
+
+	return server, listener.Addr().String()
+}
+
+// startFullMockServer registers a real, working grpc.ServiceDesc for
+// TestService (unlike startMockServer, whose mockTestServer is constructed
+// and discarded without ever being registered on the grpc.Server), so
+// client-streaming and bidi-streaming calls actually reach a handler that
+// exercises the real wire protocol end-to-end.
+func startFullMockServer(t *testing.T, fd *desc.FileDescriptor) (*grpc.Server, string) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+
+	impl := newMockTestServer(fd)
+	server := grpc.NewServer()
+
+	sd := grpc.ServiceDesc{
+		ServiceName: "testservice.TestService",
+		HandlerType: (*any)(nil),
+		Streams: []grpc.StreamDesc{
+			{
+				StreamName:    "CreateUsers",
+				ClientStreams: true,
+				Handler: func(srv interface{}, stream grpc.ServerStream) error {
+					return impl.CreateUsers(stream)
+				},
+			},
+			{
+				StreamName:    "Chat",
+				ClientStreams: true,
+				ServerStreams: true,
+				Handler: func(srv interface{}, stream grpc.ServerStream) error {
+					return impl.Chat(stream)
+				},
+			},
+		},
+	}
+
+	server.RegisterService(&sd, impl)
 	go server.Serve(listener)
 
 	return server, listener.Addr().String()
@@ -708,6 +759,211 @@ func TestValueConversion(t *testing.T) {
 
 	// Note: Comprehensive value conversion tests would require
 	// mock field descriptors with proper type information from protobuf
+}
+
+// TestRepeatedAndMapFieldConversion guards against a regression where
+// convertValueToProto/convertProtoValueToR2Lang only handled scalar fields:
+// field.GetType() was switched on directly without checking IsRepeated()/
+// IsMap() first, so a repeated field's R2Lang array value (represented as
+// []interface{}) fell through to the scalar branch (e.g. TYPE_MESSAGE tried
+// a map[string]interface{} type assertion on the array and failed, TYPE_
+// STRING silently stringified the array via fmt.Sprintf instead of
+// converting each element). Map fields were entirely unhandled the same way.
+func TestRepeatedAndMapFieldConversion(t *testing.T) {
+	protoFile := createTestProtoFile(t)
+	defer os.RemoveAll(filepath.Dir(protoFile))
+
+	client, err := createGRPCClient(protoFile, "localhost:50051", nil)
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client: %v", err)
+	}
+
+	msgDesc := client.FileDesc.FindMessage("testservice.RepeatedFieldsTest")
+	if msgDesc == nil {
+		t.Fatalf("RepeatedFieldsTest message not found")
+	}
+
+	request := map[string]interface{}{
+		"tags":   []interface{}{"a", "b", "c"},
+		"scores": []interface{}{1.0, 2.0, 3.0},
+		"users": []interface{}{
+			map[string]interface{}{"user_id": "u1", "name": "Alice"},
+			map[string]interface{}{"user_id": "u2", "name": "Bob"},
+		},
+		"labels": map[string]interface{}{
+			"env": "prod",
+		},
+		"counts": map[string]interface{}{
+			"x": 1.0,
+			"y": 2.0,
+		},
+	}
+
+	msg := dynamic.NewMessage(msgDesc)
+	if err := populateMessage(msg, request); err != nil {
+		t.Fatalf("populateMessage failed: %v", err)
+	}
+
+	result, err := messageToMap(msg)
+	if err != nil {
+		t.Fatalf("messageToMap failed: %v", err)
+	}
+
+	tags, ok := result["tags"].([]interface{})
+	if !ok || len(tags) != 3 || tags[0] != "a" || tags[1] != "b" || tags[2] != "c" {
+		t.Errorf("Expected tags [a b c], got %#v", result["tags"])
+	}
+
+	scores, ok := result["scores"].([]interface{})
+	if !ok || len(scores) != 3 {
+		t.Fatalf("Expected 3 scores, got %#v", result["scores"])
+	}
+	for i, want := range []float64{1, 2, 3} {
+		got, ok := scores[i].(float64)
+		if !ok || got != want {
+			t.Errorf("scores[%d] = %#v (%T), want float64 %v", i, scores[i], scores[i], want)
+		}
+	}
+
+	users, ok := result["users"].([]interface{})
+	if !ok || len(users) != 2 {
+		t.Fatalf("Expected 2 users, got %#v", result["users"])
+	}
+	u0, ok := users[0].(map[string]interface{})
+	if !ok || u0["user_id"] != "u1" || u0["name"] != "Alice" {
+		t.Errorf("users[0] = %#v, want map with user_id=u1 name=Alice", users[0])
+	}
+
+	labels, ok := result["labels"].(map[string]interface{})
+	if !ok || labels["env"] != "prod" {
+		t.Errorf("Expected labels map with env=prod, got %#v", result["labels"])
+	}
+
+	counts, ok := result["counts"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected counts map, got %#v", result["counts"])
+	}
+	if x, ok := counts["x"].(float64); !ok || x != 1 {
+		t.Errorf("counts[x] = %#v, want float64 1", counts["x"])
+	}
+	if y, ok := counts["y"].(float64); !ok || y != 2 {
+		t.Errorf("counts[y] = %#v, want float64 2", counts["y"])
+	}
+}
+
+// TestClientStreamCloseAndReceive is an end-to-end test (real grpc.Server +
+// real network connection) guarding against a regression where closeSend()
+// for a pure client-streaming call just cancelled the RPC's context instead
+// of calling grpcdynamic's ClientStream.CloseAndReceive(). Cancelling
+// aborts the RPC outright (the server sees a cancelled context and the
+// response is never produced), so the R2Lang script's onReceive callback
+// could never fire for a client-streaming call -- the feature was
+// unusable for its core purpose of returning the server's aggregated
+// response.
+func TestClientStreamCloseAndReceive(t *testing.T) {
+	protoFile := createTestProtoFile(t)
+	defer os.RemoveAll(filepath.Dir(protoFile))
+
+	client, err := createGRPCClient(protoFile, "localhost:50051", nil)
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client: %v", err)
+	}
+
+	server, addr := startFullMockServer(t, client.FileDesc)
+	defer server.Stop()
+
+	client.ServerAddr = addr
+
+	stream := client.callClientStream("TestService", "CreateUsers").(map[string]interface{})
+	sendFn := stream["send"].(r2core.BuiltinFunction)
+	closeSendFn := stream["closeSend"].(r2core.BuiltinFunction)
+	onReceiveFn := stream["onReceive"].(r2core.BuiltinFunction)
+	onErrorFn := stream["onError"].(r2core.BuiltinFunction)
+
+	received := make(chan map[string]interface{}, 1)
+	streamErrs := make(chan string, 1)
+
+	onReceiveFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		received <- args[0].(map[string]interface{})
+		return nil
+	}))
+	onErrorFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		streamErrs <- fmt.Sprintf("%v", args[0])
+		return nil
+	}))
+
+	sendFn(map[string]interface{}{"name": "Alice", "email": "alice@example.com", "age": 30.0})
+	sendFn(map[string]interface{}{"name": "Bob", "email": "bob@example.com", "age": 25.0})
+	closeSendFn()
+
+	select {
+	case result := <-received:
+		if result["created_count"] != float64(2) {
+			t.Errorf("Expected created_count 2, got %v", result["created_count"])
+		}
+	case errMsg := <-streamErrs:
+		t.Fatalf("closeSend produced an error instead of a response: %s", errMsg)
+	case <-time.After(5 * time.Second):
+		t.Fatal("closeSend/CloseAndReceive never delivered a response via onReceive")
+	}
+}
+
+// TestBidiStreamCloseSendKeepsReceiving is an end-to-end test guarding
+// against a regression where closeSend() on a bidi stream cancelled the
+// entire RPC context instead of half-closing the send side via
+// BidiStream.CloseSend(). The mock Chat handler echoes each received
+// message back, so if closeSend() prematurely kills the stream, the echo
+// for the last message sent before closeSend() would be lost.
+func TestBidiStreamCloseSendKeepsReceiving(t *testing.T) {
+	protoFile := createTestProtoFile(t)
+	defer os.RemoveAll(filepath.Dir(protoFile))
+
+	client, err := createGRPCClient(protoFile, "localhost:50051", nil)
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client: %v", err)
+	}
+
+	server, addr := startFullMockServer(t, client.FileDesc)
+	defer server.Stop()
+
+	client.ServerAddr = addr
+
+	stream := client.callBidirectionalStream("TestService", "Chat").(map[string]interface{})
+	sendFn := stream["send"].(r2core.BuiltinFunction)
+	closeSendFn := stream["closeSend"].(r2core.BuiltinFunction)
+	onReceiveFn := stream["onReceive"].(r2core.BuiltinFunction)
+	onCloseFn := stream["onClose"].(r2core.BuiltinFunction)
+
+	var mu sync.Mutex
+	var echoes []string
+	closed := make(chan struct{})
+
+	onReceiveFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		mu.Lock()
+		echoes = append(echoes, args[0].(map[string]interface{})["message"].(string))
+		mu.Unlock()
+		return nil
+	}))
+	onCloseFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		close(closed)
+		return nil
+	}))
+
+	sendFn(map[string]interface{}{"user_id": "u1", "message": "hello"})
+	sendFn(map[string]interface{}{"user_id": "u1", "message": "world"})
+	closeSendFn()
+
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("bidi stream never closed after server finished echoing")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(echoes) != 2 || echoes[0] != "hello" || echoes[1] != "world" {
+		t.Errorf("Expected echoes [hello world], got %v (closeSend must not drop in-flight responses)", echoes)
+	}
 }
 
 func TestR2LangIntegration(t *testing.T) {

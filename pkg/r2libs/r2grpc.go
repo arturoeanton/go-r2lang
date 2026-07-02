@@ -1089,22 +1089,68 @@ func grpcStreamToMap(stream *GRPCStream) map[string]interface{} {
 			panic("closeSend: not a client streaming method")
 		}
 
-		// Note: grpcdynamic streams don't have a direct CloseSend method
-		// The stream is closed when the parent context is cancelled
 		stream.mu.Lock()
-		if !stream.closed {
-			stream.closed = true
-			stream.cancel()
+		if stream.closed {
+			stream.mu.Unlock()
+			return nil
 		}
+
+		if stream.isBidi {
+			// A bidi stream only half-closes here: the send side is done,
+			// but the server may still be streaming responses back, which
+			// the background receiveMessages goroutine (started when the
+			// stream was created) is still reading. Cancelling the whole
+			// context here (as this used to do) would kill that goroutine
+			// immediately and drop any in-flight responses. onClose fires
+			// later, once receiveMessages naturally observes end-of-stream.
+			stream.mu.Unlock()
+			if err := stream.bidiStream.CloseSend(); err != nil {
+				_, onError, _ := stream.callbacks()
+				if onError != nil {
+					safeInvokeCallback(func() { onError(err) })
+				}
+			}
+			return nil
+		}
+
+		// Pure client-streaming: no receiveMessages goroutine is running
+		// for this stream type, so CloseAndReceive() is the only way to
+		// both end the request stream and obtain the server's single
+		// aggregated response.
+		stream.closed = true
 		stream.mu.Unlock()
+
+		resp, err := stream.clientStream.CloseAndReceive()
+		onReceive, onError, onClose := stream.callbacks()
+		if err != nil {
+			if onError != nil {
+				safeInvokeCallback(func() { onError(err) })
+			}
+		} else if dynMsg, ok := resp.(*dynamic.Message); ok {
+			result, convErr := messageToMap(dynMsg)
+			if convErr != nil {
+				if onError != nil {
+					safeInvokeCallback(func() { onError(convErr) })
+				}
+			} else if onReceive != nil {
+				safeInvokeCallback(func() { onReceive(result) })
+			}
+		} else if onError != nil {
+			safeInvokeCallback(func() { onError(fmt.Errorf("unexpected response type: %T", resp)) })
+		}
+
+		stream.cancel()
+		if onClose != nil {
+			safeInvokeCallback(onClose)
+		}
 
 		return nil
 	})
 
 	// Set receive callback
 	streamMap["onReceive"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-		if !stream.isServer {
-			panic("onReceive: not a server streaming method")
+		if !stream.isServer && !stream.isClient {
+			panic("onReceive: not a streaming method")
 		}
 
 		if len(args) < 1 {
@@ -1218,9 +1264,28 @@ func safeInvokeCallback(fn func()) {
 // receiveMessages receives messages from server streaming
 func (stream *GRPCStream) receiveMessages() {
 	defer func() {
+		// Release the context/timer associated with this stream now that
+		// no more messages will be read from it, whether it ends because
+		// the server finished (EOF), an error occurred, or the caller
+		// cancelled it via close()/closeSend(). Without this, a stream
+		// that completes normally (not via explicit close()) never had its
+		// cancel func invoked, leaking the context's timer until the
+		// call's Timeout eventually fires on its own.
+		stream.cancel()
+
 		stream.mu.Lock()
+		alreadyClosed := stream.closed
 		stream.closed = true
 		stream.mu.Unlock()
+
+		// Guard against invoking onClose twice: if close() already ran
+		// (e.g. the caller closed the stream while this goroutine was
+		// blocked in RecvMsg), it already invoked onClose itself, and this
+		// goroutine unblocking shortly after (as RecvMsg returns an error
+		// once the context is cancelled) must not fire it again.
+		if alreadyClosed {
+			return
+		}
 
 		_, _, onClose := stream.callbacks()
 		if onClose != nil {
@@ -1309,12 +1374,61 @@ func populateMessage(msg *dynamic.Message, data map[string]interface{}) error {
 	return nil
 }
 
-// convertValueToProto converts R2Lang value to protobuf value
+// convertValueToProto converts R2Lang value to protobuf value, dispatching
+// map and repeated fields to their element-wise conversion before falling
+// back to scalar conversion.
 func convertValueToProto(value interface{}, field *desc.FieldDescriptor) (interface{}, error) {
 	if field == nil {
 		return nil, fmt.Errorf("field descriptor is nil")
 	}
 
+	if field.IsMap() {
+		m, ok := value.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot convert %v (%T) to map field: expected a map", value, value)
+		}
+
+		keyField := field.GetMapKeyType()
+		valField := field.GetMapValueType()
+		result := make(map[interface{}]interface{}, len(m))
+		for k, v := range m {
+			convKey, err := convertValueToProto(k, keyField)
+			if err != nil {
+				return nil, fmt.Errorf("map key %q: %v", k, err)
+			}
+			convVal, err := convertValueToProto(v, valField)
+			if err != nil {
+				return nil, fmt.Errorf("map value for key %q: %v", k, err)
+			}
+			result[convKey] = convVal
+		}
+		return result, nil
+	}
+
+	if field.IsRepeated() {
+		arr, ok := value.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("cannot convert %v (%T) to repeated field: expected an array", value, value)
+		}
+
+		result := make([]interface{}, len(arr))
+		for i, elem := range arr {
+			converted, err := convertScalarValueToProto(elem, field)
+			if err != nil {
+				return nil, fmt.Errorf("element %d: %v", i, err)
+			}
+			result[i] = converted
+		}
+		return result, nil
+	}
+
+	return convertScalarValueToProto(value, field)
+}
+
+// convertScalarValueToProto converts a single (non-repeated, non-map) R2Lang
+// value to a protobuf value for the given field. It is also used to convert
+// individual elements of repeated fields and map keys/values.
+func convertScalarValueToProto(value interface{}, field *desc.FieldDescriptor) (interface{}, error) {
 	switch field.GetType() {
 	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 		if str, ok := value.(string); ok {
@@ -1455,8 +1569,61 @@ func messageToMap(msg *dynamic.Message) (map[string]interface{}, error) {
 	return result, nil
 }
 
-// convertProtoValueToR2Lang converts protobuf value to R2Lang value
+// convertProtoValueToR2Lang converts protobuf value to R2Lang value,
+// dispatching map and repeated fields to their element-wise conversion
+// before falling back to scalar conversion.
 func convertProtoValueToR2Lang(value interface{}, field *desc.FieldDescriptor) (interface{}, error) {
+	if value == nil {
+		return nil, nil
+	}
+
+	if field.IsMap() {
+		m, ok := value.(map[interface{}]interface{})
+		if !ok {
+			return value, nil
+		}
+
+		keyField := field.GetMapKeyType()
+		valField := field.GetMapValueType()
+		result := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			convKey, err := convertScalarProtoValueToR2Lang(k, keyField)
+			if err != nil {
+				return nil, fmt.Errorf("map key: %v", err)
+			}
+			convVal, err := convertScalarProtoValueToR2Lang(v, valField)
+			if err != nil {
+				return nil, fmt.Errorf("map value: %v", err)
+			}
+			result[fmt.Sprintf("%v", convKey)] = convVal
+		}
+		return result, nil
+	}
+
+	if field.IsRepeated() {
+		arr, ok := value.([]interface{})
+		if !ok {
+			return value, nil
+		}
+
+		result := make([]interface{}, len(arr))
+		for i, elem := range arr {
+			converted, err := convertScalarProtoValueToR2Lang(elem, field)
+			if err != nil {
+				return nil, fmt.Errorf("element %d: %v", i, err)
+			}
+			result[i] = converted
+		}
+		return result, nil
+	}
+
+	return convertScalarProtoValueToR2Lang(value, field)
+}
+
+// convertScalarProtoValueToR2Lang converts a single (non-repeated, non-map)
+// protobuf value to an R2Lang value for the given field. It is also used to
+// convert individual elements of repeated fields and map keys/values.
+func convertScalarProtoValueToR2Lang(value interface{}, field *desc.FieldDescriptor) (interface{}, error) {
 	if value == nil {
 		return nil, nil
 	}
