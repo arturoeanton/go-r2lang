@@ -16,6 +16,29 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.32] - Stdlib bugs found while documenting it
+### Fixed
+- `math.LOG10E` was set as a bare global but never copied into the `math.*`
+  module map, unlike its 10 sibling constants.
+- `collections.slice(arr, start, end)` rejected `end == len(arr)`, making
+  it impossible to slice through an array's last element (off-by-one).
+- `rand.shuffle` mutated its argument in place and returned `nil`, breaking
+  the immutable/functional convention every other array builtin follows
+  (including `math.shuffle`, a second shuffle implementation in the same
+  language). Now returns a new shuffled array like the rest.
+- `web.json(data)` returned a pre-marshaled JSON string instead of the
+  typed `{type: "json", data}` response descriptor, so handlers using it
+  served their response mislabeled as `text/html` instead of
+  `application/json`.
+
+## [0.1.31] - Remove Siigo references
+### Removed
+- `examples/proyecto/contable/` — the entire directory existed as a sales
+  demo built for the company Siigo, not a generic example (confirmed by
+  its own README). Removed from the working tree and, in a follow-up
+  history rewrite, from the entire git history (53 commits rewritten, all
+  tags recreated).
+
 ## [0.1.30] - Standard library reference
 ### Added
 - `docs/en/stdlib-reference.md`: every function/method across all 32 live
@@ -297,7 +320,9 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.30...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.32...HEAD
+[0.1.32]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.31...v0.1.32
+[0.1.31]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.30...v0.1.31
 [0.1.30]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.29...v0.1.30
 [0.1.29]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.28...v0.1.29
 [0.1.28]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...v0.1.28
