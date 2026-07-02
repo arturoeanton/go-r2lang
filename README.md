@@ -664,6 +664,16 @@ go test ./pkg/r2libs/    # Built-in library tests
 - **r2std.go**: Standard utilities (122 LOC)
 - Plus 10 additional specialized libraries
 
+### 📖 Standard Library Reference
+
+Looking for the full list of built-in functions? Every module in
+`pkg/r2libs/` — all ~32 of them (`std`, `io`, `os`, `http`, `web`, `json`,
+`db`, `grpc`, `sync`, and more) — is documented function-by-function, with
+signatures, parameters, return values, and gotchas verified against the
+actual interpreter:
+
+-   [**Standard Library Reference (English)**](./docs/en/stdlib-reference.md)
+
 ### Embedding R2Lang in a Go program
 
 The normal way to use R2Lang is inside a Go program: you embed the
