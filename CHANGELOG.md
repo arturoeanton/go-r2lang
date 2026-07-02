@@ -16,6 +16,12 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.27] - native.* embedding guide
+### Added
+- `examples/embedding/`: a runnable Go host program demonstrating
+  `RegisterNativeFunc`/`RegisterNativeStruct` + a `native.*` R2Lang script,
+  plus a new "Embedding R2Lang in a Go program" section in the README.
+
 ## [0.1.26] - CHANGELOG and release process
 ### Added
 - `CHANGELOG.md` (this file) and `RELEASING.md`, documenting the release
@@ -247,7 +253,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...HEAD
+[0.1.27]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.25_ci-sweep-r2test-fixes...v0.1.26
 [0.1.25]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.24_remove-dead-bytecode...v0.1.25_ci-sweep-r2test-fixes
 [0.1.24]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.23_native-graph-comprehensions...v0.1.24_remove-dead-bytecode
