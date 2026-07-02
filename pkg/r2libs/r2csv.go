@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -36,7 +37,7 @@ func RegisterCSV(env *r2core.Environment) {
 				}
 			}
 
-			reader := csv.NewReader(strings.NewReader(csvStr))
+			reader := csv.NewReader(strings.NewReader(stripCSVBOM(csvStr)))
 			reader.Comma = []rune(delimiter)[0]
 
 			records, err := reader.ReadAll()
@@ -118,6 +119,7 @@ func RegisterCSV(env *r2core.Environment) {
 				for key := range firstRow {
 					headers = append(headers, key)
 				}
+				sort.Strings(headers)
 
 				if includeHeaders {
 					writer.Write(headers)
@@ -180,13 +182,12 @@ func RegisterCSV(env *r2core.Environment) {
 				}
 			}
 
-			file, err := os.Open(filePath)
+			content, err := os.ReadFile(filePath)
 			if err != nil {
 				panic(fmt.Sprintf("CSV.readFile: error opening file '%s': %v", filePath, err))
 			}
-			defer file.Close()
 
-			reader := csv.NewReader(file)
+			reader := csv.NewReader(strings.NewReader(stripCSVBOM(string(content))))
 			reader.Comma = []rune(delimiter)[0]
 
 			records, err := reader.ReadAll()
@@ -274,6 +275,7 @@ func RegisterCSV(env *r2core.Environment) {
 				for key := range firstRow {
 					headers = append(headers, key)
 				}
+				sort.Strings(headers)
 
 				if includeHeaders {
 					writer.Write(headers)
@@ -326,9 +328,14 @@ func RegisterCSV(env *r2core.Environment) {
 			}
 
 			if firstRow, ok := data[0].(map[string]interface{}); ok {
-				var headers []interface{}
+				var keys []string
 				for key := range firstRow {
-					headers = append(headers, key)
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				headers := make([]interface{}, len(keys))
+				for i, key := range keys {
+					headers[i] = key
 				}
 				return headers
 			}
@@ -578,7 +585,7 @@ func RegisterCSV(env *r2core.Environment) {
 				}
 			}
 
-			reader := csv.NewReader(strings.NewReader(csvStr))
+			reader := csv.NewReader(strings.NewReader(stripCSVBOM(csvStr)))
 			reader.Comma = []rune(delimiter)[0]
 
 			var errors []interface{}
@@ -620,6 +627,12 @@ func RegisterCSV(env *r2core.Environment) {
 	}
 
 	RegisterModule(env, "csv", functions)
+}
+
+// stripCSVBOM removes a leading UTF-8 byte order mark, which Excel and other
+// tools commonly prepend to exported CSV files.
+func stripCSVBOM(s string) string {
+	return strings.TrimPrefix(s, "\uFEFF")
 }
 
 // Helper function to convert CSV values to appropriate types

@@ -15,66 +15,31 @@ func RegisterConsole(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
 		"log": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			timestamp := time.Now().Format("15:04:05")
-			fmt.Printf("[%s] ", timestamp)
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(fmt.Sprintf("[%s] %s\n", timestamp, joinConsoleArgs(args)))
 			return nil
 		}),
 
 		"info": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			timestamp := time.Now().Format("15:04:05")
-			fmt.Printf("\033[36m[%s] INFO:\033[0m ", timestamp)
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(fmt.Sprintf("\033[36m[%s] INFO:\033[0m %s\n", timestamp, joinConsoleArgs(args)))
 			return nil
 		}),
 
 		"warn": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			timestamp := time.Now().Format("15:04:05")
-			fmt.Printf("\033[33m[%s] WARN:\033[0m ", timestamp)
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(fmt.Sprintf("\033[33m[%s] WARN:\033[0m %s\n", timestamp, joinConsoleArgs(args)))
 			return nil
 		}),
 
 		"error": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			timestamp := time.Now().Format("15:04:05")
-			fmt.Printf("\033[31m[%s] ERROR:\033[0m ", timestamp)
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(fmt.Sprintf("\033[31m[%s] ERROR:\033[0m %s\n", timestamp, joinConsoleArgs(args)))
 			return nil
 		}),
 
 		"debug": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			timestamp := time.Now().Format("15:04:05")
-			fmt.Printf("\033[35m[%s] DEBUG:\033[0m ", timestamp)
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(fmt.Sprintf("\033[35m[%s] DEBUG:\033[0m %s\n", timestamp, joinConsoleArgs(args)))
 			return nil
 		}),
 
@@ -175,17 +140,14 @@ func RegisterConsole(env *r2core.Environment) {
 			}
 
 			if !condition {
-				fmt.Print("\033[31mAssertion failed:")
+				var b strings.Builder
+				b.WriteString("\033[31mAssertion failed:")
 				if len(args) > 1 {
-					fmt.Print(" ")
-					for i, arg := range args[1:] {
-						if i > 0 {
-							fmt.Print(" ")
-						}
-						fmt.Print(formatValue(arg))
-					}
+					b.WriteString(" ")
+					b.WriteString(joinConsoleArgs(args[1:]))
 				}
-				fmt.Println("\033[0m")
+				b.WriteString("\033[0m\n")
+				consoleWrite(b.String())
 			}
 			return nil
 		}),
@@ -196,34 +158,29 @@ func RegisterConsole(env *r2core.Environment) {
 			}
 
 			obj := args[0]
+			var b strings.Builder
 			switch v := obj.(type) {
 			case map[string]interface{}:
-				fmt.Printf("Object {\n")
+				b.WriteString("Object {\n")
 				for key, value := range v {
-					fmt.Printf("  %s: %v\n", key, formatValue(value))
+					fmt.Fprintf(&b, "  %s: %v\n", key, formatValue(value))
 				}
-				fmt.Printf("}\n")
+				b.WriteString("}\n")
 			case []interface{}:
-				fmt.Printf("Array [\n")
+				b.WriteString("Array [\n")
 				for i, value := range v {
-					fmt.Printf("  %d: %v\n", i, formatValue(value))
+					fmt.Fprintf(&b, "  %d: %v\n", i, formatValue(value))
 				}
-				fmt.Printf("]\n")
+				b.WriteString("]\n")
 			default:
-				fmt.Printf("%T: %v\n", obj, obj)
+				fmt.Fprintf(&b, "%T: %v\n", obj, obj)
 			}
+			consoleWrite(b.String())
 			return nil
 		}),
 
 		"trace": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			fmt.Print("\033[35mTrace:")
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println("\033[0m")
+			consoleWrite("\033[35mTrace:" + joinConsoleArgs(args) + "\033[0m\n")
 			return nil
 		}),
 
@@ -311,23 +268,12 @@ func RegisterConsole(env *r2core.Environment) {
 		}),
 
 		"print": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
+			consoleWrite(joinConsoleArgs(args))
 			return nil
 		}),
 
 		"println": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			for i, arg := range args {
-				if i > 0 {
-					fmt.Print(" ")
-				}
-				fmt.Print(formatValue(arg))
-			}
-			fmt.Println()
+			consoleWrite(joinConsoleArgs(args) + "\n")
 			return nil
 		}),
 
@@ -498,15 +444,17 @@ func RegisterConsole(env *r2core.Environment) {
 				filled = width
 			}
 
-			fmt.Print("\r[")
+			var b strings.Builder
+			b.WriteString("\r[")
 			for i := 0; i < width; i++ {
 				if i < filled {
-					fmt.Print("=")
+					b.WriteString("=")
 				} else {
-					fmt.Print(" ")
+					b.WriteString(" ")
 				}
 			}
-			fmt.Printf("] %.1f%%", progress*100)
+			fmt.Fprintf(&b, "] %.1f%%", progress*100)
+			consoleWrite(b.String())
 			return nil
 		}),
 
@@ -537,6 +485,22 @@ var (
 	consoleCounters = make(map[string]int)
 )
 
+// consoleWrite serializes writes to stdout so that a single log/table/etc.
+// call is never torn apart by another goroutine's concurrent console output.
+func consoleWrite(s string) {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
+	fmt.Print(s)
+}
+
+func joinConsoleArgs(args []interface{}) string {
+	parts := make([]string, len(args))
+	for i, arg := range args {
+		parts[i] = formatValue(arg)
+	}
+	return strings.Join(parts, " ")
+}
+
 func formatValue(value interface{}) string {
 	switch v := value.(type) {
 	case string:
@@ -566,15 +530,17 @@ func printArrayTable(data []interface{}) {
 		return
 	}
 
-	fmt.Printf("┌─────────┬─────────────────────────┐\n")
-	fmt.Printf("│ (index) │         Values          │\n")
-	fmt.Printf("├─────────┼─────────────────────────┤\n")
+	var b strings.Builder
+	b.WriteString("┌─────────┬─────────────────────────┐\n")
+	b.WriteString("│ (index) │         Values          │\n")
+	b.WriteString("├─────────┼─────────────────────────┤\n")
 
 	for i, item := range data {
-		fmt.Printf("│ %7d │ %-23s │\n", i, formatValue(item))
+		fmt.Fprintf(&b, "│ %7d │ %-23s │\n", i, formatValue(item))
 	}
 
-	fmt.Printf("└─────────┴─────────────────────────┘\n")
+	b.WriteString("└─────────┴─────────────────────────┘\n")
+	consoleWrite(b.String())
 }
 
 func printObjectTable(data map[string]interface{}) {
@@ -582,15 +548,17 @@ func printObjectTable(data map[string]interface{}) {
 		return
 	}
 
-	fmt.Printf("┌─────────────────────────┬─────────────────────────┐\n")
-	fmt.Printf("│          Key            │         Value           │\n")
-	fmt.Printf("├─────────────────────────┼─────────────────────────┤\n")
+	var b strings.Builder
+	b.WriteString("┌─────────────────────────┬─────────────────────────┐\n")
+	b.WriteString("│          Key            │         Value           │\n")
+	b.WriteString("├─────────────────────────┼─────────────────────────┤\n")
 
 	for key, value := range data {
-		fmt.Printf("│ %-23s │ %-23s │\n", key, formatValue(value))
+		fmt.Fprintf(&b, "│ %-23s │ %-23s │\n", key, formatValue(value))
 	}
 
-	fmt.Printf("└─────────────────────────┴─────────────────────────┘\n")
+	b.WriteString("└─────────────────────────┴─────────────────────────┘\n")
+	consoleWrite(b.String())
 }
 
 func setConsoleTimer(label string, startTime time.Time) {

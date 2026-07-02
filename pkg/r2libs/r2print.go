@@ -312,7 +312,7 @@ func RegisterPrint(env *r2core.Environment) {
 			if !ok {
 				panic("printHeader: el argumento debe ser una cadena de texto")
 			}
-			separator := strings.Repeat("=", len(str))
+			separator := strings.Repeat("=", utf8.RuneCountInString(str))
 			fmt.Println(separator)
 			fmt.Println(str)
 			fmt.Println(separator)
