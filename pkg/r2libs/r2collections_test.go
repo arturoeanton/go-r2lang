@@ -356,3 +356,68 @@ func TestCollectionsExtendedFunctions(t *testing.T) {
 		}
 	})
 }
+
+// TestCollectionsSlice_EndInclusiveOfLastElement guards against an
+// off-by-one: end is an exclusive upper bound (matching Go slice-expression
+// semantics), so end == len(arr) is valid and means "through the last
+// element". The previous "end >= len(arr)" range check rejected that case,
+// making it impossible to ever slice through an array's last element.
+func TestCollectionsSlice_EndInclusiveOfLastElement(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterCollections(env)
+	collectionsModule := mustGetModule(t, env, "collections")
+	sliceFunc := collectionsModule["slice"].(r2core.BuiltinFunction)
+
+	arr := []interface{}{1.0, 2.0, 3.0, 4.0, 5.0}
+
+	result := sliceFunc(arr, 0.0, 5.0).([]interface{})
+	if len(result) != 5 || result[4] != 5.0 {
+		t.Fatalf("slice(arr, 0, 5) should include the last element, got %v", result)
+	}
+
+	result = sliceFunc(arr, 3.0, 5.0).([]interface{})
+	if len(result) != 2 || result[0] != 4.0 || result[1] != 5.0 {
+		t.Fatalf("slice(arr, 3, 5) should return the last two elements, got %v", result)
+	}
+
+	result = sliceFunc(arr, 5.0, 5.0).([]interface{})
+	if len(result) != 0 {
+		t.Fatalf("slice(arr, 5, 5) should return an empty array, got %v", result)
+	}
+
+	result = sliceFunc(r2core.InterfaceSlice{1.0, 2.0, 3.0}, 0.0, 3.0).([]interface{})
+	if len(result) != 3 {
+		t.Fatalf("slice should accept r2core.InterfaceSlice, got %v", result)
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected slice(arr, 0, 6) to panic (end out of range)")
+			}
+		}()
+		sliceFunc(arr, 0.0, 6.0)
+	}()
+
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("expected slice(arr, 3, 1) to panic (start > end)")
+			}
+		}()
+		sliceFunc(arr, 3.0, 1.0)
+	}()
+}
+
+func mustGetModule(t *testing.T, env *r2core.Environment, name string) map[string]interface{} {
+	t.Helper()
+	obj, ok := env.Get(name)
+	if !ok {
+		t.Fatalf("module %q not found", name)
+	}
+	module, ok := obj.(map[string]interface{})
+	if !ok {
+		t.Fatalf("%q is not a module map", name)
+	}
+	return module
+}

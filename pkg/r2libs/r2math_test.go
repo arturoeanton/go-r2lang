@@ -264,6 +264,38 @@ func TestMathConstants(t *testing.T) {
 	}
 }
 
+// TestMathConstants_AllBareGlobalsAlsoInModule guards against a bug where
+// LOG10E was set as a bare global ("for backwards compatibility", matching
+// its 10 sibling constants) but never copied into the math module map
+// alongside them — math.LOG10E panicked while every other math.CONST
+// (math.PI, math.E, ...) worked. Every constant that exists as a bare
+// global should also be reachable as math.<name>.
+func TestMathConstants_AllBareGlobalsAlsoInModule(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterMath(env)
+	mathModule := mustGetModule(t, env, "math")
+
+	bareGlobalConstants := []string{
+		"PI", "E", "PHI", "SQRT2", "SQRT_E", "SQRT_PI", "SQRT_PHI",
+		"LN2", "LN10", "LOG2E", "LOG10E",
+	}
+	for _, name := range bareGlobalConstants {
+		globalVal, ok := env.Get(name)
+		if !ok {
+			t.Errorf("bare global %q not found", name)
+			continue
+		}
+		moduleVal, ok := mathModule[name]
+		if !ok {
+			t.Errorf("math.%s not found in module map (only reachable as bare global %s)", name, name)
+			continue
+		}
+		if globalVal != moduleVal {
+			t.Errorf("math.%s (%v) does not match bare global %s (%v)", name, moduleVal, name, globalVal)
+		}
+	}
+}
+
 func TestMathErrorHandling(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterMath(env)

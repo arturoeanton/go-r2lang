@@ -19,10 +19,11 @@ func main() {
     let choice = rand.randChoice(arr);
     std.print("randChoice(...) =>", choice);
 
-    // 4) shuffle
+    // 4) shuffle (rand.shuffle returns a new shuffled array, like every
+    // other array builtin in R2Lang — it does not mutate arr in place)
     std.print("Array original =>", arr);
-    rand.shuffle(arr);
-    std.print("Array tras shuffle =>", arr);
+    let shuffled = rand.shuffle(arr);
+    std.print("Array tras shuffle =>", shuffled);
 
     // 5) sample
     let arr2 = [1,2,3,4,5,6,7,8,9];

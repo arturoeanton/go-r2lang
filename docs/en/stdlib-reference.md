@@ -26,16 +26,16 @@ math.sqrt(16)
 ```
 
 **There are no bare global builtins** — `print(...)` does not exist, you must
-write `std.print(...)` — with exactly **two** documented exceptions, both
-covered in detail in this document:
+write `std.print(...)` — with exactly **one** documented exception, covered
+in detail in this document:
 
 - `r2(fn, ...args)` and `go(fn, ...args)` (see
   [Bare globals: `r2()` and `go()`](#bare-globals-r2-and-go)) — goroutine
   launchers registered directly on the environment by `RegisterLib`.
-- `LOG10E` (see the [`math`](#math-math) module notes) — one numeric constant
-  that, due to what looks like an oversight, is only reachable as a bare
-  global and was never copied into the `math` module map alongside its 10
-  sibling constants (`PI`, `E`, etc., which *are* reachable both ways).
+
+(An earlier revision of this doc also listed `LOG10E` as a second exception
+— it was reachable as a bare global but not as `math.LOG10E`. Fixed: all 11
+numeric constants, including `LOG10E`, are now reachable both ways.)
 
 ### Type conventions used throughout this document
 
@@ -78,9 +78,9 @@ them directly, even though the behavior itself lives in the core interpreter
   `arr.filter(fn)`, `arr.map(fn)`, etc. all return a **new** array rather than
   mutating `arr` in place — you must reassign: `arr = arr.push(x)`. The
   `collections` module below follows the same convention for its own
-  `map`/`filter`/`push`-style helpers, with one notable **exception**:
-  `rand.shuffle(arr)` *does* mutate in place and returns `nil` (documented in
-  the `rand` section) — don't write `arr = rand.shuffle(arr)`.
+  `map`/`filter`/`push`-style helpers. `rand.shuffle(arr)` used to be an
+  exception (mutated in place, returned `nil`) — fixed to match the same
+  convention as everything else: `let shuffled = rand.shuffle(arr)`.
 - **`.length` vs `.length()` differs by type.** For an array, `.length` is
   itself a *function* you must call: `arr.length()`. For a string, `.length`
   is a plain numeric *property* with no call: `str.length` (no parentheses).
@@ -289,16 +289,15 @@ Large numeric module: trig/log/rounding primitives, array statistics, RNG helper
 
 #### Constants
 
-`math.PI`, `math.E`, `math.PHI` (golden ratio), `math.SQRT2`, `math.SQRT_E`, `math.SQRT_PI`, `math.SQRT_PHI`, `math.LN2`, `math.LN10`, `math.LOG2E` are set as plain values inside the `math` module map.
+`math.PI`, `math.E`, `math.PHI` (golden ratio), `math.SQRT2`, `math.SQRT_E`, `math.SQRT_PI`, `math.SQRT_PHI`, `math.LN2`, `math.LN10`, `math.LOG2E`, `math.LOG10E` are set as plain values inside the `math` module map. All 11 are also set as bare global variables (`env.Set("PI", ...)`, etc.) "for backwards compatibility" — both forms always agree.
+  ```r2
+  std.print(PI)          // works (bare global)
+  std.print(math.PI)     // also works (module member)
+  std.print(LOG10E)      // works (bare global)
+  std.print(math.LOG10E) // also works (module member)
+  ```
 
 **Notes / gotchas:**
-- **`math.LOG10E` does not exist** as a module member. The code sets these same 10 constants (plus an 11th, `LOG10E`) as bare *global* variables too (`env.Set("PI", ...)`, ..., `env.Set("LOG10E", ...)`) "for backwards compatibility" — but only 10 of the 11 are copied into the `math` module map itself, so `LOG10E` is only reachable as a bare global, not as `math.LOG10E`. This is the one real exception to "no bare globals" in this codebase.
-  ```r2
-  std.print(PI)         // works (bare global)
-  std.print(math.PI)    // also works (module member)
-  std.print(LOG10E)     // works (bare global only)
-  std.print(math.LOG10E) // panics: key not found
-  ```
 - `math.random`/`randomInt`/`randomRange`/`randomSample`/`shuffle`/`seed` all use Go's **global, unsynchronized** `math/rand` package source (auto-seeded once via `time.Now().UnixNano()` when `RegisterMath` runs). This is a **different RNG instance** from the `rand` module's mutex-protected `localRand` — seeding one does not affect the other (`math.seed(1)` has no effect on `rand.randInt(...)`, and vice versa).
 - `math.range`, `math.map`, and `collections`/`std`'s `range`/`map` are unrelated functions that happen to share a name across namespaces — always check which module you're calling.
 - `math.percentile` requires `p` in `[0,1]` (fraction), but `math.quartile`'s `q` argument is on a `0..4` scale (it's multiplied by `0.25` internally) — do not pass a fraction to `quartile` or an integer 0-4 to `percentile`.
@@ -315,17 +314,10 @@ Seedable, thread-safe (mutex-guarded) random utilities backed by a **package-lev
 | `rand.randInt` | `rand.randInt(min: number, max: number) -> number` | Inclusive `[min, max]`. Panics if `max < min`, or if `min`/`max` fall outside `±1e15` (guard against `int` overflow in the internal `max-min+1` computation). |
 | `rand.randFloat` | `rand.randFloat() -> number` | `localRand.Float64()` in `[0, 1)`. |
 | `rand.randChoice` | `rand.randChoice(arr: array) -> any` | Picks a random element. Panics if `arr` isn't an array or is empty. |
-| `rand.shuffle` | `rand.shuffle(arr: array) -> nil` | **Mutates `arr` in place** (Fisher–Yates) and returns `nil` — unlike `math.shuffle` and `collections`' functional-style helpers, this does NOT return a new array. |
+| `rand.shuffle` | `rand.shuffle(arr: array) -> array` | Returns a new shuffled array (Fisher–Yates); does not mutate `arr`, matching `math.shuffle` and `collections`' functional-style helpers. |
 | `rand.sample` | `rand.sample(arr: array, n: number) -> array` | Returns a new shuffled `n`-element sub-slice (does not mutate `arr`). Panics if `n < 0` or `n > len(arr)`. |
 
 **Notes / gotchas:**
-- `rand.shuffle` mutates its argument in place and returns `nil` — this breaks the "functional/immutable" convention used elsewhere (e.g. `math.shuffle`, `collections.*`). Do **not** write `arr = rand.shuffle(arr)`; that would discard `arr` (setting it to `nil`) after the in-place shuffle already happened.
-  ```r2
-  let arr = [1, 2, 3]
-  rand.shuffle(arr)       // arr is now shuffled in place
-  std.print(arr)          // shuffled
-  // arr = rand.shuffle(arr)   // WRONG: arr becomes nil
-  ```
 - `rand.*` functions accept both `[]interface{}` and `r2core.InterfaceSlice` via `toGenericSlice`, unlike some `string`/`collections` functions that require a literal `[]interface{}`.
 - `rand.randInit(seed)` only affects subsequent `rand.*` calls; it has no effect on `math.random`/`math.seed`'s separate RNG.
 
@@ -373,7 +365,7 @@ Array-focused functional helpers (map/filter/reduce/sort/group/zip/etc.) plus st
 | `collections.range` | `(start: number, end: number) -> array` | Builds `[start, end)`. **Panics** if `start > end` (contrast `std.range`, which silently returns `[]`). |
 | `collections.repeat` | `(count: number, value: any) -> array` | Returns an array of `count` copies of `value`. Confusingly, the numeric arg comes **first** here (`repeat(count, value)`), the opposite order from `string.repeat(str, count)`. |
 | `collections.copy` | `(arr: array) -> array` | Shallow copy (new backing array, same element references). |
-| `collections.slice` | `(arr: array, start: number, end: number) -> array` | Go-style `arr[start:end]`, **but both bounds are validated with `>=` against `len(arr)`, not `>`** — see gotcha below: you cannot slice through the last element. |
+| `collections.slice` | `(arr: array, start: number, end: number) -> array` | Go-style `arr[start:end]`; `end == len(arr)` is valid (includes the last element). |
 | `collections.map` | `(arr: array, fn: function) -> array` | Applies `fn` to each element, returns a new array. `fn` **must be a `*r2core.UserFunction`** (an R2Lang `func(x){...}` literal) — passing a built-in module function (e.g. `std.toString`) panics the type assertion. |
 | `collections.filter` | `(arr: array, fn: function) -> array` | Keeps elements where `toBool(fn(v))` is true. Same `UserFunction`-only restriction. |
 | `collections.reduce` | `(arr: array, fn: function, initial: any) -> any` | Left fold: `acc = fn(acc, v)` for each `v`. Same restriction. |
@@ -394,11 +386,11 @@ Array-focused functional helpers (map/filter/reduce/sort/group/zip/etc.) plus st
 
 **Notes / gotchas:**
 - **All `map`/`filter`/`reduce`/`find`/`sort`(custom comparator)/`partition`/`groupBy`/`sortBy` callbacks must be R2Lang-defined functions (`*r2core.UserFunction`)** — you cannot pass a built-in module function reference (e.g. `std.toString`) as the callback; doing so panics with a message like `"map: los argumentos deben ser (array, funcion)"`. Wrap it: `collections.map(arr, func(x) { return std.toString(x) })`.
-- `collections.slice(arr, start, end)` validates `end` with `end >= len(arr)` → panic, meaning **`end` must be strictly less than `len(arr)`**. There is no way to slice through to (and including) the last element using this function — `collections.slice(arr, 0, len(arr))` panics with `"slice: end fuera de rango"`. This looks like an off-by-one bug relative to typical `[start, end)` slicing semantics; work around it with `collections.copy` for a full-array copy, or core array indexing.
+- `collections.slice(arr, start, end)` uses standard `[start, end)` semantics, like Go's own `arr[start:end]`: `end == len(arr)` is valid and means "through the last element".
   ```r2
   let arr = [1, 2, 3, 4]
-  collections.slice(arr, 0, 4)   // panics: end fuera de rango (4 >= len(arr))
-  collections.slice(arr, 0, 3)   // ok, but excludes arr[3] (the last element)
+  collections.slice(arr, 0, 4)   // ok, includes arr[3] (the last element)
+  collections.slice(arr, 0, 3)   // ok, excludes arr[3]
   ```
 - `contains`/`indexOf`/`unique` use shallow `equals`, not `deepEqual` — arrays/maps as elements are effectively never "equal" to one another through these functions. Use `deepEqual` in a manual loop, or pre-map elements to comparable scalar keys, if you need structural dedup/membership over composite elements.
 - `collections.repeat(count, value)` and `string.repeat(str, count)` have their numeric/subject arguments in opposite order — easy to mix up.
@@ -753,7 +745,7 @@ The modern web framework: Express/Flask-style routing with path params, JSON/HTM
 | `web.delete` | `web.delete(path: string, handler) -> nil` | Same, `DELETE`. |
 | `web.static` | `web.static(prefix: string, dir: string) -> nil` | Serves files under local directory `dir` at URL prefix `prefix` (via `http.StripPrefix` + `http.FileServer`) on the global app. Static prefixes are matched before the dynamic route dispatcher. |
 | `web.listen` | `web.listen(port: string) -> never (blocks)` | Starts the global app's server (`net/http.Server`, `ReadHeaderTimeout: 15s`). Panics if `ListenAndServe` fails. |
-| `web.json` | `web.json(data: any) -> string` | `json.Marshal(data)`, returned as a plain **string** (not a `{type: "json"}` response-descriptor map — see gotcha below). |
+| `web.json` | `web.json(data: any) -> map` | Returns `{type: "json", data}`, recognized by the dispatcher (`Content-Type: application/json`). |
 | `web.html` | `web.html(content: string) -> map` | Returns `{type: "html", content}`, a response descriptor recognized by the handler-result dispatcher. |
 | `web.redirect` | `web.redirect(url: string) -> map` | Returns `{type: "redirect", url}`, recognized by the dispatcher (302 Found). |
 | `web.status` | `web.status(code: number) -> map` | Returns `{type: "status", code}` — recognized by the top-level response dispatcher only if it's the sole/entire returned value, and even then only sets the status with **no body** (unlike `ctx.status(code)`, see below, which is the intended way to set status + send a body). |
@@ -789,13 +781,12 @@ Handlers are called as `handler(ctx)` where `ctx` is a fresh map per-request:
 **Response-handling behavior (`handleResponse`, applies to both a handler's return value and `ctx.send(...)`'s argument):**
 - `string` → written as-is with `Content-Type: text/html; charset=utf-8`.
 - map with `type: "html"` → writes `content` field as HTML.
-- map with `type: "json"` → JSON-encodes the map's `data` field with `Content-Type: application/json` (note: `web.json()` does **not** produce this shape — see gotcha below).
+- map with `type: "json"` → JSON-encodes the map's `data` field with `Content-Type: application/json` (this is exactly the shape `web.json(data)` returns).
 - map with `type: "redirect"` → HTTP redirect to `url`.
 - map with `type: "status"` → sets only the status code from `code` (int), no body.
 - any other map, or any other value → JSON-encoded as-is with `Content-Type: application/json` (this is the path a plain `{...}` map returned from a handler takes — i.e. returning a plain object auto-serializes to JSON).
 
 **Notes / gotchas:**
-- `web.json(data)` returns a raw JSON **string**, not a `{type: "json", data: ...}` descriptor. If a handler does `return web.json(myObj);`, the returned value is a `string`, so `handleResponse`'s `string` case fires and sets `Content-Type: text/html` — **not** `application/json` — even though the body content is JSON text. To get a correct `Content-Type: application/json` response, either `return myObj;` directly (goes through the "any other value" branch → JSON-encoded with the right content type) or use `ctx.send(myObj)`.
 - `web.status(code)` (the standalone helper) only sets a status code with **no body** if returned alone, unlike `ctx.status(code).send(content)` which is the practical way to combine a status with a response body. Prefer `ctx.status(...)` inside handlers.
 - `app.use(middleware)` is a no-op as far as request handling goes in this codebase snapshot — registered middleware is stored but never called by `serveRoute`/`createRouteDispatcher`.
 - `web.get/post/put/delete` (standalone) and `web.createApp()`'s app both register only 4 methods — there is no `PATCH`/`HEAD`/`OPTIONS` registrar in `web` (unlike the older `http` module, which accepts any method string).
@@ -1631,15 +1622,19 @@ A sample of the documented functions across nine modules (`std`, `math`,
 exercised against a real build (`go build -o /tmp/r2lang_docs main.go`) with
 small `.r2` repro scripts, specifically targeting the gotchas called out
 above: `std.range` returning `[]` vs `collections.range` panicking on
-`start > end`, the bare-global-only `LOG10E` constant (present) vs
-`math.LOG10E` (absent, panics), `math.range` computing `max - min` rather
-than a sequence, `std.len`'s byte count vs `unicode.ulen`'s rune count,
-`collections.slice`'s off-by-one (`end` must be `< len(arr)`),
-`rand.shuffle`'s in-place mutation (returns `nil`, unlike the immutable
-`.push`/`.filter` convention), the `.length()` (array, callable) vs
-`.length` (string, property) distinction, `date.Date()` with zero arguments
-returning the methods-namespace map rather than "now", and
-`unicode.uisDigit` only classifying the first rune. Every one of these
-matched the documentation exactly on the first run — no discrepancies were
-found between the Go source reading and actual interpreter behavior, so
-nothing in the text above needed correction after verification.
+`start > end`, `math.range` computing `max - min` rather than a sequence,
+`std.len`'s byte count vs `unicode.ulen`'s rune count, the `.length()`
+(array, callable) vs `.length` (string, property) distinction,
+`date.Date()` with zero arguments returning the methods-namespace map
+rather than "now", and `unicode.uisDigit` only classifying the first rune.
+Every one of these matched the documentation exactly on the first run — no
+discrepancies were found between the Go source reading and actual
+interpreter behavior at the time.
+
+Four bugs originally found and documented here as gotchas —
+`math.LOG10E` missing from the module map, `collections.slice`'s
+off-by-one, `rand.shuffle`'s inconsistent in-place mutation, and
+`web.json()` returning a raw string instead of the typed response
+descriptor (mislabeling its `Content-Type`) — have since been fixed; this
+document was updated to describe the corrected behavior rather than the
+original bugs.

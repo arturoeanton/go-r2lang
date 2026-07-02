@@ -37,15 +37,21 @@ func TestRandInterfaceSlice(t *testing.T) {
 		}
 	})
 
-	t.Run("shuffle accepts InterfaceSlice and mutates in place", func(t *testing.T) {
+	t.Run("shuffle accepts InterfaceSlice and returns a new array without mutating the source", func(t *testing.T) {
 		arr := r2core.InterfaceSlice{1.0, 2.0, 3.0, 4.0, 5.0}
-		shuffleFunc(arr)
+		result, ok := shuffleFunc(arr).([]interface{})
+		if !ok {
+			t.Fatalf("shuffle: expected a []interface{} result, got %T", shuffleFunc(arr))
+		}
 		sum := 0.0
-		for _, v := range arr {
+		for _, v := range result {
 			sum += v.(float64)
 		}
 		if sum != 15.0 {
-			t.Errorf("shuffle: expected same elements summing to 15, got sum %v (%v)", sum, arr)
+			t.Errorf("shuffle: expected same elements summing to 15, got sum %v (%v)", sum, result)
+		}
+		if arr[0] != 1.0 || arr[1] != 2.0 || arr[2] != 3.0 || arr[3] != 4.0 || arr[4] != 5.0 {
+			t.Errorf("shuffle: expected source array to be unmodified, got %v", arr)
 		}
 	})
 

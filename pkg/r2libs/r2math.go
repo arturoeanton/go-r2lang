@@ -1030,6 +1030,7 @@ func RegisterMath(env *r2core.Environment) {
 		"LN2":      math.Ln2,
 		"LN10":     math.Ln10,
 		"LOG2E":    math.Log2E,
+		"LOG10E":   math.Log10E,
 	}
 
 	RegisterModule(env, "math", functions)

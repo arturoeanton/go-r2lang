@@ -118,7 +118,7 @@ func RegisterCollections(env *r2core.Environment) {
 				panic("slice: solo se aceptan 3 argumentos")
 			}
 
-			arr, ok := args[0].([]interface{})
+			arr, ok := toGenericSlice(args[0])
 			if !ok {
 				panic("slice: el primer argumento debe ser un array")
 			}
@@ -130,12 +130,21 @@ func RegisterCollections(env *r2core.Environment) {
 			start := int(startF)
 			end := int(endF)
 
-			if start < 0 || start >= len(arr) {
+			// end (and start) are exclusive upper bounds, matching Go slice-
+			// expression semantics: len(arr) is a valid value meaning
+			// "through the last element". The previous "end >= len(arr)"
+			// check rejected end == len(arr) too, making it impossible to
+			// ever slice through the last element of the array.
+			if start < 0 || start > len(arr) {
 				panic("slice: start fuera de rango")
 			}
 
-			if end < 0 || end >= len(arr) {
+			if end < 0 || end > len(arr) {
 				panic("slice: end fuera de rango")
+			}
+
+			if start > end {
+				panic("slice: start no puede ser mayor que end")
 			}
 
 			return arr[start:end]

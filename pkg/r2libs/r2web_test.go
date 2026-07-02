@@ -206,3 +206,46 @@ func TestWebAppConcurrentRegistration(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestWebJSON_ContentType guards against a bug where web.json(data) returned
+// a pre-marshaled JSON string instead of the typed {type:"json", data:...}
+// response descriptor handleResponse expects — handleResponse's "case
+// string:" branch always serves with Content-Type: text/html, so any
+// handler using web.json(...) had its response mislabeled instead of being
+// served as application/json.
+func TestWebJSON_ContentType(t *testing.T) {
+	app := newWebApp()
+
+	handler := evalUserFunction(t, `let h = func(ctx) {
+		return web.json({ ok: true });
+	}; h`)
+	registerRouteForApp(app, "GET", "/data", handler)
+
+	app.mu.RLock()
+	routesCopy := make(map[string]map[string]*r2core.UserFunction, len(app.routes))
+	for method, routes := range app.routes {
+		inner := make(map[string]*r2core.UserFunction, len(routes))
+		for path, h := range routes {
+			inner[path] = h
+		}
+		routesCopy[method] = inner
+	}
+	app.mu.RUnlock()
+
+	srv := httptest.NewServer(createRouteDispatcher(app, routesCopy))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/data")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("expected Content-Type application/json, got %q (body=%s)", ct, body)
+	}
+	if !strings.Contains(string(body), `"ok":true`) {
+		t.Fatalf("unexpected body: %s", body)
+	}
+}

@@ -79,14 +79,24 @@ func RegisterRand(env *r2core.Environment) {
 			if !ok {
 				panic("shuffle: first arg should be native []array")
 			}
+			// Copy-then-shuffle, returning the new array, instead of
+			// shuffling arr in place and returning nil: every other array
+			// builtin in this codebase (.push/.filter/.sort/.reverse/...,
+			// including math.shuffle, a second, independently-implemented
+			// shuffle in this same language) is immutable/functional —
+			// mutating in place here was a silent inconsistency that made
+			// `let shuffled = rand.shuffle(arr)` assign nil while quietly
+			// mutating the caller's original array instead.
 			n := len(arr)
+			result := make([]interface{}, n)
+			copy(result, arr)
 			randMu.Lock()
 			defer randMu.Unlock()
 			for i := n - 1; i > 0; i-- {
 				j := localRand.Intn(i + 1)
-				arr[i], arr[j] = arr[j], arr[i]
+				result[i], result[j] = result[j], result[i]
 			}
-			return nil
+			return result
 		}),
 
 		"sample": r2core.BuiltinFunction(func(args ...interface{}) interface{} {

@@ -80,11 +80,17 @@ func RegisterWeb(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("web: json() requires (data)")
 			}
-			b, err := json.Marshal(args[0])
-			if err != nil {
-				panic(fmt.Sprintf("web: json() failed to marshal value: %v", err))
+			// Return the typed response descriptor (matching html()/
+			// redirect()/status() below), not a pre-marshaled string.
+			// handleResponse's "case string:" branch always serves with
+			// Content-Type: text/html — returning a raw JSON string here
+			// used to mean any handler using web.json(...) actually served
+			// its response mislabeled as text/html instead of
+			// application/json.
+			return map[string]interface{}{
+				"type": "json",
+				"data": args[0],
 			}
-			return string(b)
 		}),
 		"html": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
