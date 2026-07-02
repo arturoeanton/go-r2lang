@@ -25,3 +25,28 @@ go.work.sum
 .env
 
 .idea/
+
+# macOS Finder metadata
+.DS_Store
+
+# Compiled binaries built by this repo's own build commands (see
+# CLAUDE.md's "Building and Running" section: go build -o r2lang main.go,
+# -o r2 cmd/r2/main.go, -o r2test cmd/r2test/main.go, -o r2repl cmd/repl/main.go)
+/r2lang
+/go-r2lang
+/r2
+/r2test
+/r2repl
+
+# REPL command history (local to whoever ran the REPL)
+.r2lang_history
+
+# cmd/r2test's default output directory (see cmd/r2test/main.go's
+# defaultConfig OutputDir) — generated test/coverage reports, not source.
+/test-results/
+/coverage/
+
+# performance_test.go's benchmark report — regenerates with different
+# timing numbers on every local run of `go test -bench=. performance_test.go`,
+# so tracking it just produces commit noise.
+performance_report.md

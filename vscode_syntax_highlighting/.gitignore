@@ -1,0 +1,8 @@
+# npm dependencies — regenerate with `npm install` (see package.json/package-lock.json)
+node_modules/
+
+# TypeScript compile output — regenerate with `npm run compile`
+out/
+
+# Packaged extension — regenerate with `vsce package`
+*.vsix
