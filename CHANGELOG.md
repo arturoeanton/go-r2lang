@@ -16,6 +16,13 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.30] - Standard library reference
+### Added
+- `docs/en/stdlib-reference.md`: every function/method across all 32 live
+  `RegisterXxx` modules (~640 entries), documented from the Go source and
+  verified against real interpreter runs across 9 modules. Linked from the
+  README.
+
 ## [0.1.29] - Real test execution in r2test
 ### Fixed
 - **`cmd/r2test`'s `ParseTestFile` was a placeholder that never actually
@@ -290,7 +297,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.29...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.30...HEAD
+[0.1.30]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.29...v0.1.30
 [0.1.29]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.28...v0.1.29
 [0.1.28]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...v0.1.28
 [0.1.27]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...v0.1.27
