@@ -40,8 +40,8 @@ func (p *PathObject) Eval(env *r2core.Environment) interface{} {
 // FileStreamObject represents a stream of lines from a file with fluent operations.
 type FileStreamObject struct {
 	path    string
-	filters []r2core.BuiltinFunction
-	mappers []r2core.BuiltinFunction
+	filters []*r2core.UserFunction
+	mappers []*r2core.UserFunction
 	limit   int
 }
 
@@ -62,7 +62,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 			if len(args) < 1 {
 				panic("FileStream.filter needs a callback function")
 			}
-			callback, ok := args[0].(r2core.BuiltinFunction)
+			callback, ok := args[0].(*r2core.UserFunction)
 			if !ok {
 				panic("FileStream.filter: argument must be a function")
 			}
@@ -75,7 +75,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 			if len(args) < 1 {
 				panic("FileStream.map needs a callback function")
 			}
-			callback, ok := args[0].(r2core.BuiltinFunction)
+			callback, ok := args[0].(*r2core.UserFunction)
 			if !ok {
 				panic("FileStream.map: argument must be a function")
 			}
@@ -113,7 +113,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 				// Apply filters
 				shouldInclude := true
 				for _, filter := range fs.filters {
-					filterResult := filter(line).(bool) // Assuming filter returns boolean
+					filterResult := toBool(filter.Call(line))
 					if !filterResult {
 						shouldInclude = false
 						break
@@ -124,7 +124,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 					// Apply mappers
 					mappedLine := interface{}(line)
 					for _, mapper := range fs.mappers {
-						mappedLine = mapper(mappedLine)
+						mappedLine = mapper.Call(mappedLine)
 					}
 					result = append(result, mappedLine)
 					linesRead++
@@ -170,7 +170,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 				// Apply filters
 				shouldInclude := true
 				for _, filter := range fs.filters {
-					filterResult := filter(line).(bool) // Assuming filter returns boolean
+					filterResult := toBool(filter.Call(line))
 					if !filterResult {
 						shouldInclude = false
 						break
@@ -181,7 +181,7 @@ func (fs *FileStreamObject) Getattr(name string) (r2core.Node, bool) {
 					// Apply mappers
 					mappedLine := interface{}(line)
 					for _, mapper := range fs.mappers {
-						mappedLine = mapper(mappedLine)
+						mappedLine = mapper.Call(mappedLine)
 					}
 					_, err := writer.WriteString(fmt.Sprintf("%v\n", mappedLine))
 					if err != nil {

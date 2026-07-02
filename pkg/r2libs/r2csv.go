@@ -37,7 +37,7 @@ func RegisterCSV(env *r2core.Environment) {
 			}
 
 			reader := csv.NewReader(strings.NewReader(csvStr))
-			reader.Comma = rune(delimiter[0])
+			reader.Comma = []rune(delimiter)[0]
 
 			records, err := reader.ReadAll()
 			if err != nil {
@@ -109,7 +109,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			var result strings.Builder
 			writer := csv.NewWriter(&result)
-			writer.Comma = rune(delimiter[0])
+			writer.Comma = []rune(delimiter)[0]
 
 			// Check if data is array of objects or array of arrays
 			if firstRow, ok := data[0].(map[string]interface{}); ok {
@@ -187,7 +187,7 @@ func RegisterCSV(env *r2core.Environment) {
 			defer file.Close()
 
 			reader := csv.NewReader(file)
-			reader.Comma = rune(delimiter[0])
+			reader.Comma = []rune(delimiter)[0]
 
 			records, err := reader.ReadAll()
 			if err != nil {
@@ -260,7 +260,7 @@ func RegisterCSV(env *r2core.Environment) {
 			defer file.Close()
 
 			writer := csv.NewWriter(file)
-			writer.Comma = rune(delimiter[0])
+			writer.Comma = []rune(delimiter)[0]
 			defer writer.Flush()
 
 			if len(data) == 0 {
@@ -579,7 +579,7 @@ func RegisterCSV(env *r2core.Environment) {
 			}
 
 			reader := csv.NewReader(strings.NewReader(csvStr))
-			reader.Comma = rune(delimiter[0])
+			reader.Comma = []rune(delimiter)[0]
 
 			var errors []interface{}
 			lineNum := 0

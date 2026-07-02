@@ -141,11 +141,11 @@ func RegisterOS(env *r2core.Environment) {
 			if len(args) < 1 {
 				os.Exit(0)
 			}
-			code, ok := args[0].(int)
+			code, ok := args[0].(float64)
 			if !ok {
 				panic("exit: arg should be int")
 			}
-			os.Exit(code)
+			os.Exit(int(code))
 			return nil
 		}),
 

@@ -3,9 +3,9 @@ package r2libs
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 	// Podrías importar alguna librería de colores (ej. "github.com/fatih/color") si quieres
@@ -40,13 +40,14 @@ func RegisterPrint(env *r2core.Environment) {
 			if !ok1 {
 				panic("printBox: first arg should be string")
 			}
-			if width < len(text)+2 {
-				width = len(text) + 2
+			textLen := utf8.RuneCountInString(text)
+			if width < textLen+2 {
+				width = textLen + 2
 			}
 			// Cabecera
 			fmt.Println("+" + strings.Repeat("-", width) + "+")
 			// Texto centrado
-			space := width - len(text)
+			space := width - textLen
 			leftPad := space / 2
 			rightPad := space - leftPad
 			fmt.Printf("|%s%s%s|\n", strings.Repeat(" ", leftPad), text, strings.Repeat(" ", rightPad))
@@ -144,7 +145,7 @@ func RegisterPrint(env *r2core.Environment) {
 			colWidths := make([]int, maxCols)
 			for i := 0; i < len(tableData); i++ {
 				for j := 0; j < len(tableData[i]); j++ {
-					cellLen := len(tableData[i][j])
+					cellLen := utf8.RuneCountInString(tableData[i][j])
 					if cellLen > colWidths[j] {
 						colWidths[j] = cellLen
 					}
@@ -171,10 +172,11 @@ func RegisterPrint(env *r2core.Environment) {
 			if !(ok1 && ok2) {
 				panic("printAlign: (string, align, width)")
 			}
-			if width < len(s) {
-				width = len(s)
+			sLen := utf8.RuneCountInString(s)
+			if width < sLen {
+				width = sLen
 			}
-			space := width - len(s)
+			space := width - sLen
 			switch strings.ToLower(alignOpt) {
 			case "left":
 				// s + spaces
@@ -215,11 +217,7 @@ func RegisterPrint(env *r2core.Environment) {
 			if len(args) > 1 {
 				formatArgs = args[1:]
 			}
-			f, err := strconv.Unquote("\"" + format + "\"")
-			if err != nil {
-				panic("printf: error al parsear formato")
-			}
-			fmt.Printf(f, formatArgs...)
+			fmt.Printf(format, formatArgs...)
 			return nil
 		}),
 
@@ -235,11 +233,7 @@ func RegisterPrint(env *r2core.Environment) {
 			if len(args) > 1 {
 				formatArgs = args[1:]
 			}
-			f, err := strconv.Unquote("\"" + format + "\"")
-			if err != nil {
-				panic("printf: error al parsear formato")
-			}
-			return fmt.Sprintf(f, formatArgs...)
+			return fmt.Sprintf(format, formatArgs...)
 		}),
 
 		"sprint": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
