@@ -142,7 +142,7 @@ func RegisterStd(env *r2core.Environment) {
 			if len(args) < 2 {
 				panic("join needs 2 arguments: (array, separator)")
 			}
-			arr, ok := args[0].([]interface{})
+			arr, ok := toGenericSlice(args[0])
 			sep, ok2 := args[1].(string)
 			if !ok || !ok2 {
 				panic("join: args should be Array, string")
@@ -258,7 +258,7 @@ func RegisterStd(env *r2core.Environment) {
 				if i > 0 {
 					fmt.Print(" ")
 				}
-				fmt.Print(arg)
+				fmt.Print(printSafeArg(arg))
 			}
 			fmt.Println()
 			return nil
@@ -272,8 +272,37 @@ func RegisterStd(env *r2core.Environment) {
 	RegisterModule(env, "std", functions)
 }
 
+// printSafeArg substitutes a stable "<function>" placeholder for any Go func
+// value (BuiltinFunction, *UserFunction, or closures returned by member
+// access) so std.print never leaks a raw Go pointer address to the user via
+// fmt's default %v formatting.
+func printSafeArg(arg interface{}) interface{} {
+	if arg == nil {
+		return arg
+	}
+	if reflect.TypeOf(arg).Kind() == reflect.Func {
+		return "<function>"
+	}
+	return arg
+}
+
 // Helper for deepCopy (recursive)
 func deepCopy(value interface{}) interface{} {
+	return deepCopyRec(value, make(map[uintptr]interface{}))
+}
+
+// deepCopyRec walks maps/slices/arrays of plain data recursively. seen maps
+// the address of a map/slice already being copied to the (possibly still
+// partially-built) copy created for it, so an R2Lang array/map made
+// self-referential via index assignment (e.g. a[0] = a) reuses that copy
+// instead of recursing forever and crashing the process with an
+// unrecoverable Go stack overflow, the same bug class fixed in
+// collections.flatten. Pointers to interpreter-internal types (functions,
+// dates, object instances, etc.) are returned as-is: reflecting into their
+// fields and rebuilding them as a bare struct would strip the pointer type
+// those values are expected to have everywhere else (e.g. *r2core.UserFunction),
+// making the copy uncallable/unusable instead of an equivalent value.
+func deepCopyRec(value interface{}, seen map[uintptr]interface{}) interface{} {
 	if value == nil {
 		return nil
 	}
@@ -281,34 +310,48 @@ func deepCopy(value interface{}) interface{} {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Ptr:
-		if v.IsNil() {
-			return nil
-		}
-		// Dereference pointer and copy recursively
-		return deepCopy(v.Elem().Interface())
+		// Not a map/slice/array of plain data: return unchanged rather than
+		// dereferencing and reconstructing an opaque interpreter type.
+		return value
 	case reflect.Map:
+		if v.IsNil() {
+			return value
+		}
+		ptr := v.Pointer()
+		if existing, ok := seen[ptr]; ok {
+			return existing
+		}
 		newMap := make(map[string]interface{}, v.Len())
+		seen[ptr] = newMap
 		for _, key := range v.MapKeys() {
 			strKey := fmt.Sprint(key.Interface())
-			newMap[strKey] = deepCopy(v.MapIndex(key).Interface())
+			newMap[strKey] = deepCopyRec(v.MapIndex(key).Interface(), seen)
 		}
 		return newMap
 	case reflect.Slice:
+		if v.IsNil() {
+			return value
+		}
 		// Handle byte slices separately to avoid treating them as generic arrays
 		if v.Type().Elem().Kind() == reflect.Uint8 {
 			newSlice := make([]byte, v.Len())
 			reflect.Copy(reflect.ValueOf(newSlice), v)
 			return newSlice
 		}
+		ptr := v.Pointer()
+		if existing, ok := seen[ptr]; ok {
+			return existing
+		}
 		newSlice := make([]interface{}, v.Len())
+		seen[ptr] = newSlice
 		for i := 0; i < v.Len(); i++ {
-			newSlice[i] = deepCopy(v.Index(i).Interface())
+			newSlice[i] = deepCopyRec(v.Index(i).Interface(), seen)
 		}
 		return newSlice
 	case reflect.Array:
 		newArray := make([]interface{}, v.Len())
 		for i := 0; i < v.Len(); i++ {
-			newArray[i] = deepCopy(v.Index(i).Interface())
+			newArray[i] = deepCopyRec(v.Index(i).Interface(), seen)
 		}
 		return newArray
 	default:
@@ -329,7 +372,7 @@ func isType(value interface{}, typeString string) bool {
 		_, ok := value.(bool)
 		return ok
 	case "array":
-		_, ok := value.([]interface{})
+		_, ok := toGenericSlice(value)
 		return ok
 	case "map", "object":
 		_, ok := value.(map[string]interface{})

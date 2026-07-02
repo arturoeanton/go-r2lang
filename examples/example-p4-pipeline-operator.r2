@@ -30,9 +30,9 @@ std.print("10 |> (x => x * 3) |> (x => x + 5) =", result5)    // 35
 std.print("\n📊 3. Procesamiento de Datos:")
 func filterPositive(arr) {
     let result = []
-    for (let i = 0; i < arr.length; i++) {
+    for (let i = 0; i < arr.length(); i++) {
         if (arr[i] > 0) {
-            result.push(arr[i])
+            result = result.push(arr[i])
         }
     }
     return result
@@ -40,7 +40,7 @@ func filterPositive(arr) {
 
 func sumArray(arr) {
     let total = 0
-    for (let i = 0; i < arr.length; i++) {
+    for (let i = 0; i < arr.length(); i++) {
         total += arr[i]
     }
     return total
@@ -54,9 +54,9 @@ std.print("Suma de positivos:", positiveSum)  // 23
 
 // 4. Pipeline para transformación de strings
 std.print("\n📝 4. Transformación de Strings:")
-func trim(str) { return str.trim() }
-func toLowerCase(str) { return str.toLowerCase() }
-func capitalize(str) { return str[0].toUpperCase() + str.slice(1) }
+func trim(str) { return string.trim(str) }
+func toLowerCase(str) { return string.toLowerCase(str) }
+func capitalize(str) { return string.capitalize(str) }
 
 let rawText = "  HELLO WORLD  "
 let processed = rawText |> trim |> toLowerCase |> capitalize
@@ -81,7 +81,7 @@ func validateMinLength(str) {
 }
 
 func sanitize(str) {
-    return str.replace(/[<>]/g, "")
+    return regex.replaceAll("[<>]", str, "")
 }
 
 let userInput = "abc<script>"
@@ -141,12 +141,12 @@ std.print("  3 |> double |> addTen |> square =", pipelineResult)
 
 // 9. Pipeline con manejo de errores
 std.print("\n🛡️  9. Pipeline con Manejo de Errores:")
-func safeDivide(x) {
-    return (y) => {
-        if (y == 0) {
+func safeDivide(divisor) {
+    return (dividend) => {
+        if (divisor == 0) {
             panic("División por cero")
         }
-        return x / y
+        return dividend / divisor
     }
 }
 
@@ -166,9 +166,9 @@ std.print("\n🌍 10. Caso de Uso Real - API Response:")
 func extractData(response) { return response.data }
 func filterActive(items) {
     let result = []
-    for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < items.length(); i++) {
         if (items[i].active) {
-            result.push(items[i])
+            result = result.push(items[i])
         }
     }
     return result
@@ -176,8 +176,8 @@ func filterActive(items) {
 
 func mapToNames(items) {
     let result = []
-    for (let i = 0; i < items.length; i++) {
-        result.push(items[i].name)
+    for (let i = 0; i < items.length(); i++) {
+        result = result.push(items[i].name)
     }
     return result
 }

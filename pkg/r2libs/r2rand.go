@@ -58,7 +58,7 @@ func RegisterRand(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("randChoice needs (array)")
 			}
-			arr, ok := args[0].([]interface{})
+			arr, ok := toGenericSlice(args[0])
 			if !ok {
 				panic("randChoice: first arg should be native []array")
 			}
@@ -75,7 +75,7 @@ func RegisterRand(env *r2core.Environment) {
 			if len(args) < 1 {
 				panic("shuffle needs (array)")
 			}
-			arr, ok := args[0].([]interface{})
+			arr, ok := toGenericSlice(args[0])
 			if !ok {
 				panic("shuffle: first arg should be native []array")
 			}
@@ -93,7 +93,7 @@ func RegisterRand(env *r2core.Environment) {
 			if len(args) < 2 {
 				panic("sample needs (array, n)")
 			}
-			arr, ok := args[0].([]interface{})
+			arr, ok := toGenericSlice(args[0])
 			if !ok {
 				panic("sample: first arg should be native []array")
 			}

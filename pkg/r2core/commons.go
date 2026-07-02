@@ -2,6 +2,7 @@ package r2core
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -356,7 +357,14 @@ func toString(val interface{}) string {
 		return "false"
 	case nil:
 		return ""
+	case BuiltinFunction:
+		return "<function>"
+	case *UserFunction:
+		return "<function>"
 	default:
+		if isFunctionValue(v) {
+			return "<function>"
+		}
 		return fmt.Sprintf("%v", v)
 	}
 }
@@ -384,9 +392,23 @@ func toStringOptimized(val interface{}) string {
 		return "false"
 	case nil:
 		return ""
+	case BuiltinFunction:
+		return "<function>"
+	case *UserFunction:
+		return "<function>"
 	default:
+		if isFunctionValue(v) {
+			return "<function>"
+		}
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// isFunctionValue reports whether v is a Go func value (e.g. an anonymous
+// closure returned by member access like dslResult.GetResult) so callers can
+// avoid leaking its raw pointer address via fmt's default %v formatting.
+func isFunctionValue(v interface{}) bool {
+	return reflect.TypeOf(v) != nil && reflect.TypeOf(v).Kind() == reflect.Func
 }
 
 // smartParseFloat intelligently parses strings to float with enhanced conversion
