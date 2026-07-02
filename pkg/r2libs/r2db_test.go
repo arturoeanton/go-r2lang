@@ -78,7 +78,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		)`
 
 		result := execFunc(connId, createTableSQL)
-		if result.(int64) != 0 {
+		if result.(float64) != 0 {
 			t.Fatal("CREATE TABLE should affect 0 rows")
 		}
 
@@ -87,7 +87,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		lastInsertIdFunc := lastInsertIdFuncVal.(r2core.BuiltinFunction)
 		insertSQL := "INSERT INTO users (name, email, age) VALUES (?, ?, ?)"
 		lastId := lastInsertIdFunc(connId, insertSQL, "John Doe", "john@example.com", 30)
-		if lastId.(int64) != 1 {
+		if lastId.(float64) != 1 {
 			t.Fatalf("First insert should have ID 1, got %v", lastId)
 		}
 
@@ -126,7 +126,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		// Test update
 		updateSQL := "UPDATE users SET age = ? WHERE name = ?"
 		updateResult := execFunc(connId, updateSQL, 31, "John Doe")
-		if updateResult.(int64) != 1 {
+		if updateResult.(float64) != 1 {
 			t.Fatalf("UPDATE should affect 1 row, got %v", updateResult)
 		}
 
@@ -138,14 +138,14 @@ func TestDatabaseFunctions(t *testing.T) {
 			t.Fatal("Expected 1 row after update")
 		}
 		age := verifyRows[0].(map[string]interface{})["age"]
-		if age.(int64) != 31 {
+		if age.(float64) != 31 {
 			t.Fatalf("Expected age 31, got %v", age)
 		}
 
 		// Test delete
 		deleteSQL := "DELETE FROM users WHERE name = ?"
 		deleteResult := execFunc(connId, deleteSQL, "Bob Johnson")
-		if deleteResult.(int64) != 1 {
+		if deleteResult.(float64) != 1 {
 			t.Fatalf("DELETE should affect 1 row, got %v", deleteResult)
 		}
 
@@ -154,7 +154,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		countResult := queryFunc(connId, countSQL)
 		countRows := countResult.([]interface{})
 		count := countRows[0].(map[string]interface{})["count"]
-		if count.(int64) != 2 {
+		if count.(float64) != 2 {
 			t.Fatalf("Expected 2 users remaining, got %v", count)
 		}
 
@@ -290,7 +290,7 @@ func TestDatabaseFunctions(t *testing.T) {
 		rows := result.([]interface{})
 		row := rows[0].(map[string]interface{})
 
-		if row["int_val"].(int64) != 42 {
+		if row["int_val"].(float64) != 42 {
 			t.Fatalf("Expected int_val 42, got %v", row["int_val"])
 		}
 
@@ -306,4 +306,75 @@ func TestDatabaseFunctions(t *testing.T) {
 		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
 		closeFunc(connId)
 	})
+
+	// Regression test: driver-returned int64/time.Time values must be
+	// converted to R2Lang's native float64/*r2core.DateValue types.
+	// Left as int64/time.Time, R2Lang's arithmetic helpers (toFloat,
+	// isNumeric in pkg/r2core) don't recognize them: "row.count + 1" would
+	// either panic (subtraction) or silently string-concatenate (addition)
+	// instead of doing numeric arithmetic.
+	t.Run("TestDBNumericAndDateConversion", func(t *testing.T) {
+		dbModuleObj, _ := env.Get("db")
+		dbModule := dbModuleObj.(map[string]interface{})
+		connIdFuncVal, _ := dbModule["dbConnect"]
+		connIdFunc := connIdFuncVal.(r2core.BuiltinFunction)
+		connId := connIdFunc("sqlite3", ":memory:").(string)
+
+		execFuncVal, _ := dbModule["dbExec"]
+		execFunc := execFuncVal.(r2core.BuiltinFunction)
+		queryFuncVal, _ := dbModule["dbQuery"]
+		queryFunc := queryFuncVal.(r2core.BuiltinFunction)
+
+		execFunc(connId, `CREATE TABLE events (id INTEGER PRIMARY KEY, occurred_at DATETIME)`)
+		execFunc(connId, "INSERT INTO events (occurred_at) VALUES (?)", "2024-01-02 03:04:05")
+
+		result := queryFunc(connId, "SELECT id, occurred_at FROM events")
+		rows := result.([]interface{})
+		if len(rows) != 1 {
+			t.Fatalf("Expected 1 row, got %d", len(rows))
+		}
+		row := rows[0].(map[string]interface{})
+
+		idVal, ok := row["id"].(float64)
+		if !ok {
+			t.Fatalf("Expected id to be float64, got %T (%v)", row["id"], row["id"])
+		}
+		if idVal != 1 {
+			t.Fatalf("Expected id 1, got %v", idVal)
+		}
+
+		dateVal, ok := row["occurred_at"].(*r2core.DateValue)
+		if !ok {
+			t.Fatalf("Expected occurred_at to be *r2core.DateValue, got %T (%v)", row["occurred_at"], row["occurred_at"])
+		}
+		if dateVal.Year() != 2024 || dateVal.Month() != 1 || dateVal.Day() != 2 {
+			t.Fatalf("Expected date 2024-01-02, got %v", dateVal)
+		}
+
+		closeFuncVal, _ := dbModule["dbClose"]
+		closeFunc := closeFuncVal.(r2core.BuiltinFunction)
+		closeFunc(connId)
+	})
+}
+
+// Regression test: postgres uses $1/$2/... placeholders, not the `?` syntax
+// mysql/sqlite3 accept. Without translation, lib/pq's NumInput() sees zero
+// placeholders in a `?`-based query and database/sql rejects any supplied
+// args with "sql: expected 0 arguments, got N".
+func TestAdaptPlaceholders(t *testing.T) {
+	cases := []struct {
+		driver, in, want string
+	}{
+		{"sqlite3", "SELECT * FROM t WHERE a = ? AND b = ?", "SELECT * FROM t WHERE a = ? AND b = ?"},
+		{"mysql", "SELECT * FROM t WHERE a = ?", "SELECT * FROM t WHERE a = ?"},
+		{"postgres", "SELECT * FROM t WHERE a = ? AND b = ?", "SELECT * FROM t WHERE a = $1 AND b = $2"},
+		{"postgres", "SELECT * FROM t WHERE a = 'literal ? mark' AND b = ?", "SELECT * FROM t WHERE a = 'literal ? mark' AND b = $1"},
+		{"postgres", "SELECT 1", "SELECT 1"},
+	}
+	for _, c := range cases {
+		got := adaptPlaceholders(c.driver, c.in)
+		if got != c.want {
+			t.Fatalf("adaptPlaceholders(%q, %q) = %q, want %q", c.driver, c.in, got, c.want)
+		}
+	}
 }

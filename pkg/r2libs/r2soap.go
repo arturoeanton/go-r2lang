@@ -1,6 +1,7 @@
 package r2libs
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/xml"
@@ -472,7 +473,7 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 
 		var bodyParts []string
 		for key, value := range params {
-			bodyParts = append(bodyParts, fmt.Sprintf("<%s>%v</%s>", key, value, key))
+			bodyParts = append(bodyParts, fmt.Sprintf("<%s>%s</%s>", key, xmlEscapeText(fmt.Sprintf("%v", value)), key))
 		}
 		bodyContent := strings.Join(bodyParts, "")
 		envelope := createOperationSOAPEnvelope(client.Namespace, operationName, bodyContent)
@@ -700,7 +701,7 @@ func (client *SOAPClient) callOperation(operationName string, params map[string]
 	// Build SOAP body from parameters with proper namespace
 	var bodyParts []string
 	for key, value := range params {
-		bodyParts = append(bodyParts, fmt.Sprintf("<%s>%v</%s>", key, value, key))
+		bodyParts = append(bodyParts, fmt.Sprintf("<%s>%s</%s>", key, xmlEscapeText(fmt.Sprintf("%v", value)), key))
 	}
 	bodyContent := strings.Join(bodyParts, "")
 
@@ -716,6 +717,20 @@ func (client *SOAPClient) callOperation(operationName string, params map[string]
 	// Parse response to R2Lang native types
 	parsedResponse := parseSOAPResponseToR2Lang(response)
 	return parsedResponse
+}
+
+// xmlEscapeText escapes text so it is safe to embed inside XML element
+// content. Parameter values passed to call/callSimple/callRaw are
+// interpolated into the generated envelope with fmt.Sprintf, so unescaped
+// "&", "<", ">" in user-supplied data would either produce a malformed
+// envelope (rejected by real SOAP servers/XML parsers) or let a value break
+// out of its element and inject sibling elements into the request body.
+func xmlEscapeText(s string) string {
+	var buf bytes.Buffer
+	if err := xml.EscapeText(&buf, []byte(s)); err != nil {
+		return s
+	}
+	return buf.String()
 }
 
 // createOperationSOAPEnvelope creates a SOAP envelope specifically for operation calls
@@ -800,11 +815,22 @@ func (client *SOAPClient) sendRequest(soapAction, envelope string) (string, erro
 		return "", err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && !looksLikeSOAPXML(responseData) {
 		return "", fmt.Errorf("HTTP error %d: %s", resp.StatusCode, string(responseData))
 	}
 
 	return string(responseData), nil
+}
+
+// looksLikeSOAPXML reports whether body looks like a SOAP envelope rather
+// than a generic HTTP error page. SOAP 1.1 servers conventionally report
+// faults using HTTP 500 with a well-formed <soap:Envelope>...<Fault>...
+// body; treating every non-200 status as a bare HTTP error would discard
+// that structured fault information before parseSOAPResponseToR2Lang gets a
+// chance to extract it.
+func looksLikeSOAPXML(body []byte) bool {
+	lower := strings.ToLower(string(body))
+	return strings.Contains(lower, "envelope") && strings.Contains(lower, "body")
 }
 
 // createSOAPEnvelope creates a SOAP 1.1 envelope
@@ -846,7 +872,7 @@ func sendSOAPRequest(url, soapAction, envelope string) (string, error) {
 		return "", err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && !looksLikeSOAPXML(responseData) {
 		return "", fmt.Errorf("HTTP error %d: %s", resp.StatusCode, string(responseData))
 	}
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 
@@ -17,14 +18,82 @@ import (
 
 // r2db.go: Database connectivity functions for R2Lang
 
+// dbConn bundles a live *sql.DB with the driver name it was opened with, so
+// callers can adapt driver-specific behavior (e.g. postgres uses $1/$2/...
+// placeholders instead of the ?  placeholders mysql/sqlite3 accept).
+type dbConn struct {
+	db     *sql.DB
+	driver string
+}
+
 // Global map to store database connections. R2Lang scripts can call db
 // builtins concurrently from multiple "r2"/goroutines, so access is guarded
 // by dbConnectionsMu.
 var (
-	dbConnections   = make(map[string]*sql.DB)
+	dbConnections   = make(map[string]*dbConn)
 	dbConnectionsMu sync.RWMutex
 	dbConnCounter   int
 )
+
+// adaptPlaceholders rewrites `?` positional placeholders into the
+// driver-specific syntax a driver expects. mysql and sqlite3 accept `?`
+// as-is; postgres (lib/pq) only recognizes `$1`, `$2`, ... and otherwise
+// reports NumInput() == 0, which makes database/sql reject any query args
+// with "sql: expected 0 arguments, got N". `?` inside single-quoted string
+// literals is left untouched.
+func adaptPlaceholders(driver, query string) string {
+	if driver != "postgres" || !strings.Contains(query, "?") {
+		return query
+	}
+
+	var sb strings.Builder
+	sb.Grow(len(query) + 8)
+	inString := false
+	argN := 0
+	for i := 0; i < len(query); i++ {
+		c := query[i]
+		switch {
+		case c == '\'':
+			inString = !inString
+			sb.WriteByte(c)
+		case c == '?' && !inString:
+			argN++
+			sb.WriteByte('$')
+			sb.WriteString(strconv.Itoa(argN))
+		default:
+			sb.WriteByte(c)
+		}
+	}
+	return sb.String()
+}
+
+// sqlValueToR2 converts a value scanned from a *sql.Rows into R2Lang's
+// native value model (float64 for numbers, string, bool, nil, or
+// *r2core.DateValue for dates/timestamps). Left unconverted, driver-returned
+// types such as int64 or time.Time slip past R2Lang's arithmetic helpers
+// (which only recognize float64/int/bool/string/nil), causing numeric
+// operations on query results to either panic or silently fall back to
+// string concatenation.
+func sqlValueToR2(v interface{}) interface{} {
+	switch val := v.(type) {
+	case nil:
+		return nil
+	case []byte:
+		return string(val)
+	case int64:
+		return float64(val)
+	case int32:
+		return float64(val)
+	case uint64:
+		return float64(val)
+	case float32:
+		return float64(val)
+	case time.Time:
+		return r2core.NewDateValue(val)
+	default:
+		return val
+	}
+}
 
 func RegisterDB(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
@@ -66,7 +135,7 @@ func RegisterDB(env *r2core.Environment) {
 			// (and leaking) that live *sql.DB.
 			dbConnCounter++
 			connId := fmt.Sprintf("conn_%d", dbConnCounter)
-			dbConnections[connId] = db
+			dbConnections[connId] = &dbConn{db: db, driver: driver}
 			dbConnectionsMu.Unlock()
 
 			return connId
@@ -80,7 +149,7 @@ func RegisterDB(env *r2core.Environment) {
 			query := toString(args[1])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbQuery: connection '%s' not found", connId))
@@ -92,7 +161,7 @@ func RegisterDB(env *r2core.Environment) {
 				queryArgs[i] = arg
 			}
 
-			rows, err := db.Query(query, queryArgs...)
+			rows, err := conn.db.Query(adaptPlaceholders(conn.driver, query), queryArgs...)
 			if err != nil {
 				panic(fmt.Sprintf("dbQuery: %v", err))
 			}
@@ -123,12 +192,7 @@ func RegisterDB(env *r2core.Environment) {
 				// Create map for this row
 				rowMap := make(map[string]interface{})
 				for i, col := range columns {
-					// Convert []uint8 to string if needed
-					if b, ok := values[i].([]uint8); ok {
-						rowMap[col] = string(b)
-					} else {
-						rowMap[col] = values[i]
-					}
+					rowMap[col] = sqlValueToR2(values[i])
 				}
 
 				results = append(results, rowMap)
@@ -149,7 +213,7 @@ func RegisterDB(env *r2core.Environment) {
 			query := toString(args[1])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbExec: connection '%s' not found", connId))
@@ -161,7 +225,7 @@ func RegisterDB(env *r2core.Environment) {
 				queryArgs[i] = arg
 			}
 
-			result, err := db.Exec(query, queryArgs...)
+			result, err := conn.db.Exec(adaptPlaceholders(conn.driver, query), queryArgs...)
 			if err != nil {
 				panic(fmt.Sprintf("dbExec: %v", err))
 			}
@@ -171,7 +235,7 @@ func RegisterDB(env *r2core.Environment) {
 				panic(fmt.Sprintf("dbExec: failed to get rows affected: %v", err))
 			}
 
-			return rowsAffected
+			return sqlValueToR2(rowsAffected)
 		}),
 
 		"dbClose": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -181,13 +245,13 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbClose: connection '%s' not found", connId))
 			}
 
-			err := db.Close()
+			err := conn.db.Close()
 			if err != nil {
 				panic(fmt.Sprintf("dbClose: %v", err))
 			}
@@ -205,13 +269,13 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbBegin: connection '%s' not found", connId))
 			}
 
-			tx, err := db.Begin()
+			tx, err := conn.db.Begin()
 			if err != nil {
 				panic(fmt.Sprintf("dbBegin: %v", err))
 			}
@@ -238,7 +302,7 @@ func RegisterDB(env *r2core.Environment) {
 			query := toString(args[1])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbLastInsertId: connection '%s' not found", connId))
@@ -250,7 +314,7 @@ func RegisterDB(env *r2core.Environment) {
 				queryArgs[i] = arg
 			}
 
-			result, err := db.Exec(query, queryArgs...)
+			result, err := conn.db.Exec(adaptPlaceholders(conn.driver, query), queryArgs...)
 			if err != nil {
 				panic(fmt.Sprintf("dbLastInsertId: %v", err))
 			}
@@ -260,7 +324,7 @@ func RegisterDB(env *r2core.Environment) {
 				panic(fmt.Sprintf("dbLastInsertId: failed to get last insert id: %v", err))
 			}
 
-			return lastId
+			return sqlValueToR2(lastId)
 		}),
 
 		"dbPing": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -270,13 +334,13 @@ func RegisterDB(env *r2core.Environment) {
 			connId := toString(args[0])
 
 			dbConnectionsMu.RLock()
-			db, exists := dbConnections[connId]
+			conn, exists := dbConnections[connId]
 			dbConnectionsMu.RUnlock()
 			if !exists {
 				panic(fmt.Sprintf("dbPing: connection '%s' not found", connId))
 			}
 
-			err := db.Ping()
+			err := conn.db.Ping()
 			return err == nil
 		}),
 
