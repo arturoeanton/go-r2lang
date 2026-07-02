@@ -3,7 +3,7 @@
   <br />
   <h1>R2Lang</h1>
   <p>
-    <b>Write elegant tests, scripts, and applications with a language that blends simplicity and power.</b>
+    <b>A scripting language and DSL factory for Go, powered by go-dsl.</b>
   </p>
   <br />
 </div>
@@ -21,16 +21,16 @@
 
 ---
 
-**R2Lang** is a modern, dynamic programming language written in Go that combines the simplicity of JavaScript with powerful features for modern development. With its clean modular architecture and comprehensive built-in capabilities, R2Lang 2025 offers everything you need for scripting, web development, testing, and application building.
+**R2Lang** is a dynamic scripting language written in Go, with JavaScript-inspired syntax, for automation scripts, small services, and test suites — and, distinctively, a built-in **DSL factory**: the `dsl { }` block lets any R2Lang script define its own custom mini-language (tokens, grammar rules, semantic actions) and parse/evaluate code against it at runtime. That DSL engine is powered by [go-dsl](https://github.com/arturoeanton/go-dsl), a general-purpose Go DSL-building library.
 
-Whether you're writing automation scripts, building web APIs, creating robust test suites, or developing concurrent applications, R2Lang provides professional-grade tools in an elegant, readable package.
+R2Lang is not a replacement for JavaScript, Python, or Go — it's a lighter-weight tool for the specific niche of "I need a small embedded language, and I might also need a custom mini-language inside it" (config DSLs, business-rule engines, query languages, calculators, command grammars).
 
 ## ✨ Key Features
 
 | Feature | Description | Example |
 |---------|-------------|---------|
 | **🎯 Modern Language (2025)** | JavaScript-style syntax with `true`/`false` literals, arrow functions, const declarations, compound operators, and logical negation | `let double = x => x * 2; const API = "url"; count += 5; if (!isValid) { ... }` |
-| **🔧 DSL Builder** | **🌟 ORIGINAL** - Create custom Domain-Specific Languages with simple syntax | `dsl Calculator { token("NUM", "[0-9]+"); rule("sum", ["NUM", "+", "NUM"], "add"); }` |
+| **🔧 DSL Builder** | Create custom Domain-Specific Languages with simple syntax, backed by [go-dsl](https://github.com/arturoeanton/go-dsl) | `dsl Calculator { token("NUM", "[0-9]+"); rule("sum", ["NUM", "+", "NUM"], "add"); }` |
 | **🗺️ Advanced Maps** | JavaScript-style map literals with multiline support and mixed separators | `let config = { host: "localhost", port: 8080, ssl: true }` |
 | **📝 Template Strings** | String interpolation with backticks and multiple variables | `let msg = \`Hello ${name}, you have ${count} messages\`` |
 | **🌍 Unicode Support** | Full international character support in strings and identifiers | `let año = 2025; let текст = "Привет мир"; let 名前 = "田中"` |
@@ -46,9 +46,28 @@ Whether you're writing automation scripts, building web APIs, creating robust te
 
 ---
 
-## 🌟 DSL Builder - Our Most Original Feature
+## 🌟 DSL Builder - Our Most Distinctive Feature
 
-**R2Lang's DSL Builder is our most innovative feature**, allowing you to create custom Domain-Specific Languages with an elegantly simple syntax. This sets R2Lang apart from other languages by making parser creation as easy as writing a function.
+**R2Lang's DSL Builder is its most distinctive feature**, letting you create custom Domain-Specific Languages with an elegantly simple syntax directly inside a `.r2` script. The `dsl { }` block is R2Lang syntax; the grammar engine underneath is [go-dsl](https://github.com/arturoeanton/go-dsl) — a Packrat/PEG parser with deterministic tokenization, left-recursion support, and editor-tooling primitives (introspectable tokens/AST, diagnostics, autocomplete), all reachable from the DSL object itself:
+
+```r2
+dsl Calculator {
+    keyword("IF", "if")     // explicit keyword, case-insensitive, word-bounded
+    literal("PLUS", "+")    // explicit exact-text token (operators/punctuation)
+    token("NUM", "[0-9]+")  // regex token
+
+    rule("sum", ["NUM", "PLUS", "NUM"], "add")
+    func add(a, op, b) { return std.parseFloat(a) + std.parseFloat(b) }
+}
+
+Calculator.tokens("1 + 2")        // tokenize without parsing
+Calculator.ast("1 + 2")           // parse tree, no evaluation
+Calculator.check("1 +")           // {valid: false, error: "..."}
+Calculator.diagnostics("1 +")     // every syntax error, not just the first
+Calculator.completions("1 + ", 4) // valid next tokens at a cursor offset
+Calculator.warnings               // grammar warnings from Validate()
+Calculator.use("1 + 2")           // parse + evaluate -> DSLResult{AST, Code, Output}
+```
 
 ### Why DSL Builder is Special
 

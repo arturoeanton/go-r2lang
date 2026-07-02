@@ -18,6 +18,35 @@ resuelve las inestabilidades de parsing documentadas en
 Una diferencia real de comportamiento: `.AST` ahora expone el árbol de
 sintaxis real (`*dslbuilder.Node`) en vez de reusar el valor de `.Output`.
 
+## Nuevas capacidades del objeto DSL (2026-07-02)
+
+Aprovechando el motor go-dsl, el objeto que devuelve `dsl Nombre { }` ahora
+expone, además de `.use(code, context)`:
+
+- `.tokens(code)` — tokeniza sin parsear; array de `{type, value, start, end}`.
+- `.ast(code)` — árbol de sintaxis (sin ejecutar acciones semánticas) como
+  mapas anidados `{rule, token, text, start, end, children}`.
+- `.check(code)` — `{valid: bool, error: string}`, valida sin evaluar.
+- `.diagnostics(code)` — todos los errores de sintaxis encontrados (no sólo
+  el primero), cada uno `{message, line, column, token}`.
+- `.completions(code, offset)` — tokens válidos en la posición del cursor,
+  para autocompletado; cada uno `{label, token, isKeyword, detail}`.
+- `.warnings` — advertencias de `Validate()` recolectadas al definir el
+  bloque (reglas inalcanzables, acciones no registradas, etc.).
+
+Dentro del bloque `dsl { }`, además de `token("NAME", "regex")` ahora también
+están disponibles `keyword("NAME", "texto")` (palabra clave, insensible a
+mayúsculas, con límites de palabra) y `literal("NAME", "texto")` (texto
+exacto, sin límites de palabra — para operadores/puntuación) como
+alternativas explícitas a la auto-detección de `token()`.
+
+Si la gramática es inválida (símbolo no definido, sin regla inicial, etc.),
+el bloque `dsl { }` falla con un error claro al definirse, no en el primer
+`.use()`. Las llamadas a `.use()` sobre el mismo objeto DSL desde goroutines
+concurrentes (`go`/`r2`) ahora son seguras (antes había una condición de
+carrera real sobre el entorno de ejecución compartido, confirmada y
+corregida con `go test -race`).
+
 ## Descripción
 
 Esta carpeta contiene toda la documentación oficial del sistema DSL (Domain-Specific Language) de R2Lang en español. El sistema DSL permite crear lenguajes específicos de dominio de manera simple y elegante.
