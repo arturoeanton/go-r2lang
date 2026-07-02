@@ -82,8 +82,11 @@ func main() {
     let longProc = os.runProcess("sleep 10");
     std.print("  Started long-running process");
     
-    // Wait a moment then kill it
-    std.sleep(100); // 100ms
+    // Wait a moment then kill it. std.sleep takes SECONDS, not
+    // milliseconds — this used to pass 100 (100 seconds) while the comment
+    // claimed "100ms", making the whole example hang for over a minute and
+    // a half past "sleep 10"'s own natural exit.
+    std.sleep(0.1); // 100ms
     let killResult = os.killProcess(longProc);
     std.print("  Kill result:", killResult);
 

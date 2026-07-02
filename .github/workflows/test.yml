@@ -60,6 +60,21 @@ jobs:
         echo "Coverage report:"
         go tool cover -func=coverage.out | tail -1
 
+    - name: Enforce minimum coverage
+      run: |
+        # Floor, not a target: set a few points below the coverage measured
+        # when this check was added (~45.5% total) so genuine regressions
+        # fail the build without making the bar unrealistically high overnight.
+        # Ratchet this up over time as coverage improves — never lower it to
+        # make a failing PR pass.
+        MIN_COVERAGE=40
+        COVERAGE=$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1)
+        echo "Total coverage: ${COVERAGE}% (minimum: ${MIN_COVERAGE}%)"
+        if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+          echo "::error::Coverage ${COVERAGE}% is below the ${MIN_COVERAGE}% floor"
+          exit 1
+        fi
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -102,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     timeout-minutes: 10
-    
+
     steps:
     - uses: actions/checkout@v4
 
@@ -114,37 +129,17 @@ jobs:
     - name: Build R2Lang
       run: go build -o r2lang main.go
 
-    - name: Test simple R2Lang examples
-      timeout-minutes: 5
-      run: |
-        # Test basic examples that don't use goroutines
-        examples_to_test=(
-          "examples/example1-if.r2"
-          "examples/example2-while.r2"
-          "examples/example3-for.r2"
-          "examples/example4-func.r2"
-          "examples/example5-obj.r2"
-          "examples/example7-std.r2"
-          "examples/example10-string.r2"
-          "examples/example11-math.r2"
-          "examples/example12-rand.r2"
-          "examples/example22-array.r2"
-        )
-        
-        for example in "${examples_to_test[@]}"; do
-          if [[ -f "$example" ]]; then
-            echo "Testing $example..."
-            timeout 10s ./r2lang "$example" || echo "Example $example failed or timed out"
-          else
-            echo "Example $example not found, skipping"
-          fi
-        done
+    - name: Run gold_test.r2 (comprehensive language regression script)
+      run: ./r2lang gold_test.r2
 
-    - name: Test main.r2
-      timeout-minutes: 2
-      run: |
-        echo "Testing main.r2..."
-        timeout 10s ./r2lang main.r2 || echo "main.r2 failed or timed out"
+    - name: Sweep all example scripts
+      # scripts/sweep_examples.sh actually fails the job on any regression —
+      # a script not listed in scripts/known_flaky_examples.txt that fails
+      # or times out. Known-flaky scripts (server demos with no client,
+      # network-dependent examples, r2test-DSL-only scripts, etc.) are
+      # explicitly allowlisted there with a documented reason each; see that
+      # file before adding new entries.
+      run: ./scripts/sweep_examples.sh ./r2lang 20
 
   security:
     runs-on: ubuntu-latest
