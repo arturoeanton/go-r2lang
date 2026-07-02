@@ -2,6 +2,7 @@ package r2core
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
 
@@ -209,5 +210,61 @@ func TestDSLEnvironmentIsolation(t *testing.T) {
 					iteration, i, expected, result)
 			}
 		}
+	}
+}
+
+// TestDSLConcurrentUseIsolation calls .use() on a single shared DSLDefinition
+// from many goroutines at once (as R2Lang scripts can via `go`/`r2`) and
+// checks each call sees its own environment, not another goroutine's. Run
+// with -race to also confirm there's no data race on currentExecutionEnv.
+func TestDSLConcurrentUseIsolation(t *testing.T) {
+	env := NewEnvironment()
+
+	dsl := &DSLDefinition{
+		Name:      &Identifier{Name: "ConcurrentDSL"},
+		Grammar:   NewDSLGrammar(),
+		Functions: make(map[string]*FunctionDeclaration),
+		IsActive:  true,
+		GlobalEnv: env,
+	}
+
+	dsl.Grammar.AddToken("WORD", "[a-zA-Z]+")
+	dsl.Grammar.AddRule("say", []string{"WORD"}, "echo")
+	dsl.Grammar.AddAction("echo", func(args []interface{}) interface{} {
+		return args[0]
+	})
+
+	words := []string{"alpha", "beta", "gamma", "delta", "epsilon"}
+
+	var wg sync.WaitGroup
+	errCh := make(chan string, len(words)*20)
+
+	for round := 0; round < 20; round++ {
+		for _, w := range words {
+			wg.Add(1)
+			go func(word string) {
+				defer wg.Done()
+
+				execEnv := NewInnerEnv(env)
+				execEnv.Set("context", map[string]interface{}{})
+				result := dsl.evaluateDSLCode(word, execEnv)
+
+				dslResult, ok := result.(*DSLResult)
+				if !ok {
+					errCh <- fmt.Sprintf("expected *DSLResult for %q, got %T (%v)", word, result, result)
+					return
+				}
+				if dslResult.Output != word {
+					errCh <- fmt.Sprintf("expected output %q, got %q", word, dslResult.Output)
+				}
+			}(w)
+		}
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	for msg := range errCh {
+		t.Error(msg)
 	}
 }

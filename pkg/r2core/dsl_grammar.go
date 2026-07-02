@@ -2,6 +2,7 @@ package r2core
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/arturoeanton/go-dsl/pkg/dslbuilder"
@@ -42,6 +43,14 @@ func (g *DSLGrammar) AddKeywordToken(name, keyword string) error {
 	return g.engine.KeywordToken(name, keyword)
 }
 
+// AddLiteral adds a token that matches an exact piece of text (an operator
+// or punctuation symbol, e.g. "+" or "=="), unlike AddKeywordToken it is
+// not word-bounded or case-insensitive, since literals are often not made
+// of word characters.
+func (g *DSLGrammar) AddLiteral(name, text string) error {
+	return g.engine.Token(name, regexp.QuoteMeta(text))
+}
+
 // AddAction registers a semantic action for a rule. R2Lang action callbacks
 // return a single value; if that value is a Go error it is surfaced as a
 // go-dsl action error instead of a successful result.
@@ -73,6 +82,89 @@ func (g *DSLGrammar) Use(code string, context map[string]interface{}) (*DSLResul
 		Code:   result.Code,
 		Output: result.Output,
 	}, nil
+}
+
+// AST parses code and returns its syntax tree as nested R2Lang maps, without
+// running any semantic actions.
+func (g *DSLGrammar) AST(code string) (map[string]interface{}, error) {
+	node, err := g.engine.ParseAST(code)
+	if err != nil {
+		return nil, err
+	}
+	return nodeToMap(node), nil
+}
+
+// nodeToMap converts a go-dsl parse tree node into the map/slice shape
+// R2Lang scripts can walk directly (property access + array indexing).
+func nodeToMap(n *dslbuilder.Node) map[string]interface{} {
+	if n == nil {
+		return nil
+	}
+	m := map[string]interface{}{
+		"rule":  n.Rule,
+		"text":  n.Text(),
+		"start": float64(n.Span.Start),
+		"end":   float64(n.Span.End),
+	}
+	if n.IsToken() {
+		m["token"] = n.Token.TokenType
+	} else {
+		m["token"] = ""
+	}
+	children := make([]interface{}, len(n.Children))
+	for i, c := range n.Children {
+		children[i] = nodeToMap(c)
+	}
+	m["children"] = children
+	return m
+}
+
+// Diagnostics tokenizes and parses code tolerantly, collecting every syntax
+// error found instead of stopping at the first one.
+func (g *DSLGrammar) Diagnostics(code string) []interface{} {
+	diags := g.engine.Diagnostics(code)
+	result := make([]interface{}, len(diags))
+	for i, d := range diags {
+		result[i] = map[string]interface{}{
+			"message": d.Message,
+			"line":    float64(d.Line),
+			"column":  float64(d.Column),
+			"token":   d.Token,
+		}
+	}
+	return result
+}
+
+// Check reports whether code parses cleanly against this grammar, without
+// evaluating it.
+func (g *DSLGrammar) Check(code string) (bool, string) {
+	if _, err := g.engine.ParseAST(code); err != nil {
+		return false, err.Error()
+	}
+	return true, ""
+}
+
+// Completions returns the valid next tokens at a byte offset into code,
+// e.g. for editor autocomplete.
+func (g *DSLGrammar) Completions(code string, offset int) []interface{} {
+	completions := g.engine.Completions(code, offset)
+	result := make([]interface{}, len(completions))
+	for i, c := range completions {
+		result[i] = map[string]interface{}{
+			"label":     c.Label,
+			"token":     c.Token,
+			"isKeyword": c.IsKeyword,
+			"detail":    c.Detail,
+		}
+	}
+	return result
+}
+
+// Validate statically checks the grammar, returning warnings (informative,
+// the grammar still works) and an error joining any structural problems
+// that make the grammar unusable.
+func (g *DSLGrammar) Validate() ([]string, error) {
+	return g.engine.Validate()
 }
 
 // DSLResult represents the result of evaluating DSL code: the parse tree

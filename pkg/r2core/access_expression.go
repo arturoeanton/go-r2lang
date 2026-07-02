@@ -265,10 +265,10 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 				for idx, v := range arr {
 					if bf(v).(bool) {
 						if flagAll {
-							out = append(out, idx)
+							out = append(out, float64(idx))
 							continue
 						}
-						return idx
+						return float64(idx)
 					}
 				}
 			}
@@ -278,10 +278,10 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 				for idx, v := range arr {
 					if uf.Call(v).(bool) {
 						if flagAll {
-							out = append(out, idx)
+							out = append(out, float64(idx))
 							continue
 						}
-						return idx
+						return float64(idx)
 					}
 				}
 			}
@@ -291,10 +291,10 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 				for idx, v := range arr {
 					if fl.Eval(env).(*UserFunction).Call(v).(bool) {
 						if flagAll {
-							out = append(out, idx)
+							out = append(out, float64(idx))
 							continue
 						}
-						return idx
+						return float64(idx)
 					}
 				}
 			}
@@ -309,10 +309,10 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			for idx, v := range arr {
 				if equals(v, args[0]) {
 					if flagAll {
-						out = append(out, idx)
+						out = append(out, float64(idx))
 						continue
 					}
-					return idx
+					return float64(idx)
 				}
 			}
 			if flagAll {
@@ -336,10 +336,10 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 				}
 				if flag {
 					if flagAll {
-						out = append(out, idx)
+						out = append(out, float64(idx))
 						continue
 					}
-					return idx
+					return float64(idx)
 				}
 			}
 			if flagAll {
@@ -414,10 +414,51 @@ func evalDSLAccess(dsl *DSLDefinition, member string, env *Environment) interfac
 			if context == nil {
 				context = make(map[string]interface{})
 			}
-			env.Set("context", context)
+			execEnv := NewInnerEnv(env)
+			execEnv.Set("context", context)
 
-			return dsl.evaluateDSLCode(code, env)
+			return dsl.evaluateDSLCode(code, execEnv)
 		}
+	case "tokens":
+		return func(code string) interface{} {
+			matches, err := dsl.Grammar.DebugTokens(code)
+			if err != nil {
+				return fmt.Errorf("DSL tokens: %v", err)
+			}
+			result := make([]interface{}, len(matches))
+			for i, m := range matches {
+				result[i] = map[string]interface{}{
+					"type":  m.TokenType,
+					"value": m.Value,
+					"start": float64(m.Start),
+					"end":   float64(m.End),
+				}
+			}
+			return result
+		}
+	case "ast":
+		return func(code string) interface{} {
+			node, err := dsl.Grammar.AST(code)
+			if err != nil {
+				return fmt.Errorf("DSL ast: %v", err)
+			}
+			return node
+		}
+	case "check":
+		return func(code string) interface{} {
+			valid, errMsg := dsl.Grammar.Check(code)
+			return map[string]interface{}{"valid": valid, "error": errMsg}
+		}
+	case "diagnostics":
+		return func(code string) interface{} {
+			return dsl.Grammar.Diagnostics(code)
+		}
+	case "completions":
+		return func(code string, offset float64) interface{} {
+			return dsl.Grammar.Completions(code, int(offset))
+		}
+	case "warnings":
+		return toInterfaceSlice(dsl.Warnings)
 	default:
 		panic("DSL does not have property: " + member)
 	}
