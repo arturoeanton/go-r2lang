@@ -81,10 +81,7 @@ while IFS= read -r f; do
     fi
   fi
   rm -f "$out_log"
-done < <(find . -name "*.r2" \
-  -not -path "./examples/dsl/*" \
-  -not -path "./examples/proyecto/contable/old_versions/*" \
-  -not -path "./examples/proyecto/contable/versiones_anteriores/*")
+done < <(find . -name "*.r2" -not -path "./examples/dsl/*")
 
 echo "=== pass=$pass fail=$fail timeout=$timeout_count ==="
 
