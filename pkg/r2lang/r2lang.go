@@ -42,6 +42,7 @@ func RunCode(filename string) {
 	r2libs.RegisterOS(env)
 	r2libs.RegisterHack(env)
 	r2libs.RegisterConcurrency(env)
+	r2libs.RegisterSync(env)
 	r2libs.RegisterCollections(env)
 	r2libs.RegisterUnicode(env)
 	r2libs.RegisterDate(env)

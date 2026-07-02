@@ -16,7 +16,7 @@ func main() {
     // Iniciar 5 goroutines que intentan ejecutar tareas
     for (let i=1; i<=5; i=i + 1) {
         let id = i
-        go.r2(func (id) {
+        r2(func (id) {
             goroutine.acquire(sem) // Adquirir permiso del semáforo
             // Ejecutar la tarea
             task(id, 2)
