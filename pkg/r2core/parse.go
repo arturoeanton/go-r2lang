@@ -971,16 +971,36 @@ func (p *Parser) parseCallExpression(left Node) Node {
 	return &CallExpression{Callee: left, Args: args}
 }
 
+// memberName returns the token's value as a member name if it can follow
+// a `.`/`?.`: a plain identifier, or a reserved word being used as a
+// property/method name (e.g. `assert.true(...)`, `dsl.use(...)`,
+// `x.match(...)`) — reserved words are only ambiguous at statement/expression
+// start, not right after a dot, so there's no parsing conflict in allowing
+// any identifier-shaped keyword token here instead of special-casing each
+// one (TOKEN_USE, TOKEN_MATCH, ...) as they're discovered.
+func memberName(tok Token) (string, bool) {
+	if tok.Type == TOKEN_IDENT {
+		return tok.Value, true
+	}
+	if tok.Value == "" {
+		return "", false
+	}
+	runes := []rune(tok.Value)
+	if !isValidIdentifierStart(runes[0]) {
+		return "", false
+	}
+	for _, r := range runes[1:] {
+		if !isValidIdentifierChar(r) {
+			return "", false
+		}
+	}
+	return tok.Value, true
+}
+
 func (p *Parser) parseAccessExpression(left Node) Node {
 	p.nextToken() // "."
-	var mem string
-	if p.curTok.Type == TOKEN_IDENT {
-		mem = p.curTok.Value
-	} else if p.curTok.Type == TOKEN_USE {
-		mem = "use"
-	} else if p.curTok.Type == TOKEN_MATCH {
-		mem = "match"
-	} else {
+	mem, ok := memberName(p.curTok)
+	if !ok {
 		p.except("Expected identifier after '.'")
 	}
 	p.nextToken()
@@ -990,14 +1010,8 @@ func (p *Parser) parseAccessExpression(left Node) Node {
 
 func (p *Parser) parseOptionalAccessExpression(left Node) Node {
 	p.nextToken() // "?."
-	var mem string
-	if p.curTok.Type == TOKEN_IDENT {
-		mem = p.curTok.Value
-	} else if p.curTok.Type == TOKEN_USE {
-		mem = "use"
-	} else if p.curTok.Type == TOKEN_MATCH {
-		mem = "match"
-	} else {
+	mem, ok := memberName(p.curTok)
+	if !ok {
 		p.except("Expected identifier after '?.'")
 	}
 	p.nextToken()
