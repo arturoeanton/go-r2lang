@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
+	"golang.org/x/text/cases"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
@@ -130,7 +131,12 @@ func unicodeLower(args ...interface{}) interface{} {
 	return strings.ToLower(str)
 }
 
-// unicodeTitle convierte a formato título
+// unicodeTitle convierte a formato título (primera letra de cada palabra en
+// mayúscula, resto en minúscula), no a confundir con strings.ToTitle que en
+// Go realiza un mapeo por-carácter equivalente a mayúsculas para la mayoría
+// del texto (p.ej. "hello world" -> "HELLO WORLD" en vez de "Hello World").
+var titleCaser = cases.Title(language.Und)
+
 func unicodeTitle(args ...interface{}) interface{} {
 	if len(args) != 1 {
 		panic("utitle() requiere exactamente 1 argumento")
@@ -141,7 +147,7 @@ func unicodeTitle(args ...interface{}) interface{} {
 		panic("utitle() requiere un string")
 	}
 
-	return strings.ToTitle(str)
+	return titleCaser.String(str)
 }
 
 // unicodeReverse invierte un string respetando caracteres Unicode
@@ -342,12 +348,36 @@ func isLower(args ...interface{}) interface{} {
 
 func getCategory(args ...interface{}) interface{} {
 	char := getFirstRune(args, "ugetCategory")
+	// unicode.Categories contains both general categories ("L", "N", "P", ...)
+	// and their more specific subcategories ("Lu", "Nd", "Po", ...); a given
+	// rune matches several tables at once (e.g. '5' is in both "N" and "Nd").
+	// Iterating a Go map has randomized order, so returning the first match
+	// found used to make this function nondeterministic - the very same
+	// input could return "N" on one call and "Nd" on the next. Deterministically
+	// prefer the most specific (longest name) match, breaking further ties
+	// alphabetically so the result never depends on map iteration order.
+	best := ""
 	for name, table := range unicode.Categories {
-		if unicode.In(char, table) {
-			return name
+		// "LC" is a Go-specific synthetic grouping (cased letters, i.e.
+		// Lu ∪ Ll ∪ Lt) documented in unicode.Categories; it is never a
+		// rune's actual General_Category value (that's always one of the
+		// standard two-letter codes such as Lu/Ll/Lt), so it must not win
+		// the "most specific" tie-break against them despite sharing their
+		// 2-character name length.
+		if name == "LC" {
+			continue
+		}
+		if !unicode.In(char, table) {
+			continue
+		}
+		if best == "" || len(name) > len(best) || (len(name) == len(best) && name < best) {
+			best = name
 		}
 	}
-	return "Unknown"
+	if best == "" {
+		return "Unknown"
+	}
+	return best
 }
 
 // ============================================================

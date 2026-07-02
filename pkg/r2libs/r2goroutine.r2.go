@@ -2,6 +2,7 @@ package r2libs
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
@@ -75,6 +76,17 @@ func builtinReleaseSemaphore(args ...interface{}) interface{} {
 type Monitor struct {
 	mutex sync.Mutex
 	cond  *sync.Cond
+	// locked tracks whether mutex is currently held via Lock(), guarded with
+	// atomic ops. sync.Mutex.Unlock() and sync.Cond.Wait() both call the raw
+	// runtime unlock unconditionally; calling either when the mutex is not
+	// actually held triggers "fatal error: sync: unlock of unlocked mutex",
+	// a Go runtime fatal() that crashes the whole process and bypasses ALL
+	// defer/recover(). Since these Monitor methods are reachable directly
+	// from R2Lang scripts (goroutine.wait/unlock), a script bug or a
+	// deliberately malicious script could otherwise take down the entire
+	// interpreter process. Tracking lock ownership lets us turn misuse into
+	// an ordinary, recoverable panic instead.
+	locked int32
 }
 
 // NewMonitor crea un nuevo monitor
@@ -87,16 +99,24 @@ func NewMonitor() *Monitor {
 // Lock adquiere el mutex del monitor
 func (m *Monitor) Lock() {
 	m.mutex.Lock()
+	atomic.StoreInt32(&m.locked, 1)
 }
 
 // Unlock libera el mutex del monitor
 func (m *Monitor) Unlock() {
+	if !atomic.CompareAndSwapInt32(&m.locked, 1, 0) {
+		panic("unlock: monitor is not locked; call lock() before unlock()")
+	}
 	m.mutex.Unlock()
 }
 
 // Wait espera en la condición del monitor
 func (m *Monitor) Wait() {
+	if !atomic.CompareAndSwapInt32(&m.locked, 1, 0) {
+		panic("wait: monitor must be locked before calling wait(); call lock() first")
+	}
 	m.cond.Wait()
+	atomic.StoreInt32(&m.locked, 1)
 }
 
 // Signal despierta una goroutine esperando en la condición

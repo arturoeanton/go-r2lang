@@ -27,6 +27,38 @@ var goFuncRegistry = make(map[string]reflect.Value)
 // Un pequeño registro de “constructores” (structName -> función constructor)
 var goStructRegistry = make(map[string]func() interface{})
 
+// buildCallArgs convierte argumentos provenientes de R2Lang en []reflect.Value
+// aptos para invocar una función/método Go de tipo fnType via reflect.Value.Call.
+// reflect.ValueOf(nil) produce el "zero Value" inválido; pasárselo directamente
+// a Call() panics con un mensaje críptico de bajo nivel
+// ("reflect: Call using zero Value argument") en lugar de un error claro y
+// consistente con el resto de las funciones de este módulo. Cuando conocemos
+// el tipo del parámetro esperado (incluyendo funciones variádicas) sustituimos
+// nil por el valor cero de ese tipo, lo cual permite pasar nil para
+// punteros/interfaces/slices/maps como es habitual en Go.
+func buildCallArgs(fnType reflect.Type, args []interface{}, label string) []reflect.Value {
+	numIn := fnType.NumIn()
+	callVals := make([]reflect.Value, len(args))
+	for i, a := range args {
+		var paramType reflect.Type
+		switch {
+		case fnType.IsVariadic() && i >= numIn-1:
+			paramType = fnType.In(numIn - 1).Elem()
+		case i < numIn:
+			paramType = fnType.In(i)
+		}
+		if a == nil {
+			if paramType == nil {
+				panic(fmt.Sprintf("%s: no se puede pasar nil como argumento %d (no se pudo determinar el tipo esperado)", label, i))
+			}
+			callVals[i] = reflect.Zero(paramType)
+			continue
+		}
+		callVals[i] = reflect.ValueOf(a)
+	}
+	return callVals
+}
+
 // RegisterGoInterOp: expone funciones que permiten a R2 usar el registro
 func RegisterGoInterOp(env *r2core.Environment) {
 
@@ -69,10 +101,7 @@ func RegisterGoInterOp(env *r2core.Environment) {
 			panic(fmt.Sprintf("callGoFunc: '%s' no es una función", funcName))
 		}
 		// Convertimos los args[1..] a reflect.Value
-		callArgs := make([]reflect.Value, len(args)-1)
-		for i := 1; i < len(args); i++ {
-			callArgs[i-1] = reflect.ValueOf(args[i])
-		}
+		callArgs := buildCallArgs(fnVal.Type(), args[1:], fmt.Sprintf("callGoFunc('%s')", funcName))
 		// Llamamos la función
 		results := fnVal.Call(callArgs)
 		// Si hay 0 resultados => nil
@@ -139,7 +168,26 @@ func RegisterGoInterOp(env *r2core.Environment) {
 		if !fieldVal.CanSet() {
 			panic(fmt.Sprintf("goSetField: field '%s' no se puede setear (exportado?)", fieldName))
 		}
-		fieldVal.Set(reflect.ValueOf(val))
+		if val == nil {
+			panic(fmt.Sprintf("goSetField: no se puede asignar nil al field '%s' de tipo %s", fieldName, fieldVal.Type()))
+		}
+		valReflect := reflect.ValueOf(val)
+		// R2Lang numbers are always float64 (there is no int/float distinction
+		// at the language level), so any Go struct field of another numeric
+		// type (int, int64, float32, ...) would previously reach fieldVal.Set
+		// directly and panic with an opaque low-level reflect message such as
+		// "reflect.Set: value of type float64 is not assignable to type int",
+		// instead of a clear, consistent goSetField error. Convert when the
+		// types are convertible (e.g. numeric-to-numeric) and only fail with
+		// a descriptive message when the value is genuinely incompatible.
+		if !valReflect.Type().AssignableTo(fieldVal.Type()) {
+			if valReflect.Type().ConvertibleTo(fieldVal.Type()) {
+				valReflect = valReflect.Convert(fieldVal.Type())
+			} else {
+				panic(fmt.Sprintf("goSetField: no se puede asignar un valor de tipo %s al field '%s' de tipo %s", valReflect.Type(), fieldName, fieldVal.Type()))
+			}
+		}
+		fieldVal.Set(valReflect)
 		return nil
 	}))
 
@@ -183,10 +231,7 @@ func RegisterGoInterOp(env *r2core.Environment) {
 			panic(fmt.Sprintf("goCallMethod: no existe método '%s'", methodName))
 		}
 		// convert callArgs => reflect.Value
-		inVals := make([]reflect.Value, len(callArgs))
-		for i := 0; i < len(callArgs); i++ {
-			inVals[i] = reflect.ValueOf(callArgs[i])
-		}
+		inVals := buildCallArgs(m.Type(), callArgs, fmt.Sprintf("goCallMethod('%s')", methodName))
 		results := m.Call(inVals)
 		if len(results) == 0 {
 			return nil

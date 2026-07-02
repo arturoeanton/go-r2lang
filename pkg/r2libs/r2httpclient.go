@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,6 +20,30 @@ import (
 // malicious server; http.Get/http.Post use http.DefaultClient, which has
 // no timeout at all.
 var httpClientDefault = &http.Client{Timeout: 30 * time.Second}
+
+// maxHTTPClientResponseBytes bounds how much of a response body clientHttpGet
+// / clientHttpPost / clientHttpGetJSON / clientHttpPostJSON will buffer into
+// memory. Without this, a slow/malicious server (or an unexpectedly huge
+// legitimate response) can be read in full via io.ReadAll, exhausting memory
+// (mirrors the maxRequestBodyBytes guard already used server-side in
+// r2http.go for incoming request bodies).
+const maxHTTPClientResponseBytes = 64 << 20 // 64MB
+
+// readResponseBodyLimited reads resp.Body up to maxHTTPClientResponseBytes+1
+// bytes; if the extra byte is present, the body exceeded the limit and we
+// panic with a clear error instead of silently truncating the data or
+// buffering an unbounded amount of memory.
+func readResponseBodyLimited(functionName string, resp *http.Response) []byte {
+	limited := io.LimitReader(resp.Body, maxHTTPClientResponseBytes+1)
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		panic(fmt.Sprintf("%s: error al leer body: %v", functionName, err))
+	}
+	if len(data) > maxHTTPClientResponseBytes {
+		panic(fmt.Sprintf("%s: response body exceeds maximum allowed size of %d bytes", functionName, maxHTTPClientResponseBytes))
+	}
+	return data
+}
 
 func RegisterHTTPClient(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
@@ -35,10 +60,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic(fmt.Sprintf("clientHttpGet: error en GET '%s': %v", url, err))
 			}
 			defer resp.Body.Close()
-			data, err := io.ReadAll(resp.Body)
-			if err != nil {
-				panic(fmt.Sprintf("clientHttpGet: error al leer body: %v", err))
-			}
+			data := readResponseBodyLimited("clientHttpGet", resp)
 			return string(data)
 		}),
 
@@ -57,10 +79,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
 			}
 			defer resp.Body.Close()
-			data, err := io.ReadAll(resp.Body)
-			if err != nil {
-				panic(fmt.Sprintf("clientHttpPost: error al leer body: %v", err))
-			}
+			data := readResponseBodyLimited("clientHttpPost", resp)
 			return string(data)
 		}),
 
@@ -107,10 +126,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic(fmt.Sprintf("httpGetJSON: error en GET '%s': %v", url, err))
 			}
 			defer resp.Body.Close()
-			data, err := io.ReadAll(resp.Body)
-			if err != nil {
-				panic(fmt.Sprintf("httpGetJSON: error al leer body: %v", err))
-			}
+			data := readResponseBodyLimited("httpGetJSON", resp)
 			var result interface{}
 			if err := json.Unmarshal(data, &result); err != nil {
 				panic(fmt.Sprintf("httpGetJSON: error al parsear JSON: %v", err))
@@ -139,10 +155,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic(fmt.Sprintf("httpPostJSON: error en POST '%s': %v", url, err))
 			}
 			defer resp.Body.Close()
-			respData, err := io.ReadAll(resp.Body)
-			if err != nil {
-				panic(fmt.Sprintf("httpPostJSON: error al leer respuesta: %v", err))
-			}
+			respData := readResponseBodyLimited("httpPostJSON", resp)
 
 			var result interface{}
 			if err := json.Unmarshal(respData, &result); err != nil {
@@ -261,10 +274,26 @@ func xmlNodeToMap(n *xmlNode) interface{} {
 
 // mapToXMLNode crea un xmlNode a partir de un map con keys
 func mapToXMLNode(name string, val interface{}) xmlNode {
+	return mapToXMLNodeSeen(name, val, make(map[uintptr]bool))
+}
+
+// mapToXMLNodeSeen tracks the active ancestor chain (by underlying
+// map/slice pointer) to reject self-referential values (e.g. constructed
+// via a["child"] = a or arr[0] = arr and then passed to stringifyXML),
+// which would otherwise recurse forever and crash the process with an
+// unrecoverable Go stack overflow that panic/recover cannot catch.
+func mapToXMLNodeSeen(name string, val interface{}, seen map[uintptr]bool) xmlNode {
 	node := xmlNode{XMLName: xml.Name{Local: name}}
 	// val puede ser map[string]interface{} => interpretamos subnodos
 	switch mm := val.(type) {
 	case map[string]interface{}:
+		ptr := reflect.ValueOf(mm).Pointer()
+		if seen[ptr] {
+			panic("stringifyXML: circular reference detected")
+		}
+		seen[ptr] = true
+		defer delete(seen, ptr)
+
 		// si hay "_content"
 		if c, ok := mm["_content"]; ok {
 			node.Content = fmt.Sprint(c)
@@ -282,16 +311,29 @@ func mapToXMLNode(name string, val interface{}) xmlNode {
 			if k == "_content" || k == "_attrs" || k == "_name" {
 				continue
 			}
-			// Si v es array => múltiples subnodos
-			switch arr := v.(type) {
-			case []interface{}:
+			// Si v es array (either []interface{} or the r2core.InterfaceSlice
+			// produced by .map()/.filter()/.sort()/etc.) => múltiples subnodos
+			if arr, ok := toGenericSlice(v); ok {
+				var aptr uintptr
+				tracked := false
+				if len(arr) > 0 {
+					aptr = reflect.ValueOf(arr).Pointer()
+					if seen[aptr] {
+						panic("stringifyXML: circular reference detected")
+					}
+					seen[aptr] = true
+					tracked = true
+				}
 				for _, elem := range arr {
-					subNode := mapToXMLNode(k, elem)
+					subNode := mapToXMLNodeSeen(k, elem, seen)
 					node.Children = append(node.Children, subNode)
 				}
-			default:
+				if tracked {
+					delete(seen, aptr)
+				}
+			} else {
 				// un solo nodo
-				subNode := mapToXMLNode(k, arr)
+				subNode := mapToXMLNodeSeen(k, v, seen)
 				node.Children = append(node.Children, subNode)
 			}
 		}

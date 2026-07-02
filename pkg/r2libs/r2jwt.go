@@ -79,123 +79,7 @@ func RegisterJWT(env *r2core.Environment) {
 				panic("JWT.verify: arguments must be (string, string)")
 			}
 
-			parts := strings.Split(token, ".")
-			if len(parts) != 3 {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid token format",
-					"payload": nil,
-				}
-			}
-
-			headerEncoded := parts[0]
-			payloadEncoded := parts[1]
-			signatureProvided := parts[2]
-
-			// Decode header
-			headerJSON, err := base64.RawURLEncoding.DecodeString(headerEncoded)
-			if err != nil {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid header encoding",
-					"payload": nil,
-				}
-			}
-
-			var header map[string]interface{}
-			if err := json.Unmarshal(headerJSON, &header); err != nil {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid header JSON",
-					"payload": nil,
-				}
-			}
-
-			// Get algorithm
-			algorithm, exists := header["alg"].(string)
-			if !exists {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Missing algorithm in header",
-					"payload": nil,
-				}
-			}
-
-			// Verify signature
-			message := headerEncoded + "." + payloadEncoded
-			var expectedSignature string
-
-			switch algorithm {
-			case "HS256":
-				h := hmac.New(sha256.New, []byte(secret))
-				h.Write([]byte(message))
-				expectedSignature = base64.RawURLEncoding.EncodeToString(h.Sum(nil))
-			default:
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   fmt.Sprintf("Unsupported algorithm '%s'", algorithm),
-					"payload": nil,
-				}
-			}
-
-			if !hmac.Equal([]byte(signatureProvided), []byte(expectedSignature)) {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid signature",
-					"payload": nil,
-				}
-			}
-
-			// Decode payload
-			payloadJSON, err := base64.RawURLEncoding.DecodeString(payloadEncoded)
-			if err != nil {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid payload encoding",
-					"payload": nil,
-				}
-			}
-
-			var payload map[string]interface{}
-			if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-				return map[string]interface{}{
-					"valid":   false,
-					"error":   "Invalid payload JSON",
-					"payload": nil,
-				}
-			}
-
-			// Check expiration
-			if exp, exists := payload["exp"]; exists {
-				if expFloat, ok := exp.(float64); ok {
-					if time.Now().Unix() > int64(expFloat) {
-						return map[string]interface{}{
-							"valid":   false,
-							"error":   "Token expired",
-							"payload": payload,
-						}
-					}
-				}
-			}
-
-			// Check not before
-			if nbf, exists := payload["nbf"]; exists {
-				if nbfFloat, ok := nbf.(float64); ok {
-					if time.Now().Unix() < int64(nbfFloat) {
-						return map[string]interface{}{
-							"valid":   false,
-							"error":   "Token not yet valid",
-							"payload": payload,
-						}
-					}
-				}
-			}
-
-			return map[string]interface{}{
-				"valid":   true,
-				"error":   nil,
-				"payload": payload,
-			}
+			return verifyTokenInternal(token, secret)
 		}),
 
 		"decode": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -586,11 +470,35 @@ func verifyTokenInternal(token, secret string) interface{} {
 		}
 	}
 
+	// Get algorithm. This must be checked explicitly (rather than always
+	// assuming HMAC) so a token whose header claims an unsupported/absent
+	// algorithm (e.g. "none") is rejected instead of silently being
+	// verified as if it were HS256.
+	algorithm, exists := header["alg"].(string)
+	if !exists {
+		return map[string]interface{}{
+			"valid":   false,
+			"error":   "Missing algorithm in header",
+			"payload": nil,
+		}
+	}
+
 	// Verify signature
 	message := headerEncoded + "." + payloadEncoded
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(message))
-	expectedSignature := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+	var expectedSignature string
+
+	switch algorithm {
+	case "HS256":
+		h := hmac.New(sha256.New, []byte(secret))
+		h.Write([]byte(message))
+		expectedSignature = base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+	default:
+		return map[string]interface{}{
+			"valid":   false,
+			"error":   fmt.Sprintf("Unsupported algorithm '%s'", algorithm),
+			"payload": nil,
+		}
+	}
 
 	if !hmac.Equal([]byte(signatureProvided), []byte(expectedSignature)) {
 		return map[string]interface{}{
@@ -616,6 +524,36 @@ func verifyTokenInternal(token, secret string) interface{} {
 			"valid":   false,
 			"error":   "Invalid payload JSON",
 			"payload": nil,
+		}
+	}
+
+	// Check expiration. This must run for every caller of
+	// verifyTokenInternal (jwt.verify AND jwt.refresh) — previously this
+	// check only existed in the "verify" builtin's own copy of this logic,
+	// so jwt.refresh(expiredToken, secret) happily reissued a fresh token
+	// for an already-expired (or not-yet-valid) token forever.
+	if exp, exists := payload["exp"]; exists {
+		if expFloat, ok := exp.(float64); ok {
+			if time.Now().Unix() > int64(expFloat) {
+				return map[string]interface{}{
+					"valid":   false,
+					"error":   "Token expired",
+					"payload": payload,
+				}
+			}
+		}
+	}
+
+	// Check not before
+	if nbf, exists := payload["nbf"]; exists {
+		if nbfFloat, ok := nbf.(float64); ok {
+			if time.Now().Unix() < int64(nbfFloat) {
+				return map[string]interface{}{
+					"valid":   false,
+					"error":   "Token not yet valid",
+					"payload": payload,
+				}
+			}
 		}
 	}
 
