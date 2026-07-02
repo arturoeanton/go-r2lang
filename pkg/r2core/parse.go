@@ -613,6 +613,11 @@ func (p *Parser) parseFunctionParameters() []Parameter {
 	var params []Parameter
 	p.nextToken() // consumir "("
 
+	// Skip newlines so parameter lists can wrap across multiple lines.
+	for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+		p.nextToken()
+	}
+
 	for p.curTok.Value != ")" && p.curTok.Type != TOKEN_EOF {
 		if p.curTok.Type == TOKEN_IDENT {
 			paramName := p.curTok.Value
@@ -631,8 +636,16 @@ func (p *Parser) parseFunctionParameters() []Parameter {
 
 			if p.curTok.Value == "," {
 				p.nextToken() // consumir ","
-			} else if p.curTok.Value != ")" {
-				p.except("Expected ',' or ')' after parameter")
+				for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+					p.nextToken()
+				}
+			} else {
+				for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+					p.nextToken()
+				}
+				if p.curTok.Value != ")" {
+					p.except("Expected ',' or ')' after parameter")
+				}
 			}
 		} else if p.curTok.Value == ")" {
 			// Empty parameter list - break the loop
@@ -693,9 +706,32 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 	left := p.parseUnaryExpression()
 
 	for {
-		// Skip newlines before checking for operators (especially for pipeline |>)
-		for p.curTok.Value == "\n" {
-			p.nextToken()
+		// A newline might just separate this expression from whatever comes
+		// after it (e.g. the next pair in a map literal), or it might be
+		// wrapping a continued expression like a multiline pipeline `|>`.
+		// Look past it and only commit to skipping if an operator actually
+		// follows; otherwise rewind so the newline is still there for the
+		// caller (map/array literal, statement separator, etc.) to see.
+		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+			savedPos := p.lexer.pos
+			savedCol := p.lexer.col
+			savedLine := p.lexer.line
+			savedCurTok := p.curTok
+			savedPeekTok := p.peekTok
+
+			for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+				p.nextToken()
+			}
+
+			isOperator := (p.curTok.Type == TOKEN_SYMBOL || p.curTok.Type == TOKEN_NULL_COALESCING || p.curTok.Type == TOKEN_PIPE) && isBinaryOp(p.curTok.Value) && getPrecedence(p.curTok.Value) >= precedence
+			if !isOperator {
+				p.lexer.pos = savedPos
+				p.lexer.col = savedCol
+				p.lexer.line = savedLine
+				p.curTok = savedCurTok
+				p.peekTok = savedPeekTok
+				break
+			}
 		}
 
 		// Check if current token is a binary operator
@@ -708,7 +744,7 @@ func (p *Parser) parseBinaryExpression(precedence int) Node {
 		p.nextToken()
 
 		// Skip newlines after the operator as well
-		for p.curTok.Value == "\n" {
+		for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			p.nextToken()
 		}
 
@@ -910,10 +946,21 @@ func (p *Parser) parsePostfix(left Node) Node {
 
 func (p *Parser) parseCallExpression(left Node) Node {
 	p.nextToken() // consumir "("
+
+	// Skip newlines after opening paren, so calls can wrap their argument
+	// list across multiple lines like array/map literals do.
+	for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
+		p.nextToken()
+	}
+
 	var args []Node
 	for p.curTok.Value != ")" && p.curTok.Type != TOKEN_EOF {
 		args = append(args, p.parseExpression())
 		if p.curTok.Value == "," {
+			p.nextToken()
+		}
+		// Skip newlines after an argument (with or without a trailing comma)
+		for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			p.nextToken()
 		}
 	}
@@ -975,7 +1022,7 @@ func (p *Parser) parseArrayLiteral() Node {
 	}
 
 	// Skip newlines after opening bracket
-	for p.curTok.Value == "\n" {
+	for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 		p.nextToken()
 	}
 
@@ -993,12 +1040,12 @@ func (p *Parser) parseArrayLiteral() Node {
 		if p.curTok.Value == "," {
 			p.nextToken()
 			// Skip newlines after comma
-			for p.curTok.Value == "\n" {
+			for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 				p.nextToken()
 			}
-		} else if p.curTok.Value == "\n" {
+		} else if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			// Allow newlines instead of commas
-			for p.curTok.Value == "\n" {
+			for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 				p.nextToken()
 			}
 		} else if p.curTok.Value == "]" {
@@ -1018,7 +1065,7 @@ func (p *Parser) parseMapLiteral() Node {
 	p.nextToken() // "{"
 
 	// Skip newlines after opening brace
-	for p.curTok.Value == "\n" {
+	for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 		p.nextToken()
 	}
 
@@ -1096,12 +1143,12 @@ func (p *Parser) parseMapLiteral() Node {
 		if p.curTok.Value == "," {
 			p.nextToken()
 			// Skip newlines after comma
-			for p.curTok.Value == "\n" {
+			for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 				p.nextToken()
 			}
-		} else if p.curTok.Value == "\n" {
+		} else if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			// Allow newlines instead of commas
-			for p.curTok.Value == "\n" {
+			for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 				p.nextToken()
 			}
 		} else if p.curTok.Value == "}" {
@@ -1355,7 +1402,7 @@ func (p *Parser) parseMatchExpression() Node {
 
 	for p.curTok.Value != "}" && p.curTok.Type != TOKEN_EOF {
 		// Skip newlines
-		if p.curTok.Value == "\n" {
+		if p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			p.nextToken()
 			continue
 		}
@@ -1394,7 +1441,7 @@ func (p *Parser) parseMatchExpression() Node {
 		if p.curTok.Value == "," {
 			p.nextToken()
 		}
-		for p.curTok.Value == "\n" {
+		for p.curTok.Type == TOKEN_SYMBOL && p.curTok.Value == "\n" {
 			p.nextToken()
 		}
 	}
