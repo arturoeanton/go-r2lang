@@ -35,6 +35,7 @@ func (c *CommandObject) Getattr(name string) (r2core.Node, bool) {
 	switch name {
 	case "run":
 		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
+			checkCommandAllowed("Command.run", c.command)
 			parts := strings.Fields(c.command)
 			if len(parts) == 0 {
 				panic("Command.run: command is empty")
@@ -43,6 +44,7 @@ func (c *CommandObject) Getattr(name string) (r2core.Node, bool) {
 			c.cmd.Stderr = &c.stderr
 
 			if c.pipeTo != nil {
+				checkCommandAllowed("Command.run", c.pipeTo.command)
 				pipe, err := c.cmd.StdoutPipe()
 				if err != nil {
 					panic(fmt.Sprintf("Command.run: failed to create pipe: %v", err))
@@ -273,6 +275,7 @@ func RegisterOS(env *r2core.Environment) {
 			if !ok {
 				panic("execCmd: arg should be string")
 			}
+			checkShellAllowed("execCmd")
 			out, err := exec.Command("sh", "-c", cmdLine).CombinedOutput()
 			if err != nil {
 				return fmt.Sprintf("Error:%v\nOutput:\n%s", err, out)
@@ -288,6 +291,7 @@ func RegisterOS(env *r2core.Environment) {
 			if !ok {
 				panic("runProcess: arg debe ser string")
 			}
+			checkShellAllowed("runProcess")
 			// parse: naive approach => "sh -c <cmd>"
 			cmd := exec.Command("sh", "-c", cmdLine)
 			// Iniciar
@@ -461,6 +465,7 @@ func RegisterOS(env *r2core.Environment) {
 			if !ok1 {
 				panic("execWithTimeout: cmd should be string")
 			}
+			checkShellAllowed("execWithTimeout")
 
 			cmd := exec.Command("sh", "-c", cmdLine)
 
@@ -506,6 +511,7 @@ func RegisterOS(env *r2core.Environment) {
 			if !ok1 || !ok2 {
 				panic("execWithEnv: arguments should be (string, map)")
 			}
+			checkShellAllowed("execWithEnv")
 
 			cmd := exec.Command("sh", "-c", cmdLine)
 

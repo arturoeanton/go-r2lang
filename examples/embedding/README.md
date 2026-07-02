@@ -58,3 +58,31 @@ Hello, R2Lang!
 - **El registro (`RegisterNativeFunc`/`RegisterNativeStruct`) solo puede hacerse desde Go**, nunca desde un script `.r2` — no hay forma de representar un `reflect.Value` en R2Lang. `native.callFunc`/`native.new` fallan con un mensaje claro si el nombre no fue registrado.
 - **Los numeros en R2Lang son siempre `float64`.** Si tu funcion/struct Go espera `int`, `int64`, `float32`, etc, `native.callFunc`/`native.setField` convierten automaticamente — no hace falta que tu codigo Go acepte `float64` en todos lados.
 - Solo campos/metodos **exportados** (que empiezan con mayuscula) son accesibles.
+
+## Restringir os.Command/exec para scripts no confiables
+
+Por diseno, `os.Command`/`os.execCmd`/`os.runProcess`/`os.execWithTimeout`/
+`os.execWithEnv` le dan al script acceso de shell sin restricciones (es una
+funcionalidad deliberada, no un bug). Si tu programa anfitrion va a correr
+scripts que no controla del todo, llama a `r2libs.SetCommandPolicy(...)`
+ANTES de correr el script:
+
+```go
+r2libs.SetCommandPolicy(r2libs.CommandPolicy{
+    // Restringe os.Command(...).run() a un allowlist de ejecutables (no
+    // aplica shell, asi que el allowlist es seguro: no hay forma de
+    // encadenar comandos via ";"/"&&"/"|").
+    AllowedCommands: map[string]bool{"git": true, "echo": true},
+
+    // Bloquea por completo execCmd/runProcess/execWithTimeout/execWithEnv,
+    // que corren via "sh -c" (un shell completo no se puede restringir de
+    // forma segura con un allowlist parcial). Para exponer una operacion
+    // especifica del host a un script restringido, usa
+    // RegisterNativeFunc en vez del shell.
+    DisableShell: true,
+})
+```
+
+El valor por defecto (`CommandPolicy{}`, sin llamar a `SetCommandPolicy`)
+es sin restricciones — el comportamiento historico del proyecto no cambia
+si no optás explicitamente por esto.
