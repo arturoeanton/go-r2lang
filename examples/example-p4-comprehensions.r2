@@ -22,7 +22,7 @@ std.print("Cuadrados pares:", evenSquares)
 std.print("\n🎯 3. Transformaciones Complejas:")
 let words = ["hello", "world", "r2lang", "comprehension"]
 let lengths = [word.length for word in words if word.length > 5]
-let upperLong = [word.toUpperCase() for word in words if word.length > 5]
+let upperLong = [string.toUpper(word) for word in words if word.length > 5]
 
 std.print("Palabras largas (longitud):", lengths)
 std.print("Palabras largas (mayúsculas):", upperLong)
@@ -96,7 +96,7 @@ std.print("Mapa username->email:", activeUserEmails)
 // 9. Procesamiento de strings
 std.print("\n📝 9. Procesamiento de Strings:")
 let sentence = "The quick brown fox jumps"
-let wordsList = sentence.split(" ")
+let wordsList = string.split(sentence, " ")
 let wordCounts = {word: word.length for word in wordsList}
 let longWords = [word for word in wordsList if word.length > 4]
 

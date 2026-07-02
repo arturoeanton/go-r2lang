@@ -11,28 +11,36 @@ import (
 // r2string.go: Funciones nativas para manipulación de strings en R2
 
 func RegisterString(env *r2core.Environment) {
-	functions := map[string]r2core.BuiltinFunction{
-		"toUpper": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			if len(args) < 1 {
-				panic("toUpper necesita (str)")
-			}
-			s, ok := args[0].(string)
-			if !ok {
-				panic("toUpper: argumento debe ser string")
-			}
-			return strings.ToUpper(s)
-		}),
+	toUpper := r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("toUpper necesita (str)")
+		}
+		s, ok := args[0].(string)
+		if !ok {
+			panic("toUpper: argumento debe ser string")
+		}
+		return strings.ToUpper(s)
+	})
 
-		"toLower": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-			if len(args) < 1 {
-				panic("toLower necesita (str)")
-			}
-			s, ok := args[0].(string)
-			if !ok {
-				panic("toLower: argumento debe ser string")
-			}
-			return strings.ToLower(s)
-		}),
+	toLower := r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("toLower necesita (str)")
+		}
+		s, ok := args[0].(string)
+		if !ok {
+			panic("toLower: argumento debe ser string")
+		}
+		return strings.ToLower(s)
+	})
+
+	functions := map[string]r2core.BuiltinFunction{
+		"toUpper": toUpper,
+		// toUpperCase/toLowerCase: JS-style aliases for scripts written
+		// against String.prototype naming conventions.
+		"toUpperCase": toUpper,
+
+		"toLower":     toLower,
+		"toLowerCase": toLower,
 
 		"trim": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 1 {
