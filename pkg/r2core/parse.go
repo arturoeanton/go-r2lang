@@ -1010,6 +1010,18 @@ func (p *Parser) parseAccessExpression(left Node) Node {
 
 func (p *Parser) parseOptionalAccessExpression(left Node) Node {
 	p.nextToken() // "?."
+
+	if p.curTok.Value == "[" {
+		p.nextToken() // "["
+		idx := p.parseExpression()
+		if p.curTok.Value != "]" {
+			p.except("Expected ']' after optional index expression")
+		}
+		p.nextToken() // "]"
+		node := &OptionalIndexExpression{Object: left, Index: idx}
+		return p.parsePostfix(node)
+	}
+
 	mem, ok := memberName(p.curTok)
 	if !ok {
 		p.except("Expected identifier after '?.'")

@@ -76,6 +76,60 @@ func evalMapAccessOptional(obj map[string]interface{}, member string) interface{
 	return nil
 }
 
+// OptionalIndexExpression represents `x?.[i]`: like IndexExpression, but a
+// nil object, a missing/out-of-range index, or an index into a
+// non-indexable value all safely return nil instead of panicking.
+type OptionalIndexExpression struct {
+	Object Node
+	Index  Node
+}
+
+func (oie *OptionalIndexExpression) Eval(env *Environment) interface{} {
+	objVal := oie.Object.Eval(env)
+	for {
+		if retVal, ok := objVal.(*ReturnValue); ok {
+			objVal = retVal.Value
+		} else {
+			break
+		}
+	}
+	if objVal == nil {
+		return nil
+	}
+
+	indexVal := oie.Index.Eval(env)
+
+	switch container := objVal.(type) {
+	case map[string]interface{}:
+		strKey, ok := indexVal.(string)
+		if !ok {
+			return nil
+		}
+		return container[strKey]
+	case []interface{}:
+		return optionalArrayIndex(container, indexVal)
+	case InterfaceSlice:
+		return optionalArrayIndex([]interface{}(container), indexVal)
+	default:
+		return nil
+	}
+}
+
+func optionalArrayIndex(container []interface{}, indexVal interface{}) interface{} {
+	fIndex, ok := indexVal.(float64)
+	if !ok {
+		return nil
+	}
+	idx := int(fIndex)
+	if idx < 0 {
+		idx = len(container) + idx
+	}
+	if idx < 0 || idx >= len(container) {
+		return nil
+	}
+	return container[idx]
+}
+
 // evalArrayAccessOptional safely accesses array methods/properties
 func evalArrayAccessOptional(obj []interface{}, member string, env *Environment) interface{} {
 	if obj == nil {
