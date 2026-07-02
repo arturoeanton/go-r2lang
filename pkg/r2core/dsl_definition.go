@@ -1,8 +1,11 @@
 package r2core
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -24,9 +27,77 @@ type DSLDefinition struct {
 	// own instance is documented as unsafe for concurrent Use/Parse calls
 	// (see dslbuilder.DSL.Use). Locking here gives R2Lang scripts that call
 	// .use() from multiple goroutines (via `go`/`r2`) correct, race-free
-	// results instead of one call observing another's environment.
-	useMu               sync.Mutex
+	// results instead of one call observing another's environment. It is
+	// reentrant so an action function that itself calls .use() on this same
+	// DSL (e.g. sub-parsing) doesn't deadlock a plain sync.Mutex against
+	// itself; currentExecutionEnv is still saved/restored per call in
+	// evaluateDSLCode so a nested .use() can't leak its environment into
+	// the outer call once it returns.
+	useMu               reentrantMutex
 	currentExecutionEnv *Environment // Current execution environment for actions
+}
+
+// reentrantMutex is a sync.Mutex that the same goroutine can Lock() again
+// without blocking on itself (a plain sync.Mutex is not reentrant and would
+// deadlock). Cross-goroutine calls still block on the underlying mutex, so
+// mutual exclusion between goroutines is unaffected.
+type reentrantMutex struct {
+	mu     sync.Mutex
+	metaMu sync.Mutex
+	owner  int64
+	count  int
+}
+
+func (m *reentrantMutex) Lock() {
+	gid := currentGoroutineID()
+
+	m.metaMu.Lock()
+	if m.count > 0 && m.owner == gid {
+		m.count++
+		m.metaMu.Unlock()
+		return
+	}
+	m.metaMu.Unlock()
+
+	m.mu.Lock()
+
+	m.metaMu.Lock()
+	m.owner = gid
+	m.count = 1
+	m.metaMu.Unlock()
+}
+
+func (m *reentrantMutex) Unlock() {
+	gid := currentGoroutineID()
+
+	m.metaMu.Lock()
+	defer m.metaMu.Unlock()
+	if m.count == 0 || m.owner != gid {
+		panic("reentrantMutex: Unlock called by a goroutine that doesn't hold the lock")
+	}
+	m.count--
+	if m.count == 0 {
+		m.mu.Unlock()
+	}
+}
+
+// currentGoroutineID extracts the calling goroutine's ID from its stack
+// trace header ("goroutine 123 [running]:"). It's only used to detect
+// same-goroutine re-entry into reentrantMutex, never for scheduling or
+// correctness beyond that, so the usual fragility concerns with parsing
+// runtime.Stack output don't apply here.
+func currentGoroutineID() int64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	fields := bytes.Fields(buf[:n])
+	if len(fields) < 2 {
+		return -1
+	}
+	id, err := strconv.ParseInt(string(fields[1]), 10, 64)
+	if err != nil {
+		return -1
+	}
+	return id
 }
 
 func (dsl *DSLDefinition) Eval(env *Environment) interface{} {
@@ -264,14 +335,24 @@ func (dsl *DSLDefinition) extractToken(call *CallExpression) {
 
 				// Auto-detect if this is a keyword token (literal string without regex patterns)
 				if dsl.isKeywordToken(pattern) {
-					dsl.Grammar.AddKeywordToken(name, pattern)
+					if err := dsl.Grammar.AddKeywordToken(name, pattern); err != nil {
+						panic(fmt.Sprintf("DSL '%s': invalid keyword token('%s', %q): %v", dsl.Name.Name, name, pattern, err))
+					}
 				} else {
 					// Improve pattern by auto-escaping problematic single characters if needed
 					improvedPattern := dsl.improveRegexPattern(pattern)
 					err := dsl.Grammar.AddToken(name, improvedPattern)
 					if err != nil {
-						// If the improved pattern fails, try the original
-						dsl.Grammar.AddToken(name, pattern)
+						// If the improved pattern fails, try the original. Its
+						// error, not the improved pattern's, is what's actually
+						// informative to report if this also fails: silently
+						// dropping the token here would otherwise leave it
+						// unregistered with no trace, surfacing later (if at
+						// all) as a confusing "unknown symbol" error from
+						// Validate() instead of the real cause.
+						if origErr := dsl.Grammar.AddToken(name, pattern); origErr != nil {
+							panic(fmt.Sprintf("DSL '%s': invalid token('%s', %q): %v", dsl.Name.Name, name, pattern, origErr))
+						}
 					}
 				}
 			}
@@ -288,7 +369,9 @@ func (dsl *DSLDefinition) extractKeyword(call *CallExpression) {
 			if wordStr, ok := call.Args[1].(*StringLiteral); ok {
 				name := strings.Trim(nameStr.Value, "\"'")
 				word := strings.Trim(wordStr.Value, "\"'")
-				dsl.Grammar.AddKeywordToken(name, word)
+				if err := dsl.Grammar.AddKeywordToken(name, word); err != nil {
+					panic(fmt.Sprintf("DSL '%s': invalid keyword('%s', %q): %v", dsl.Name.Name, name, word, err))
+				}
 			}
 		}
 	}
@@ -303,7 +386,9 @@ func (dsl *DSLDefinition) extractLiteral(call *CallExpression) {
 			if textStr, ok := call.Args[1].(*StringLiteral); ok {
 				name := strings.Trim(nameStr.Value, "\"'")
 				text := strings.Trim(textStr.Value, "\"'")
-				dsl.Grammar.AddLiteral(name, text)
+				if err := dsl.Grammar.AddLiteral(name, text); err != nil {
+					panic(fmt.Sprintf("DSL '%s': invalid literal('%s', %q): %v", dsl.Name.Name, name, text, err))
+				}
 			}
 		}
 	}
@@ -401,8 +486,13 @@ func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interfa
 		dsl.GlobalEnv = env
 	}
 
-	// Store the execution environment for actions to use
+	// Store the execution environment for actions to use. Saved/restored
+	// (rather than just set) so a re-entrant .use() call from within an
+	// action (allowed by useMu's reentrancy) doesn't leave the outer call's
+	// remaining actions running against the inner call's environment.
+	savedExecutionEnv := dsl.currentExecutionEnv
 	dsl.currentExecutionEnv = env
+	defer func() { dsl.currentExecutionEnv = savedExecutionEnv }()
 
 	// Actions run as R2Lang function bodies against currentExecutionEnv, so
 	// the context map is threaded through the environment; pass it to go-dsl
@@ -441,6 +531,26 @@ func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interf
 
 	// Create new environment for function execution
 	fnEnv := NewInnerEnv(baseEnv)
+
+	// DSL actions run arbitrary R2Lang function bodies (including, via
+	// .use(), themselves) but were invoked outside UserFunction.Call, so
+	// they bypassed the same recursion-depth/timeout guards normal calls
+	// get — infinite recursion through a DSL action hung the interpreter
+	// forever instead of raising the usual clean "Loop infinito" error.
+	limiter := fnEnv.GetLimiter()
+	if limiter.Enabled {
+		if limiter.CheckRecursionDepth() {
+			panic(NewRecursionError("max_depth", limiter.CallDepth()))
+		}
+		if limiter.CheckTimeLimit() {
+			panic(NewTimeoutError("function_timeout", fnEnv.GetContext()))
+		}
+		if limiter.CheckContext() {
+			panic(NewTimeoutError("function_context_canceled", fnEnv.GetContext()))
+		}
+		limiter.EnterFunction(fn.Name)
+		defer limiter.ExitFunction()
+	}
 
 	// Bind parameters to arguments
 	for i, param := range fn.Args {
