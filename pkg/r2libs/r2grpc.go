@@ -1168,17 +1168,25 @@ func grpcStreamToMap(stream *GRPCStream) map[string]interface{} {
 	// Close stream
 	streamMap["close"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		stream.mu.Lock()
-		defer stream.mu.Unlock()
-
 		if stream.closed {
+			stream.mu.Unlock()
 			return nil
 		}
 
 		stream.closed = true
 		stream.cancel()
+		onClose := stream.onClose
+		// Release the lock before invoking the callback: onClose runs
+		// arbitrary R2Lang script code, and if that script calls back into
+		// any stream method that needs stream.mu (e.g. close() again,
+		// send(), onReceive()/onError()/onClose() setters), holding the
+		// lock here would self-deadlock since sync.RWMutex is not
+		// reentrant. stream.closed is already true, so a reentrant close()
+		// call will just hit the guard above and return immediately.
+		stream.mu.Unlock()
 
-		if stream.onClose != nil {
-			stream.onClose()
+		if onClose != nil {
+			safeInvokeCallback(onClose)
 		}
 
 		return nil

@@ -794,6 +794,80 @@ func BenchmarkGRPCClientCreation(b *testing.B) {
 	}
 }
 
+// TestStreamCloseReentrantOnCloseDoesNotDeadlock guards against a regression
+// where streamMap["close"] invoked stream.onClose() while still holding
+// stream.mu (via `defer stream.mu.Unlock()`). Since sync.RWMutex is not
+// reentrant, an onClose callback that calls stream.close() again (a natural
+// "make sure it's closed" pattern in a script) used to self-deadlock instead
+// of hitting the `if stream.closed { return nil }` fast path.
+func TestStreamCloseReentrantOnCloseDoesNotDeadlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	stream := &GRPCStream{
+		isClient: true,
+		isServer: true,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	m := grpcStreamToMap(stream)
+	closeFn := m["close"].(r2core.BuiltinFunction)
+	onCloseFn := m["onClose"].(r2core.BuiltinFunction)
+
+	reentered := false
+	onCloseFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		// Reentrant call: must not deadlock, and must be a no-op since the
+		// stream is already marked closed.
+		closeFn()
+		reentered = true
+		return nil
+	}))
+
+	done := make(chan struct{})
+	go func() {
+		closeFn()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		if !reentered {
+			t.Fatal("onClose callback never ran")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("DEADLOCK: close() did not return within 3s when onClose re-entered close()")
+	}
+}
+
+// TestStreamClosePanickingOnCloseIsRecovered ensures that, consistent with
+// receiveMessages(), a panicking onClose callback invoked from the close()
+// builtin is recovered via safeInvokeCallback rather than crashing the
+// calling goroutine.
+func TestStreamClosePanickingOnCloseIsRecovered(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	stream := &GRPCStream{
+		isClient: true,
+		isServer: true,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	m := grpcStreamToMap(stream)
+	closeFn := m["close"].(r2core.BuiltinFunction)
+	onCloseFn := m["onClose"].(r2core.BuiltinFunction)
+
+	onCloseFn(r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		panic("boom: bad script logic in onClose")
+	}))
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("close() should not propagate a panic from onClose, got: %v", r)
+		}
+	}()
+
+	closeFn()
+}
+
 func BenchmarkMetadataOperations(b *testing.B) {
 	protoFile := createTestProtoFile(b)
 	defer os.RemoveAll(filepath.Dir(protoFile))
