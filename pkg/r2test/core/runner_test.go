@@ -1,6 +1,8 @@
 package core
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -338,6 +340,72 @@ func TestTestRunner_BeforeEachAfterEach(t *testing.T) {
 			t.Errorf("Expected execution order %v, got %v", expected, execOrder)
 			break
 		}
+	}
+}
+
+// TestTestRunner_AfterEachPanicAfterTestPanicPreservesOriginalFailure covers
+// the case where the test body panics AND its AfterEach hook also panics
+// during cleanup: the test's own failure reason must survive (an
+// AfterEach failure "hides" a real bug in cleanup code, not the actual
+// test failure), while the AfterEach panic must still be visible on
+// stderr instead of vanishing silently.
+func TestTestRunner_AfterEachPanicAfterTestPanicPreservesOriginalFailure(t *testing.T) {
+	config := DefaultConfig()
+	runner := NewTestRunner(config)
+
+	afterEachCalls := 0
+	test := &TestCase{
+		Name: "Test 1",
+		Func: func() {
+			panic("test body exploded")
+		},
+	}
+
+	suite := &TestSuite{
+		Name:  "Test Suite",
+		Tests: []*TestCase{test},
+		AfterEach: func() {
+			afterEachCalls++
+			panic("afterEach cleanup exploded")
+		},
+	}
+	test.Suite = suite
+
+	runner.AddSuite(suite)
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	results, err := runner.Run()
+
+	w.Close()
+	os.Stderr = oldStderr
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	stderrOutput := string(buf[:n])
+
+	if err != nil {
+		t.Fatalf("Run should not return an error even if hooks panic: %v", err)
+	}
+	if afterEachCalls != 1 {
+		t.Fatalf("expected afterEach to run once, got %d", afterEachCalls)
+	}
+
+	stats := results.GetStats()
+	if stats.Failed != 1 || stats.Total != 1 {
+		t.Fatalf("expected 1 failed test out of 1 total, got failed=%d total=%d", stats.Failed, stats.Total)
+	}
+
+	result := results.Results[0]
+	if !strings.Contains(result.Message, "test body exploded") {
+		t.Errorf("expected the original test panic reason to survive, got message %q", result.Message)
+	}
+	if strings.Contains(result.Message, "afterEach") {
+		t.Errorf("did not expect the afterEach panic to overwrite the test failure message, got %q", result.Message)
+	}
+	if !strings.Contains(stderrOutput, "afterEach") || !strings.Contains(stderrOutput, "afterEach cleanup exploded") {
+		t.Errorf("expected the afterEach panic to be logged to stderr instead of silently dropped, got stderr=%q", stderrOutput)
 	}
 }
 

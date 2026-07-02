@@ -259,12 +259,19 @@ func (tr *TestRunner) runTest(test *TestCase, suite *TestSuite) *TestResult {
 	result.Duration = result.EndTime.Sub(result.StartTime)
 
 	// Run AfterEach hook. A panic here is reported as a test failure too,
-	// unless the test already failed for another reason.
+	// unless the test already failed for another reason, in which case the
+	// original failure reason takes precedence and is not overwritten. That
+	// AfterEach panic must still be surfaced somewhere (stderr), same as
+	// AfterAll, so a broken cleanup never fails completely silently.
 	if suite.AfterEach != nil {
-		if afterEachErr := runProtected(suite.AfterEach); afterEachErr != nil && result.Status != TestStatusFailed {
-			result.Status = TestStatusFailed
-			result.Error = afterEachErr
-			result.Message = fmt.Sprintf("afterEach hook failed: %v", afterEachErr)
+		if afterEachErr := runProtected(suite.AfterEach); afterEachErr != nil {
+			if result.Status != TestStatusFailed {
+				result.Status = TestStatusFailed
+				result.Error = afterEachErr
+				result.Message = fmt.Sprintf("afterEach hook failed: %v", afterEachErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "afterEach hook failed for test %q (suite %q), original failure reported: %v\n", test.Name, suite.Name, afterEachErr)
+			}
 		}
 	}
 
