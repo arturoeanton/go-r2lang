@@ -8,11 +8,17 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 // r2httpclient.go: Funciones nativas de HTTP y JSON/XML en R2
+
+// httpClientDefault guards against requests hanging forever on a slow or
+// malicious server; http.Get/http.Post use http.DefaultClient, which has
+// no timeout at all.
+var httpClientDefault = &http.Client{Timeout: 30 * time.Second}
 
 func RegisterHTTPClient(env *r2core.Environment) {
 	functions := map[string]r2core.BuiltinFunction{
@@ -24,7 +30,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 			if !ok {
 				panic("clientHttpGet: url debe ser string")
 			}
-			resp, err := http.Get(url)
+			resp, err := httpClientDefault.Get(url)
 			if err != nil {
 				panic(fmt.Sprintf("clientHttpGet: error en GET '%s': %v", url, err))
 			}
@@ -46,7 +52,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic("clientHttpPost: (url, bodyString) deben ser strings")
 			}
 
-			resp, err := http.Post(url, "text/plain", bytes.NewBufferString(bodyStr))
+			resp, err := httpClientDefault.Post(url, "text/plain", bytes.NewBufferString(bodyStr))
 			if err != nil {
 				panic(fmt.Sprintf("clientHttpPost: error en POST '%s': %v", url, err))
 			}
@@ -96,7 +102,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 			if !ok {
 				panic("httpGetJSON: url debe ser string")
 			}
-			resp, err := http.Get(url)
+			resp, err := httpClientDefault.Get(url)
 			if err != nil {
 				panic(fmt.Sprintf("httpGetJSON: error en GET '%s': %v", url, err))
 			}
@@ -128,7 +134,7 @@ func RegisterHTTPClient(env *r2core.Environment) {
 				panic(fmt.Sprintf("httpPostJSON: error al serializar: %v", err))
 			}
 
-			resp, err := http.Post(url, "application/json", bytes.NewReader(jsData))
+			resp, err := httpClientDefault.Post(url, "application/json", bytes.NewReader(jsData))
 			if err != nil {
 				panic(fmt.Sprintf("httpPostJSON: error en POST '%s': %v", url, err))
 			}

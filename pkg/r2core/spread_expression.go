@@ -38,6 +38,9 @@ func ExpandSpreadInArray(elements []interface{}) []interface{} {
 			case []interface{}:
 				// Expandir array
 				result = append(result, val...)
+			case InterfaceSlice:
+				// Expandir array
+				result = append(result, []interface{}(val)...)
 			case map[string]interface{}:
 				// Para objetos en arrays, conservamos el objeto completo
 				result = append(result, val)
@@ -92,6 +95,9 @@ func ExpandSpreadInFunctionCall(args []interface{}) []interface{} {
 			case []interface{}:
 				// Expandir array como argumentos individuales
 				result = append(result, val...)
+			case InterfaceSlice:
+				// Expandir array como argumentos individuales
+				result = append(result, []interface{}(val)...)
 			default:
 				// Para tipos no-array, agregar como argumento individual
 				result = append(result, val)

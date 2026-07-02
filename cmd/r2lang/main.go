@@ -8,7 +8,7 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
-const version = "1.0.0"
+const version = "0.1.0"
 
 func main() {
 	// Add error handling for R2Lang panics

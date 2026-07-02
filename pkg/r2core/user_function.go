@@ -53,7 +53,7 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	if limiter.Enabled {
 		// Verificar límite de profundidad de recursión
 		if limiter.CheckRecursionDepth() {
-			panic(NewRecursionError("max_depth", len(limiter.CallStack)))
+			panic(NewRecursionError("max_depth", limiter.CallDepth()))
 		}
 
 		// Verificar timeout global
@@ -123,26 +123,26 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 }
 
 func (uf *UserFunction) Call(args ...interface{}) interface{} {
-	tmp := uf.Env.CurrenFx
-	uf.Env.CurrenFx = uf.code
+	tmp := uf.Env.GetCurrenFx()
+	uf.Env.SetCurrenFx(uf.code)
 	out := uf.NativeCall(nil, args...)
-	uf.Env.CurrenFx = tmp
+	uf.Env.SetCurrenFx(tmp)
 	return out
 }
 
 func (uf *UserFunction) SuperCall(env *Environment, args ...interface{}) interface{} {
-	tmp := env.CurrenFx
-	env.CurrenFx = uf.code
+	tmp := env.GetCurrenFx()
+	env.SetCurrenFx(uf.code)
 	out := uf.NativeCall(env, args...)
-	env.CurrenFx = tmp
+	env.SetCurrenFx(tmp)
 	return out
 }
 
 func (uf *UserFunction) CallStep(env *Environment, args ...interface{}) interface{} {
-	tmp := env.CurrenFx
-	env.CurrenFx = uf.code
+	tmp := env.GetCurrenFx()
+	env.SetCurrenFx(uf.code)
 	out := uf.NativeCall(env, args...)
-	env.CurrenFx = tmp
+	env.SetCurrenFx(tmp)
 	return out
 }
 

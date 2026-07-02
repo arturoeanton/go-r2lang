@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,19 +21,21 @@ type Variable struct {
 
 type Environment struct {
 	store       map[string]*Variable
+	storeMu     sync.RWMutex
 	outer       *Environment
 	imported    map[string]bool
 	importStack []string   // Track import chain for cyclic detection
 	callStack   *CallStack // Track R2Lang function call stack
 	Dir         string
 	CurrenFx    string
-	CurrentFile string // Track current file for error reporting
+	currenFxMu  sync.Mutex // Guards CurrenFx: mutated by UserFunction.Call, which can run concurrently across goroutines sharing the same closure Environment
+	CurrentFile string     // Track current file for error reporting
 
 	// Cache optimizado para lookup frecuente
 	lookupCache   map[string]interface{}
 	lookupCacheMu sync.RWMutex
-	cacheHits     int
-	cacheMisses   int
+	cacheHits     int64
+	cacheMisses   int64
 
 	// Execution limiter para prevenir loops infinitos
 	limiter *ExecutionLimiter
@@ -72,6 +75,8 @@ func (e *Environment) GetStore() map[string]interface{} {
 		return nil
 	}
 	// Convert Variable map to interface{} map for backward compatibility
+	e.storeMu.RLock()
+	defer e.storeMu.RUnlock()
 	result := make(map[string]interface{})
 	for name, variable := range e.store {
 		result[name] = variable.Value
@@ -80,11 +85,14 @@ func (e *Environment) GetStore() map[string]interface{} {
 }
 
 func (e *Environment) Set(name string, value interface{}) {
+	e.storeMu.Lock()
 	// Check if variable already exists and is const
 	if existing, exists := e.store[name]; exists && existing.IsConst {
+		e.storeMu.Unlock()
 		panic("cannot assign to const variable '" + name + "'")
 	}
 	e.store[name] = &Variable{Value: value, IsConst: false}
+	e.storeMu.Unlock()
 	// Limpiar cache cuando se modifica una variable
 	e.lookupCacheMu.Lock()
 	delete(e.lookupCache, name)
@@ -93,11 +101,14 @@ func (e *Environment) Set(name string, value interface{}) {
 
 // SetConst creates an immutable variable
 func (e *Environment) SetConst(name string, value interface{}) {
+	e.storeMu.Lock()
 	// Check if variable already exists
 	if _, exists := e.store[name]; exists {
+		e.storeMu.Unlock()
 		panic("variable '" + name + "' already declared")
 	}
 	e.store[name] = &Variable{Value: value, IsConst: true}
+	e.storeMu.Unlock()
 	// Limpiar cache cuando se modifica una variable
 	e.lookupCacheMu.Lock()
 	delete(e.lookupCache, name)
@@ -107,17 +118,21 @@ func (e *Environment) SetConst(name string, value interface{}) {
 // Update modifica una variable existente en el scope correcto
 func (e *Environment) Update(name string, value interface{}) {
 	// Buscar la variable en el scope actual
+	e.storeMu.Lock()
 	if existing, ok := e.store[name]; ok {
 		if existing.IsConst {
+			e.storeMu.Unlock()
 			panic("cannot assign to const variable '" + name + "'")
 		}
 		e.store[name] = &Variable{Value: value, IsConst: false}
+		e.storeMu.Unlock()
 		// Limpiar cache cuando se modifica una variable
 		e.lookupCacheMu.Lock()
 		delete(e.lookupCache, name)
 		e.lookupCacheMu.Unlock()
 		return
 	}
+	e.storeMu.Unlock()
 
 	// Si no está en el scope actual, buscar en el outer scope
 	if e.outer != nil {
@@ -133,14 +148,16 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 	// Fast path: buscar en cache optimizado
 	e.lookupCacheMu.RLock()
 	if val, ok := e.lookupCache[name]; ok {
-		e.cacheHits++
 		e.lookupCacheMu.RUnlock()
+		atomic.AddInt64(&e.cacheHits, 1)
 		return val, true
 	}
 	e.lookupCacheMu.RUnlock()
 
 	// Búsqueda en store local
+	e.storeMu.RLock()
 	variable, ok := e.store[name]
+	e.storeMu.RUnlock()
 	if ok {
 		val := variable.Value
 		// Cachear solo si el cache no está lleno (evitar memory leak)
@@ -148,8 +165,8 @@ func (e *Environment) Get(name string) (interface{}, bool) {
 		if len(e.lookupCache) < 100 { // Limitar tamaño del cache
 			e.lookupCache[name] = val
 		}
-		e.cacheMisses++
 		e.lookupCacheMu.Unlock()
+		atomic.AddInt64(&e.cacheMisses, 1)
 		return val, true
 	}
 
@@ -181,7 +198,7 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 			}
 		}()//*/
 
-	e.CurrenFx = "."
+	e.SetCurrenFx(".")
 
 	// Ejecutar
 	result = ast.Eval(e)
@@ -197,6 +214,20 @@ func (e *Environment) Run(parser *Parser) (result interface{}) {
 		result = mainFn.Call()
 	}
 	return result
+}
+
+// GetCurrenFx retorna de forma segura el nombre de la función actualmente en ejecución
+func (e *Environment) GetCurrenFx() string {
+	e.currenFxMu.Lock()
+	defer e.currenFxMu.Unlock()
+	return e.CurrenFx
+}
+
+// SetCurrenFx establece de forma segura el nombre de la función actualmente en ejecución
+func (e *Environment) SetCurrenFx(name string) {
+	e.currenFxMu.Lock()
+	e.CurrenFx = name
+	e.currenFxMu.Unlock()
 }
 
 // GetLimiter retorna el ExecutionLimiter

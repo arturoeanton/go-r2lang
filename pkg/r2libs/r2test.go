@@ -98,8 +98,11 @@ func RegisterTest(env *r2core.Environment) {
 						}
 					}()
 					// Llamar la función
-					val, _ := env.Get(tName) // ya sabemos que es *UserFunction
-					fn, _ := val.(*r2core.UserFunction)
+					val, found := env.Get(tName)
+					fn, ok := val.(*r2core.UserFunction)
+					if !found || !ok {
+						panic(fmt.Sprintf("%s is no longer a function", tName))
+					}
 					fn.Call() // sin args
 				}()
 				elapsed := time.Since(start)

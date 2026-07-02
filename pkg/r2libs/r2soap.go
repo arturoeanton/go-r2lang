@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
@@ -28,6 +29,11 @@ type SOAPClient struct {
 	TLSConfig     *tls.Config
 	SkipTLSVerify bool
 	Auth          *SOAPAuth
+
+	// mu guards the mutable fields above (Headers, TLSConfig, SkipTLSVerify,
+	// Auth, HTTPTimeout) since a single SOAPClient returned to R2Lang can be
+	// shared and mutated concurrently across "r2"/goroutine calls.
+	mu sync.Mutex
 }
 
 // SOAPAuth represents authentication configuration
@@ -490,7 +496,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 			panic("setTimeout: seconds must be a number")
 		}
 
+		client.mu.Lock()
 		client.HTTPTimeout = time.Duration(seconds) * time.Second
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -503,11 +511,13 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 		// If single argument, treat as headers map
 		if len(args) == 1 {
 			if headersMap, ok := args[0].(map[string]interface{}); ok {
+				client.mu.Lock()
 				for name, value := range headersMap {
 					if strValue, ok := value.(string); ok {
 						client.Headers[name] = strValue
 					}
 				}
+				client.mu.Unlock()
 				return nil
 			}
 		}
@@ -521,7 +531,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 				panic("setHeader: name and value must be strings")
 			}
 
+			client.mu.Lock()
 			client.Headers[name] = value
+			client.mu.Unlock()
 			return nil
 		}
 
@@ -530,6 +542,8 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 
 	// Get current headers
 	clientMap["getHeaders"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		client.mu.Lock()
+		defer client.mu.Unlock()
 		headersMap := make(map[string]interface{})
 		for name, value := range client.Headers {
 			headersMap[name] = value
@@ -539,6 +553,7 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 
 	// Reset headers to browser-like defaults
 	clientMap["resetHeaders"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		client.mu.Lock()
 		client.Headers = map[string]string{
 			"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 			"Accept":          "text/xml,application/xml,*/*",
@@ -546,6 +561,7 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 			"Accept-Encoding": "gzip, deflate",
 			"Connection":      "keep-alive",
 		}
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -560,7 +576,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 			panic("removeHeader: headerName must be a string")
 		}
 
+		client.mu.Lock()
 		delete(client.Headers, headerName)
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -574,6 +592,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 		if !ok {
 			panic("setTLSConfig: configMap must be a map")
 		}
+
+		client.mu.Lock()
+		defer client.mu.Unlock()
 
 		// Skip certificate verification
 		if skipVerify, exists := configMap["skipVerify"]; exists {
@@ -641,7 +662,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 			}
 		}
 
+		client.mu.Lock()
 		client.Auth = auth
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -658,7 +681,9 @@ func soapClientToMap(client *SOAPClient) map[string]interface{} {
 
 		// This would require reading cert file - placeholder for now
 		// In a full implementation, you'd read the cert file and add to TLSConfig.RootCAs
+		client.mu.Lock()
 		client.Headers["X-Custom-CA"] = certPath
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -709,16 +734,30 @@ func createOperationSOAPEnvelope(namespace, operationName, bodyContent string) s
 
 // sendRequest sends a SOAP request with the client's configuration
 func (client *SOAPClient) sendRequest(soapAction, envelope string) (string, error) {
+	// Snapshot the mutable client configuration under lock so concurrent
+	// setHeader/setAuth/setTLSConfig/setTimeout calls from other goroutines
+	// don't race with this request.
+	client.mu.Lock()
+	tlsConfig := client.TLSConfig
+	timeout := client.HTTPTimeout
+	serviceURL := client.ServiceURL
+	auth := client.Auth
+	headers := make(map[string]string, len(client.Headers))
+	for name, value := range client.Headers {
+		headers[name] = value
+	}
+	client.mu.Unlock()
+
 	// Create HTTP client with TLS configuration
 	transport := &http.Transport{
-		TLSClientConfig: client.TLSConfig,
+		TLSClientConfig: tlsConfig,
 	}
 	httpClient := &http.Client{
-		Timeout:   client.HTTPTimeout,
+		Timeout:   timeout,
 		Transport: transport,
 	}
 
-	req, err := http.NewRequest("POST", client.ServiceURL, strings.NewReader(envelope))
+	req, err := http.NewRequest("POST", serviceURL, strings.NewReader(envelope))
 	if err != nil {
 		return "", err
 	}
@@ -728,22 +767,22 @@ func (client *SOAPClient) sendRequest(soapAction, envelope string) (string, erro
 	req.Header.Set("SOAPAction", fmt.Sprintf(`"%s"`, soapAction))
 
 	// Apply authentication if configured
-	if client.Auth != nil {
-		switch client.Auth.Type {
+	if auth != nil {
+		switch auth.Type {
 		case "basic":
-			if client.Auth.Username != "" && client.Auth.Password != "" {
-				credentials := base64.StdEncoding.EncodeToString([]byte(client.Auth.Username + ":" + client.Auth.Password))
+			if auth.Username != "" && auth.Password != "" {
+				credentials := base64.StdEncoding.EncodeToString([]byte(auth.Username + ":" + auth.Password))
 				req.Header.Set("Authorization", "Basic "+credentials)
 			}
 		case "bearer":
-			if client.Auth.Token != "" {
-				req.Header.Set("Authorization", "Bearer "+client.Auth.Token)
+			if auth.Token != "" {
+				req.Header.Set("Authorization", "Bearer "+auth.Token)
 			}
 		}
 	}
 
 	// Set custom headers (includes defaults)
-	for name, value := range client.Headers {
+	for name, value := range headers {
 		req.Header.Set(name, value)
 	}
 
@@ -946,7 +985,7 @@ func extractResponseValues(bodyContent string) map[string]interface{} {
 	values := make(map[string]interface{})
 
 	// Extract all XML elements and their values
-	elementRegex := regexp.MustCompile(`<([^/>\\s]+)[^>]*>([^<]+)</[^>]+>`)
+	elementRegex := regexp.MustCompile(`<([^/>\s]+)[^>]*>([^<]+)</[^>]+>`)
 	matches := elementRegex.FindAllStringSubmatch(bodyContent, -1)
 
 	for _, match := range matches {
@@ -1015,7 +1054,7 @@ func extractValuesAsR2LangTypes(bodyContent string) map[string]interface{} {
 	values := map[string]interface{}{}
 
 	// Extract all XML elements and their values
-	elementRegex := regexp.MustCompile(`<([^/>\\s]+)[^>]*>([^<]+)</[^>]+>`)
+	elementRegex := regexp.MustCompile(`<([^/>\s]+)[^>]*>([^<]+)</[^>]+>`)
 	matches := elementRegex.FindAllStringSubmatch(bodyContent, -1)
 
 	for _, match := range matches {

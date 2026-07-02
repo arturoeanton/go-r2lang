@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
@@ -37,124 +38,179 @@ type WebContext struct {
 
 var globalApp *WebApp
 
-// RegisterWeb registers the modern web framework
-func RegisterWeb(env *r2core.Environment) {
-	globalApp = &WebApp{
+func newWebApp() *WebApp {
+	return &WebApp{
 		routes:    make(map[string]map[string]*r2core.UserFunction),
 		templates: make(map[string]*template.Template),
 		static:    make(map[string]string),
 	}
+}
+
+// RegisterWeb registers the modern web framework
+func RegisterWeb(env *r2core.Environment) {
+	globalApp = newWebApp()
 
 	// Create web module
 	webModule := map[string]interface{}{
 		// App creation
-		"createApp": func() map[string]interface{} {
-			app := &WebApp{
-				routes:    make(map[string]map[string]*r2core.UserFunction),
-				templates: make(map[string]*template.Template),
-				static:    make(map[string]string),
-			}
+		"createApp": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			app := newWebApp()
 
 			return map[string]interface{}{
-				"get": func(path string, handler interface{}) {
-					registerRouteForApp(app, "GET", path, handler)
-				},
-				"post": func(path string, handler interface{}) {
-					registerRouteForApp(app, "POST", path, handler)
-				},
-				"put": func(path string, handler interface{}) {
-					registerRouteForApp(app, "PUT", path, handler)
-				},
-				"delete": func(path string, handler interface{}) {
-					registerRouteForApp(app, "DELETE", path, handler)
-				},
-				"static": func(path string, dir string) {
-					app.mu.Lock()
-					defer app.mu.Unlock()
-					app.static[path] = dir
-				},
-				"listen": func(port string) {
-					webListenForApp(app, port)
-				},
-				"use": func(middleware interface{}) {
-					app.mu.Lock()
-					defer app.mu.Unlock()
-					app.middleware = append(app.middleware, middleware)
-				},
+				"get":    webRouteRegistrar(app, "GET"),
+				"post":   webRouteRegistrar(app, "POST"),
+				"put":    webRouteRegistrar(app, "PUT"),
+				"delete": webRouteRegistrar(app, "DELETE"),
+				"static": webStaticRegistrar(app),
+				"listen": webListenRegistrar(app),
+				"use":    webUseRegistrar(app),
 			}
-		},
+		}),
 
 		// Standalone functions
-		"get":    webGet,
-		"post":   webPost,
-		"put":    webPut,
-		"delete": webDelete,
-		"static": webStatic,
-		"listen": webListen,
+		"get":    webRouteRegistrar(globalApp, "GET"),
+		"post":   webRouteRegistrar(globalApp, "POST"),
+		"put":    webRouteRegistrar(globalApp, "PUT"),
+		"delete": webRouteRegistrar(globalApp, "DELETE"),
+		"static": webStaticRegistrar(globalApp),
+		"listen": webListenRegistrar(globalApp),
 
 		// Response helpers
-		"json": func(data interface{}) string {
-			b, _ := json.Marshal(data)
+		"json": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: json() requires (data)")
+			}
+			b, err := json.Marshal(args[0])
+			if err != nil {
+				panic(fmt.Sprintf("web: json() failed to marshal value: %v", err))
+			}
 			return string(b)
-		},
-		"html": func(content string) map[string]interface{} {
+		}),
+		"html": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: html() requires (content)")
+			}
+			content, ok := args[0].(string)
+			if !ok {
+				panic(fmt.Sprintf("web: html() expected string for argument 1, got %T", args[0]))
+			}
 			return map[string]interface{}{
 				"type":    "html",
 				"content": content,
 			}
-		},
-		"redirect": func(url string) map[string]interface{} {
+		}),
+		"redirect": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: redirect() requires (url)")
+			}
+			urlStr, ok := args[0].(string)
+			if !ok {
+				panic(fmt.Sprintf("web: redirect() expected string for argument 1, got %T", args[0]))
+			}
 			return map[string]interface{}{
 				"type": "redirect",
-				"url":  url,
+				"url":  urlStr,
 			}
-		},
-		"status": func(code int) map[string]interface{} {
+		}),
+		"status": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: status() requires (code)")
+			}
+			code, ok := args[0].(float64)
+			if !ok {
+				panic(fmt.Sprintf("web: status() expected number for argument 1, got %T", args[0]))
+			}
 			return map[string]interface{}{
 				"type": "status",
-				"code": code,
+				"code": int(code),
 			}
-		},
+		}),
 
 		// Form parsing
-		"parseForm": parseFormData,
-		"parseJSON": parseJSONData,
+		"parseForm": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: parseForm() requires (body)")
+			}
+			body, ok := args[0].(string)
+			if !ok {
+				panic(fmt.Sprintf("web: parseForm() expected string for argument 1, got %T", args[0]))
+			}
+			return parseFormData(body)
+		}),
+		"parseJSON": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: parseJSON() requires (body)")
+			}
+			body, ok := args[0].(string)
+			if !ok {
+				panic(fmt.Sprintf("web: parseJSON() expected string for argument 1, got %T", args[0]))
+			}
+			return parseJSONData(body)
+		}),
 	}
 
 	// Register in environment
 	env.Set("web", webModule)
 }
 
-func webGet(path string, handler interface{}) {
-	registerRoute("GET", path, handler)
+func webRouteRegistrar(app *WebApp, method string) r2core.BuiltinFunction {
+	return func(args ...interface{}) interface{} {
+		if len(args) < 2 {
+			panic(fmt.Sprintf("web: %s() requires (path, handler)", strings.ToLower(method)))
+		}
+		path, ok := args[0].(string)
+		if !ok {
+			panic(fmt.Sprintf("web: %s() expected string for argument 1 (path), got %T", strings.ToLower(method), args[0]))
+		}
+		registerRouteForApp(app, method, path, args[1])
+		return nil
+	}
 }
 
-func webPost(path string, handler interface{}) {
-	registerRoute("POST", path, handler)
+func webStaticRegistrar(app *WebApp) r2core.BuiltinFunction {
+	return func(args ...interface{}) interface{} {
+		if len(args) < 2 {
+			panic("web: static() requires (path, dir)")
+		}
+		path, ok := args[0].(string)
+		if !ok {
+			panic(fmt.Sprintf("web: static() expected string for argument 1 (path), got %T", args[0]))
+		}
+		dir, ok := args[1].(string)
+		if !ok {
+			panic(fmt.Sprintf("web: static() expected string for argument 2 (dir), got %T", args[1]))
+		}
+		app.mu.Lock()
+		defer app.mu.Unlock()
+		app.static[path] = dir
+		return nil
+	}
 }
 
-func webPut(path string, handler interface{}) {
-	registerRoute("PUT", path, handler)
+func webListenRegistrar(app *WebApp) r2core.BuiltinFunction {
+	return func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("web: listen() requires (port)")
+		}
+		port, ok := args[0].(string)
+		if !ok {
+			panic(fmt.Sprintf("web: listen() expected string for argument 1 (port), got %T", args[0]))
+		}
+		webListenForApp(app, port)
+		return nil
+	}
 }
 
-func webDelete(path string, handler interface{}) {
-	registerRoute("DELETE", path, handler)
-}
-
-func webUse(middleware interface{}) {
-	globalApp.mu.Lock()
-	defer globalApp.mu.Unlock()
-	globalApp.middleware = append(globalApp.middleware, middleware)
-}
-
-func webStatic(path string, dir string) {
-	globalApp.mu.Lock()
-	defer globalApp.mu.Unlock()
-	globalApp.static[path] = dir
-}
-
-func registerRoute(method, path string, handler interface{}) {
-	registerRouteForApp(globalApp, method, path, handler)
+func webUseRegistrar(app *WebApp) r2core.BuiltinFunction {
+	return func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			panic("web: use() requires (middleware)")
+		}
+		app.mu.Lock()
+		defer app.mu.Unlock()
+		app.middleware = append(app.middleware, args[0])
+		return nil
+	}
 }
 
 func registerRouteForApp(app *WebApp, method, path string, handler interface{}) {
@@ -173,27 +229,45 @@ func registerRouteForApp(app *WebApp, method, path string, handler interface{}) 
 	}
 }
 
-func webListen(port string) {
-	webListenForApp(globalApp, port)
-}
-
 func webListenForApp(app *WebApp, port string) {
 	mux := http.NewServeMux()
 
-	// Setup routes
+	// Snapshot routes/static under the read lock so concurrently-registered
+	// routes (e.g. from a script using "go") can't race with this read.
+	app.mu.RLock()
+	routesCopy := make(map[string]map[string]*r2core.UserFunction, len(app.routes))
 	for method, routes := range app.routes {
+		inner := make(map[string]*r2core.UserFunction, len(routes))
+		for path, handler := range routes {
+			inner[path] = handler
+		}
+		routesCopy[method] = inner
+	}
+	staticCopy := make(map[string]string, len(app.static))
+	for prefix, dir := range app.static {
+		staticCopy[prefix] = dir
+	}
+	app.mu.RUnlock()
+
+	// Setup routes
+	for method, routes := range routesCopy {
 		for path, handler := range routes {
 			mux.HandleFunc(path, createHTTPHandler(app, method, path, handler))
 		}
 	}
 
 	// Setup static files
-	for prefix, dir := range app.static {
+	for prefix, dir := range staticCopy {
 		mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
 	}
 
 	fmt.Printf("🚀 Web server listening on %s\n", port)
-	if err := http.ListenAndServe(port, mux); err != nil {
+	srv := &http.Server{
+		Addr:              port,
+		Handler:           mux,
+		ReadHeaderTimeout: 15 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		panic(fmt.Sprintf("web: failed to start server: %v", err))
 	}
 }
@@ -206,7 +280,7 @@ func createHTTPHandler(app *WebApp, expectedMethod, pattern string, handler *r2c
 		}
 
 		// Create context
-		ctx := createContext(w, r)
+		ctx := createContext(app, w, r)
 
 		// Extract path parameters
 		pathParams := extractPathParams(pattern, r.URL.Path)
@@ -222,28 +296,49 @@ func createHTTPHandler(app *WebApp, expectedMethod, pattern string, handler *r2c
 			"headers": ctx.Headers,
 			"method":  ctx.Method,
 			"path":    ctx.Path,
-			"json": func() interface{} {
+			"json": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 				if ctx.JSON != nil {
 					return ctx.JSON
 				}
 				var data interface{}
 				json.Unmarshal([]byte(ctx.Body), &data)
 				return data
-			},
-			"send": func(content interface{}) interface{} {
-				return handleResponse(w, content)
-			},
-			"status": func(code int) map[string]interface{} {
-				return map[string]interface{}{
-					"send": func(content interface{}) interface{} {
-						w.WriteHeader(code)
-						return handleResponse(w, content)
-					},
+			}),
+			"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) < 1 {
+					panic("web: ctx.send() requires (content)")
 				}
-			},
-			"redirect": func(url string) {
-				http.Redirect(w, r, url, http.StatusFound)
-			},
+				return handleResponse(w, r, args[0])
+			}),
+			"status": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) < 1 {
+					panic("web: ctx.status() requires (code)")
+				}
+				code, ok := args[0].(float64)
+				if !ok {
+					panic(fmt.Sprintf("web: ctx.status() expected number for argument 1, got %T", args[0]))
+				}
+				return map[string]interface{}{
+					"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+						if len(args) < 1 {
+							panic("web: ctx.status().send() requires (content)")
+						}
+						w.WriteHeader(int(code))
+						return handleResponse(w, r, args[0])
+					}),
+				}
+			}),
+			"redirect": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+				if len(args) < 1 {
+					panic("web: ctx.redirect() requires (url)")
+				}
+				urlStr, ok := args[0].(string)
+				if !ok {
+					panic(fmt.Sprintf("web: ctx.redirect() expected string for argument 1, got %T", args[0]))
+				}
+				http.Redirect(w, r, urlStr, http.StatusFound)
+				return nil
+			}),
 		}
 
 		// Call handler with context
@@ -251,12 +346,12 @@ func createHTTPHandler(app *WebApp, expectedMethod, pattern string, handler *r2c
 
 		// Handle result if not already sent
 		if result != nil {
-			handleResponse(w, result)
+			handleResponse(w, r, result)
 		}
 	}
 }
 
-func createContext(w http.ResponseWriter, r *http.Request) *WebContext {
+func createContext(app *WebApp, w http.ResponseWriter, r *http.Request) *WebContext {
 	// Parse body
 	var body string
 	if r.Body != nil {
@@ -299,11 +394,11 @@ func createContext(w http.ResponseWriter, r *http.Request) *WebContext {
 		Headers:  headers,
 		Method:   r.Method,
 		Path:     r.URL.Path,
-		app:      globalApp,
+		app:      app,
 	}
 }
 
-func handleResponse(w http.ResponseWriter, content interface{}) interface{} {
+func handleResponse(w http.ResponseWriter, r *http.Request, content interface{}) interface{} {
 	switch v := content.(type) {
 	case string:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -316,9 +411,11 @@ func handleResponse(w http.ResponseWriter, content interface{}) interface{} {
 				w.Write([]byte(fmt.Sprintf("%v", v["content"])))
 			case "json":
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(v["data"])
+				if err := json.NewEncoder(w).Encode(v["data"]); err != nil {
+					panic(fmt.Sprintf("web: failed to encode JSON response: %v", err))
+				}
 			case "redirect":
-				http.Redirect(w, nil, fmt.Sprintf("%v", v["url"]), http.StatusFound)
+				http.Redirect(w, r, fmt.Sprintf("%v", v["url"]), http.StatusFound)
 			case "status":
 				if code, ok := v["code"].(int); ok {
 					w.WriteHeader(code)
@@ -327,12 +424,16 @@ func handleResponse(w http.ResponseWriter, content interface{}) interface{} {
 		} else {
 			// Default to JSON
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(v)
+			if err := json.NewEncoder(w).Encode(v); err != nil {
+				panic(fmt.Sprintf("web: failed to encode JSON response: %v", err))
+			}
 		}
 	default:
 		// Try to marshal as JSON
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(v)
+		if err := json.NewEncoder(w).Encode(v); err != nil {
+			panic(fmt.Sprintf("web: failed to encode JSON response: %v", err))
+		}
 	}
 	return nil
 }

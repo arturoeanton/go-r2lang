@@ -281,6 +281,9 @@ func deepCopy(value interface{}) interface{} {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Ptr:
+		if v.IsNil() {
+			return nil
+		}
 		// Dereference pointer and copy recursively
 		return deepCopy(v.Elem().Interface())
 	case reflect.Map:

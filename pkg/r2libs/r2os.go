@@ -36,6 +36,9 @@ func (c *CommandObject) Getattr(name string) (r2core.Node, bool) {
 	case "run":
 		return &NativeFunction{Fn: func(args ...interface{}) interface{} {
 			parts := strings.Fields(c.command)
+			if len(parts) == 0 {
+				panic("Command.run: command is empty")
+			}
 			c.cmd = exec.Command(parts[0], parts[1:]...)
 			c.cmd.Stderr = &c.stderr
 
@@ -45,6 +48,9 @@ func (c *CommandObject) Getattr(name string) (r2core.Node, bool) {
 					panic(fmt.Sprintf("Command.run: failed to create pipe: %v", err))
 				}
 				pipeParts := strings.Fields(c.pipeTo.command)
+				if len(pipeParts) == 0 {
+					panic("Command.run: piped command is empty")
+				}
 				c.pipeTo.cmd = exec.Command(pipeParts[0], pipeParts[1:]...)
 				c.pipeTo.cmd.Stdin = pipe
 				c.pipeTo.cmd.Stdout = &c.pipeTo.stdout

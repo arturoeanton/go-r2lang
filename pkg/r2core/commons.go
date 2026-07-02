@@ -252,6 +252,9 @@ func assignIndexExpression(idxExpr *IndexExpression, newVal interface{}, env *En
 		if idx < 0 {
 			idx = len(container) + idx
 		}
+		if idx < 0 {
+			panic(fmt.Sprintf("assignIndexExpression: index out of range: %d len of array %d", idx, len(container)))
+		}
 		// auto-extender
 		if idx >= len(container) {
 			for len(container) <= idx {

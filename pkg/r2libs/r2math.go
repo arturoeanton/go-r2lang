@@ -490,6 +490,9 @@ func RegisterMath(env *r2core.Environment) {
 				panic("randomInt needs (max)")
 			}
 			max := int(toFloat(args[0]))
+			if max <= 0 {
+				panic("randomInt: max must be a positive integer")
+			}
 			return float64(rand.Intn(max))
 		}),
 
@@ -511,6 +514,9 @@ func RegisterMath(env *r2core.Environment) {
 				panic("randomSample: first argument must be array")
 			}
 			count := int(toFloat(args[1]))
+			if count < 0 {
+				panic("randomSample: count must be non-negative")
+			}
 			return arrayRandomSample(arr, count)
 		}),
 
@@ -580,7 +586,7 @@ func RegisterMath(env *r2core.Environment) {
 				panic("factorial needs (n)")
 			}
 			n := int(toFloat(args[0]))
-			return float64(factorial(n))
+			return factorial(n)
 		}),
 
 		"combination": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -589,7 +595,7 @@ func RegisterMath(env *r2core.Environment) {
 			}
 			n := int(toFloat(args[0]))
 			k := int(toFloat(args[1]))
-			return float64(combination(n, k))
+			return combination(n, k)
 		}),
 
 		"permutation": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -598,7 +604,7 @@ func RegisterMath(env *r2core.Environment) {
 			}
 			n := int(toFloat(args[0]))
 			k := int(toFloat(args[1]))
-			return float64(permutation(n, k))
+			return permutation(n, k)
 		}),
 
 		// GCD and LCM
@@ -894,6 +900,9 @@ func RegisterMath(env *r2core.Environment) {
 			}
 			rows := int(toFloat(args[0]))
 			cols := int(toFloat(args[1]))
+			if rows < 0 || cols < 0 {
+				panic("matrix: rows and cols must be non-negative")
+			}
 
 			fillValue := 0.0
 			if len(args) > 2 {
@@ -1082,6 +1091,9 @@ func arrayPercentile(arr []interface{}, p float64) float64 {
 	if len(arr) == 0 {
 		return 0
 	}
+	if p < 0 || p > 1 {
+		panic(fmt.Sprintf("percentile: p must be between 0 and 1, got %v", p))
+	}
 
 	vals := make([]float64, len(arr))
 	for i, val := range arr {
@@ -1206,28 +1218,43 @@ func arrayShuffle(arr []interface{}) []interface{} {
 	return result
 }
 
-func factorial(n int) int {
-	if n <= 1 {
-		return 1
+// factorial computes n! iteratively (rather than recursively) and in
+// float64 (rather than int) to avoid both unbounded recursion depth and
+// silent int64 overflow for even moderately large n (e.g. 21! already
+// overflows int64); large results simply saturate to +Inf, consistent with
+// how the rest of this module handles floating point overflow.
+func factorial(n int) float64 {
+	if n < 0 {
+		panic("factorial: n must be a non-negative integer")
 	}
-	return n * factorial(n-1)
+	result := 1.0
+	for i := 2; i <= n; i++ {
+		result *= float64(i)
+	}
+	return result
 }
 
-func combination(n, k int) int {
-	if k > n || k < 0 {
+func combination(n, k int) float64 {
+	if k > n || k < 0 || n < 0 {
 		return 0
 	}
 	return factorial(n) / (factorial(k) * factorial(n-k))
 }
 
-func permutation(n, k int) int {
-	if k > n || k < 0 {
+func permutation(n, k int) float64 {
+	if k > n || k < 0 || n < 0 {
 		return 0
 	}
 	return factorial(n) / factorial(n-k)
 }
 
 func gcd(a, b int) int {
+	if a < 0 {
+		a = -a
+	}
+	if b < 0 {
+		b = -b
+	}
 	if b == 0 {
 		return a
 	}
@@ -1235,7 +1262,15 @@ func gcd(a, b int) int {
 }
 
 func lcm(a, b int) int {
-	return a * b / gcd(a, b)
+	if a == 0 || b == 0 {
+		return 0
+	}
+	g := gcd(a, b)
+	result := a / g * b
+	if result < 0 {
+		result = -result
+	}
+	return result
 }
 
 // Advanced Data Analysis Helper Functions
@@ -1348,6 +1383,9 @@ func calculateDifferencing(arr []interface{}, order int) []interface{} {
 
 func calculateAutocorrelation(arr []interface{}, maxLag int) []interface{} {
 	n := len(arr)
+	if maxLag < 0 {
+		maxLag = 0
+	}
 	if maxLag >= n {
 		maxLag = n - 1
 	}

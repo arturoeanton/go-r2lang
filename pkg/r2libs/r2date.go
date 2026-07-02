@@ -131,6 +131,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getTime"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -139,6 +142,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getFullYear"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -147,6 +153,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getMonth"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -155,6 +164,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getDate"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -163,6 +175,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getDay"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -171,6 +186,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getHours"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -179,6 +197,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getMinutes"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -187,6 +208,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getSeconds"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -195,6 +219,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getMilliseconds"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -203,6 +230,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getTimezoneOffset"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -317,6 +347,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toISOString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -325,6 +358,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toDateString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -333,6 +369,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toTimeString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -341,6 +380,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -349,6 +391,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["valueOf"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -357,6 +402,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCFullYear"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -365,6 +413,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCMonth"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -373,6 +424,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCDate"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -381,6 +435,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCDay"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -389,6 +446,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCHours"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -397,6 +457,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCMinutes"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -405,6 +468,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCSeconds"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -413,6 +479,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["getUTCMilliseconds"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -421,6 +490,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toLocaleDateString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -429,6 +501,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toLocaleTimeString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil
@@ -437,6 +512,9 @@ func createDateObject() map[string]interface{} {
 	})
 
 	obj["toLocaleString"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
 		date, ok := args[0].(*r2core.DateValue)
 		if !ok {
 			return nil

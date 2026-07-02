@@ -60,8 +60,13 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("range: solo se aceptan 2 argumentos")
 			}
-			start := int(args[0].(float64))
-			end := int(args[1].(float64))
+			startF, ok1 := args[0].(float64)
+			endF, ok2 := args[1].(float64)
+			if !ok1 || !ok2 {
+				panic("range: los argumentos deben ser numéricos")
+			}
+			start := int(startF)
+			end := int(endF)
 			if start > end {
 				panic("range: start no puede ser mayor que end")
 			}
@@ -76,8 +81,12 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("repeat: solo se aceptan 2 argumentos")
 			}
+			endF, ok := args[0].(float64)
+			if !ok {
+				panic("repeat: el primer argumento debe ser numérico")
+			}
 			start := 0
-			end := int(args[0].(float64))
+			end := int(endF)
 			if start > end {
 				panic("range: start no puede ser mayor que end")
 			}
@@ -93,7 +102,10 @@ func RegisterCollections(env *r2core.Environment) {
 				panic("copy: solo se acepta un argumento")
 			}
 
-			arr := args[0].([]interface{})
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("copy: el argumento debe ser un array")
+			}
 			newArr := make([]interface{}, len(arr))
 			copy(newArr, arr)
 
@@ -105,9 +117,17 @@ func RegisterCollections(env *r2core.Environment) {
 				panic("slice: solo se aceptan 3 argumentos")
 			}
 
-			arr := args[0].([]interface{})
-			start := args[1].(int)
-			end := args[2].(int)
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("slice: el primer argumento debe ser un array")
+			}
+			startF, ok1 := args[1].(float64)
+			endF, ok2 := args[2].(float64)
+			if !ok1 || !ok2 {
+				panic("slice: start y end deben ser numéricos")
+			}
+			start := int(startF)
+			end := int(endF)
 
 			if start < 0 || start >= len(arr) {
 				panic("slice: start fuera de rango")
@@ -123,8 +143,11 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("map: se aceptan 2 argumentos (array, funcion)")
 			}
-			arr := args[0].([]interface{})
-			fn := args[1].(*r2core.UserFunction)
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("map: los argumentos deben ser (array, funcion)")
+			}
 			newArr := make([]interface{}, len(arr))
 			for i, v := range arr {
 				newArr[i] = fn.Call(v)
@@ -135,8 +158,11 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("filter: se aceptan 2 argumentos (array, funcion)")
 			}
-			arr := args[0].([]interface{})
-			fn := args[1].(*r2core.UserFunction)
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("filter: los argumentos deben ser (array, funcion)")
+			}
 			newArr := make([]interface{}, 0)
 			for _, v := range arr {
 				if toBool(fn.Call(v)) {
@@ -149,8 +175,11 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 3 {
 				panic("reduce: se aceptan 3 argumentos (array, funcion, inicial)")
 			}
-			arr := args[0].([]interface{})
-			fn := args[1].(*r2core.UserFunction)
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("reduce: los argumentos deben ser (array, funcion, inicial)")
+			}
 			acc := args[2]
 			for _, v := range arr {
 				acc = fn.Call(acc, v)
@@ -182,8 +211,11 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("find: se aceptan 2 argumentos (array, funcion)")
 			}
-			arr := args[0].([]interface{})
-			fn := args[1].(*r2core.UserFunction)
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("find: los argumentos deben ser (array, funcion)")
+			}
 			for _, v := range arr {
 				if toBool(fn.Call(v)) {
 					return v
@@ -195,7 +227,10 @@ func RegisterCollections(env *r2core.Environment) {
 			if len(args) != 2 {
 				panic("contains: se aceptan 2 argumentos (array, valor)")
 			}
-			arr := args[0].([]interface{})
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("contains: el primer argumento debe ser un array")
+			}
 			val := args[1]
 			for _, v := range arr {
 				if equals(v, val) {

@@ -10,9 +10,29 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
-const version = "1.0.0"
+const version = "0.1.0"
 
 func main() {
+	// A panic anywhere in the interpreter (a bug in a user script, e.g. a
+	// bad type conversion) is reported as a clean error instead of an
+	// opaque Go stack trace, matching cmd/r2lang's behavior.
+	defer func() {
+		if r := recover(); r != nil {
+			errorStr := fmt.Sprintf("%v", r)
+			if strings.Contains(errorStr, "R2Lang call stack") {
+				for _, line := range strings.Split(errorStr, "\n") {
+					if line == "" {
+						break
+					}
+					fmt.Fprintln(os.Stderr, line)
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, "Error:", errorStr)
+			}
+			os.Exit(1)
+		}
+	}()
+
 	var (
 		helpFlag    = flag.Bool("help", false, "Show help information")
 		versionFlag = flag.Bool("version", false, "Show version information")

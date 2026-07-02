@@ -24,7 +24,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			delimiter := ","
 			if len(args) > 1 {
-				if d, ok := args[1].(string); ok {
+				if d, ok := args[1].(string); ok && d != "" {
 					delimiter = d
 				}
 			}
@@ -91,7 +91,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			delimiter := ","
 			if len(args) > 1 {
-				if d, ok := args[1].(string); ok {
+				if d, ok := args[1].(string); ok && d != "" {
 					delimiter = d
 				}
 			}
@@ -168,7 +168,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			delimiter := ","
 			if len(args) > 1 {
-				if d, ok := args[1].(string); ok {
+				if d, ok := args[1].(string); ok && d != "" {
 					delimiter = d
 				}
 			}
@@ -241,7 +241,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			delimiter := ","
 			if len(args) > 2 {
-				if d, ok := args[2].(string); ok {
+				if d, ok := args[2].(string); ok && d != "" {
 					delimiter = d
 				}
 			}
@@ -573,7 +573,7 @@ func RegisterCSV(env *r2core.Environment) {
 
 			delimiter := ","
 			if len(args) > 1 {
-				if d, ok := args[1].(string); ok {
+				if d, ok := args[1].(string); ok && d != "" {
 					delimiter = d
 				}
 			}

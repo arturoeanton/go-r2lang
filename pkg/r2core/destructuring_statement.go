@@ -12,8 +12,13 @@ func (ad *ArrayDestructuring) Eval(env *Environment) interface{} {
 	value := ad.Value.Eval(env)
 
 	// Convertir a array
-	arr, ok := value.([]interface{})
-	if !ok {
+	var arr []interface{}
+	switch v := value.(type) {
+	case []interface{}:
+		arr = v
+	case InterfaceSlice:
+		arr = []interface{}(v)
+	default:
 		panic("ArrayDestructuring: right side must be an array")
 	}
 

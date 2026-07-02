@@ -252,6 +252,12 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 	var bodyBytes []byte
 	var contentType string
 
+	// Local copies so per-request overrides (proxies/retries) don't mutate
+	// shared Session state that may be used concurrently by other goroutines.
+	requestClient := s.Client
+	maxRetries := s.MaxRetries
+	retryDelay := s.RetryDelay
+
 	if params != nil {
 		if files, exists := params["files"]; exists {
 			if filesMap, ok := files.(map[string]interface{}); ok {
@@ -330,17 +336,24 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 					panic(fmt.Sprintf("Invalid proxy configuration: %v", err))
 				}
 				if proxyURL != nil {
-					s.Client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+					// Use a request-scoped client instead of mutating the
+					// shared s.Client, which may be used concurrently by
+					// other goroutines sharing this Session.
+					requestClient = &http.Client{
+						Jar:       s.Client.Jar,
+						Timeout:   s.Client.Timeout,
+						Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
+					}
 				}
 			}
 		}
 		if retries, exists := params["retries"]; exists {
 			if retriesMap, ok := retries.(map[string]interface{}); ok {
 				if max, ok := retriesMap["max"].(float64); ok {
-					s.MaxRetries = int(max)
+					maxRetries = int(max)
 				}
 				if delay, ok := retriesMap["delay"].(float64); ok {
-					s.RetryDelay = time.Duration(delay) * time.Second
+					retryDelay = time.Duration(delay) * time.Second
 				}
 			}
 		}
@@ -349,7 +362,7 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 	var resp *http.Response
 	var err error
 
-	for i := 0; i <= s.MaxRetries; i++ {
+	for i := 0; i <= maxRetries; i++ {
 		ctx := context.Background()
 		if s.Timeout > 0 {
 			var cancel context.CancelFunc
@@ -406,22 +419,26 @@ func (s *Session) request(method, reqURL string, params map[string]interface{}) 
 			}
 		}
 
-		resp, err = s.Client.Do(req)
+		resp, err = requestClient.Do(req)
 		if err == nil && resp.StatusCode < 500 {
 			break
 		}
 
-		if resp != nil {
+		isLastAttempt := i == maxRetries
+		// Only close the body here if we're not about to fall through to the
+		// normal read-response path below (last attempt with no transport
+		// error), otherwise resp.Body would be read after being closed.
+		if resp != nil && !(isLastAttempt && err == nil) {
 			resp.Body.Close()
 		}
 
-		if i < s.MaxRetries {
-			time.Sleep(s.RetryDelay)
+		if !isLastAttempt {
+			time.Sleep(retryDelay)
 		}
 	}
 
 	if err != nil {
-		panic(fmt.Sprintf("Request failed after %d retries: %v", s.MaxRetries, err))
+		panic(fmt.Sprintf("Request failed after %d retries: %v", maxRetries, err))
 	}
 	defer resp.Body.Close()
 

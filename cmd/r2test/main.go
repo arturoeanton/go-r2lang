@@ -17,7 +17,7 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2test/reporters"
 )
 
-const version = "1.0.0"
+const version = "0.1.0"
 
 type Config struct {
 	// Test Discovery

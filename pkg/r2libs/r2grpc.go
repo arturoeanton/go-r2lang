@@ -278,6 +278,22 @@ func (client *GRPCClient) connect() error {
 	return nil
 }
 
+// snapshotForCall takes a consistent, race-free copy of the client fields
+// that RPC calls need to read (Timeout, Metadata, Auth, Connection), since
+// these can be mutated concurrently from other goroutines via setTimeout,
+// setMetadata, setAuth and close.
+func (client *GRPCClient) snapshotForCall() (time.Duration, map[string]string, *GRPCAuth, *grpc.ClientConn) {
+	client.mu.RLock()
+	defer client.mu.RUnlock()
+
+	mdCopy := make(map[string]string, len(client.Metadata))
+	for k, v := range client.Metadata {
+		mdCopy[k] = v
+	}
+
+	return client.Timeout, mdCopy, client.Auth, client.Connection
+}
+
 // grpcClientToMap converts GRPCClient to R2Lang map with methods
 func grpcClientToMap(client *GRPCClient) map[string]interface{} {
 	clientMap := make(map[string]interface{})
@@ -457,7 +473,9 @@ func grpcClientToMap(client *GRPCClient) map[string]interface{} {
 			panic("setTimeout: seconds must be a number")
 		}
 
+		client.mu.Lock()
 		client.Timeout = time.Duration(seconds) * time.Second
+		client.mu.Unlock()
 		return nil
 	})
 
@@ -698,27 +716,29 @@ func (client *GRPCClient) callUnary(serviceName, methodName string, request map[
 		panic(fmt.Sprintf("connection failed: %v", err))
 	}
 
+	timeout, mdSnapshot, auth, conn := client.snapshotForCall()
+
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	// Add metadata to context
-	if len(client.Metadata) > 0 || client.Auth != nil {
-		md := metadata.New(client.Metadata)
+	if len(mdSnapshot) > 0 || auth != nil {
+		md := metadata.New(mdSnapshot)
 
 		// Add authentication metadata
-		if client.Auth != nil {
-			switch client.Auth.Type {
+		if auth != nil {
+			switch auth.Type {
 			case "bearer":
-				if client.Auth.Token != "" {
-					md.Set("authorization", "Bearer "+client.Auth.Token)
+				if auth.Token != "" {
+					md.Set("authorization", "Bearer "+auth.Token)
 				}
 			case "basic":
-				if client.Auth.Username != "" && client.Auth.Password != "" {
-					md.Set("authorization", "Basic "+encodeBasicAuth(client.Auth.Username, client.Auth.Password))
+				if auth.Username != "" && auth.Password != "" {
+					md.Set("authorization", "Basic "+encodeBasicAuth(auth.Username, auth.Password))
 				}
 			case "custom":
-				for key, value := range client.Auth.Metadata {
+				for key, value := range auth.Metadata {
 					md.Set(key, value)
 				}
 			}
@@ -734,7 +754,7 @@ func (client *GRPCClient) callUnary(serviceName, methodName string, request map[
 	}
 
 	// Create dynamic stub
-	stub := grpcdynamic.NewStub(client.Connection)
+	stub := grpcdynamic.NewStub(conn)
 
 	// Invoke method
 	response, err := stub.InvokeRpc(ctx, method.Desc, inputMsg)
@@ -794,26 +814,28 @@ func (client *GRPCClient) callServerStream(serviceName, methodName string, reque
 		panic(fmt.Sprintf("connection failed: %v", err))
 	}
 
+	timeout, mdSnapshot, auth, conn := client.snapshotForCall()
+
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	// Add metadata to context
-	if len(client.Metadata) > 0 || client.Auth != nil {
-		md := metadata.New(client.Metadata)
+	if len(mdSnapshot) > 0 || auth != nil {
+		md := metadata.New(mdSnapshot)
 
 		// Add authentication metadata
-		if client.Auth != nil {
-			switch client.Auth.Type {
+		if auth != nil {
+			switch auth.Type {
 			case "bearer":
-				if client.Auth.Token != "" {
-					md.Set("authorization", "Bearer "+client.Auth.Token)
+				if auth.Token != "" {
+					md.Set("authorization", "Bearer "+auth.Token)
 				}
 			case "basic":
-				if client.Auth.Username != "" && client.Auth.Password != "" {
-					md.Set("authorization", "Basic "+encodeBasicAuth(client.Auth.Username, client.Auth.Password))
+				if auth.Username != "" && auth.Password != "" {
+					md.Set("authorization", "Basic "+encodeBasicAuth(auth.Username, auth.Password))
 				}
 			case "custom":
-				for key, value := range client.Auth.Metadata {
+				for key, value := range auth.Metadata {
 					md.Set(key, value)
 				}
 			}
@@ -825,15 +847,17 @@ func (client *GRPCClient) callServerStream(serviceName, methodName string, reque
 	// Create dynamic message from request
 	inputMsg := dynamic.NewMessage(method.Desc.GetInputType())
 	if err := populateMessage(inputMsg, request); err != nil {
+		cancel()
 		panic(fmt.Sprintf("failed to populate request message: %v", err))
 	}
 
 	// Create dynamic stub
-	stub := grpcdynamic.NewStub(client.Connection)
+	stub := grpcdynamic.NewStub(conn)
 
 	// Invoke streaming method
 	stream, err := stub.InvokeRpcServerStream(ctx, method.Desc, inputMsg)
 	if err != nil {
+		cancel()
 		panic(fmt.Sprintf("failed to invoke server stream: %v", err))
 	}
 
@@ -874,26 +898,28 @@ func (client *GRPCClient) callClientStream(serviceName, methodName string) inter
 		panic(fmt.Sprintf("connection failed: %v", err))
 	}
 
+	timeout, mdSnapshot, auth, conn := client.snapshotForCall()
+
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	// Add metadata to context
-	if len(client.Metadata) > 0 || client.Auth != nil {
-		md := metadata.New(client.Metadata)
+	if len(mdSnapshot) > 0 || auth != nil {
+		md := metadata.New(mdSnapshot)
 
 		// Add authentication metadata
-		if client.Auth != nil {
-			switch client.Auth.Type {
+		if auth != nil {
+			switch auth.Type {
 			case "bearer":
-				if client.Auth.Token != "" {
-					md.Set("authorization", "Bearer "+client.Auth.Token)
+				if auth.Token != "" {
+					md.Set("authorization", "Bearer "+auth.Token)
 				}
 			case "basic":
-				if client.Auth.Username != "" && client.Auth.Password != "" {
-					md.Set("authorization", "Basic "+encodeBasicAuth(client.Auth.Username, client.Auth.Password))
+				if auth.Username != "" && auth.Password != "" {
+					md.Set("authorization", "Basic "+encodeBasicAuth(auth.Username, auth.Password))
 				}
 			case "custom":
-				for key, value := range client.Auth.Metadata {
+				for key, value := range auth.Metadata {
 					md.Set(key, value)
 				}
 			}
@@ -903,11 +929,12 @@ func (client *GRPCClient) callClientStream(serviceName, methodName string) inter
 	}
 
 	// Create dynamic stub
-	stub := grpcdynamic.NewStub(client.Connection)
+	stub := grpcdynamic.NewStub(conn)
 
 	// Invoke streaming method
 	stream, err := stub.InvokeRpcClientStream(ctx, method.Desc)
 	if err != nil {
+		cancel()
 		panic(fmt.Sprintf("failed to invoke client stream: %v", err))
 	}
 
@@ -945,26 +972,28 @@ func (client *GRPCClient) callBidirectionalStream(serviceName, methodName string
 		panic(fmt.Sprintf("connection failed: %v", err))
 	}
 
+	timeout, mdSnapshot, auth, conn := client.snapshotForCall()
+
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	// Add metadata to context
-	if len(client.Metadata) > 0 || client.Auth != nil {
-		md := metadata.New(client.Metadata)
+	if len(mdSnapshot) > 0 || auth != nil {
+		md := metadata.New(mdSnapshot)
 
 		// Add authentication metadata
-		if client.Auth != nil {
-			switch client.Auth.Type {
+		if auth != nil {
+			switch auth.Type {
 			case "bearer":
-				if client.Auth.Token != "" {
-					md.Set("authorization", "Bearer "+client.Auth.Token)
+				if auth.Token != "" {
+					md.Set("authorization", "Bearer "+auth.Token)
 				}
 			case "basic":
-				if client.Auth.Username != "" && client.Auth.Password != "" {
-					md.Set("authorization", "Basic "+encodeBasicAuth(client.Auth.Username, client.Auth.Password))
+				if auth.Username != "" && auth.Password != "" {
+					md.Set("authorization", "Basic "+encodeBasicAuth(auth.Username, auth.Password))
 				}
 			case "custom":
-				for key, value := range client.Auth.Metadata {
+				for key, value := range auth.Metadata {
 					md.Set(key, value)
 				}
 			}
@@ -974,11 +1003,12 @@ func (client *GRPCClient) callBidirectionalStream(serviceName, methodName string
 	}
 
 	// Create dynamic stub
-	stub := grpcdynamic.NewStub(client.Connection)
+	stub := grpcdynamic.NewStub(conn)
 
 	// Invoke streaming method
 	stream, err := stub.InvokeRpcBidiStream(ctx, method.Desc)
 	if err != nil {
+		cancel()
 		panic(fmt.Sprintf("failed to invoke bidirectional stream: %v", err))
 	}
 
@@ -1157,6 +1187,16 @@ func grpcStreamToMap(stream *GRPCStream) map[string]interface{} {
 	return streamMap
 }
 
+// callbacks returns a race-free snapshot of the stream's callbacks, since
+// onReceive/onError/onClose can be set concurrently (from the goroutine that
+// called onReceive/onError/onClose) while receiveMessages runs in the
+// background.
+func (stream *GRPCStream) callbacks() (func(interface{}), func(error), func()) {
+	stream.mu.RLock()
+	defer stream.mu.RUnlock()
+	return stream.onReceive, stream.onError, stream.onClose
+}
+
 // receiveMessages receives messages from server streaming
 func (stream *GRPCStream) receiveMessages() {
 	defer func() {
@@ -1164,8 +1204,9 @@ func (stream *GRPCStream) receiveMessages() {
 		stream.closed = true
 		stream.mu.Unlock()
 
-		if stream.onClose != nil {
-			stream.onClose()
+		_, _, onClose := stream.callbacks()
+		if onClose != nil {
+			onClose()
 		}
 	}()
 
@@ -1183,8 +1224,9 @@ func (stream *GRPCStream) receiveMessages() {
 			} else if stream.bidiStream != nil {
 				msg, err = stream.bidiStream.RecvMsg()
 			} else {
-				if stream.onError != nil {
-					stream.onError(fmt.Errorf("invalid stream type for receiving"))
+				_, onError, _ := stream.callbacks()
+				if onError != nil {
+					onError(fmt.Errorf("invalid stream type for receiving"))
 				}
 				return
 			}
@@ -1193,8 +1235,9 @@ func (stream *GRPCStream) receiveMessages() {
 				if err == io.EOF {
 					return // End of stream
 				}
-				if stream.onError != nil {
-					stream.onError(err)
+				_, onError, _ := stream.callbacks()
+				if onError != nil {
+					onError(err)
 				}
 				return
 			}
@@ -1204,21 +1247,24 @@ func (stream *GRPCStream) receiveMessages() {
 			if dynMsg, ok := msg.(*dynamic.Message); ok {
 				result, err = messageToMap(dynMsg)
 				if err != nil {
-					if stream.onError != nil {
-						stream.onError(err)
+					_, onError, _ := stream.callbacks()
+					if onError != nil {
+						onError(err)
 					}
 					return
 				}
 			} else {
-				if stream.onError != nil {
-					stream.onError(fmt.Errorf("unexpected message type: %T", msg))
+				_, onError, _ := stream.callbacks()
+				if onError != nil {
+					onError(fmt.Errorf("unexpected message type: %T", msg))
 				}
 				return
 			}
 
 			// Call receive callback
-			if stream.onReceive != nil {
-				stream.onReceive(result)
+			onReceive, _, _ := stream.callbacks()
+			if onReceive != nil {
+				onReceive(result)
 			}
 		}
 	}

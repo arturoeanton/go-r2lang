@@ -7,7 +7,7 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2repl"
 )
 
-const version = "1.0.0"
+const version = "0.1.0"
 
 func main() {
 	var (

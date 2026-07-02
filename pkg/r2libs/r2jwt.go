@@ -138,7 +138,7 @@ func RegisterJWT(env *r2core.Environment) {
 				}
 			}
 
-			if signatureProvided != expectedSignature {
+			if !hmac.Equal([]byte(signatureProvided), []byte(expectedSignature)) {
 				return map[string]interface{}{
 					"valid":   false,
 					"error":   "Invalid signature",
@@ -592,7 +592,7 @@ func verifyTokenInternal(token, secret string) interface{} {
 	h.Write([]byte(message))
 	expectedSignature := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 
-	if signatureProvided != expectedSignature {
+	if !hmac.Equal([]byte(signatureProvided), []byte(expectedSignature)) {
 		return map[string]interface{}{
 			"valid":   false,
 			"error":   "Invalid signature",

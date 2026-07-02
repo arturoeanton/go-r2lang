@@ -334,6 +334,9 @@ func RegisterPrint(env *r2core.Environment) {
 				}
 				width = int(w)
 			}
+			if width < 0 {
+				width = 0
+			}
 			fmt.Println(strings.Repeat("-", width))
 			return nil
 		}),

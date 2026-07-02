@@ -54,6 +54,9 @@ func RegisterXML(env *r2core.Environment) {
 					}
 
 					if len(stack) == 0 {
+						if root != nil {
+							panic("XML.parse: multiple root elements found; XML documents must have exactly one root element")
+						}
 						root = node
 					} else {
 						parent := stack[len(stack)-1]
@@ -423,6 +426,18 @@ func convertXMLNodeToR2(node *XMLNode) map[string]interface{} {
 	return result
 }
 
+func escapeXMLText(s string) string {
+	var buf strings.Builder
+	if err := xml.EscapeText(&buf, []byte(s)); err != nil {
+		panic(fmt.Sprintf("XML.stringify: failed to escape text: %v", err))
+	}
+	return buf.String()
+}
+
+func escapeXMLAttr(s string) string {
+	return escapeXMLText(s)
+}
+
 func convertR2ToXMLString(obj map[string]interface{}, indent string, pretty bool) string {
 	name, hasName := obj["name"].(string)
 	if !hasName {
@@ -441,7 +456,7 @@ func convertR2ToXMLString(obj map[string]interface{}, indent string, pretty bool
 	// Add attributes
 	if attrs, hasAttrs := obj["attributes"].(map[string]interface{}); hasAttrs {
 		for key, value := range attrs {
-			result.WriteString(fmt.Sprintf(" %s=\"%v\"", key, value))
+			result.WriteString(fmt.Sprintf(" %s=\"%s\"", key, escapeXMLAttr(fmt.Sprintf("%v", value))))
 		}
 	}
 
@@ -459,7 +474,7 @@ func convertR2ToXMLString(obj map[string]interface{}, indent string, pretty bool
 	result.WriteString(">")
 
 	if hasContent && content != "" {
-		result.WriteString(content)
+		result.WriteString(escapeXMLText(content))
 	}
 
 	if hasChildren && len(children) > 0 {
@@ -584,6 +599,14 @@ func convertXMLToJSON(xmlObj map[string]interface{}) map[string]interface{} {
 				if childObj, ok := child.(map[string]interface{}); ok {
 					childJSON := convertXMLToJSON(childObj)
 					for key, value := range childJSON {
+						if existing, exists := nodeData[key]; exists {
+							if existingList, isList := existing.([]interface{}); isList {
+								nodeData[key] = append(existingList, value)
+							} else {
+								nodeData[key] = []interface{}{existing, value}
+							}
+							continue
+						}
 						nodeData[key] = value
 					}
 				}

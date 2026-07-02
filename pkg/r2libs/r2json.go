@@ -180,6 +180,9 @@ func RegisterJSON(env *r2core.Environment) {
 			if err != nil {
 				panic(fmt.Sprintf("JSON.setValue: error parsing JSON object: %v", err))
 			}
+			if result == nil {
+				result = make(map[string]interface{})
+			}
 
 			result[key] = convertR2ToJSON(args[2])
 
@@ -258,6 +261,9 @@ func RegisterJSON(env *r2core.Environment) {
 
 				if i == 0 {
 					merged = obj
+					if merged == nil {
+						merged = make(map[string]interface{})
+					}
 				} else {
 					for key, value := range obj {
 						merged[key] = value

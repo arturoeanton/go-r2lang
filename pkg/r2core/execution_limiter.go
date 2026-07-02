@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,11 @@ var (
 )
 
 // ExecutionLimiter controla límites de ejecución para prevenir loops infinitos
+// A single ExecutionLimiter instance is shared by an Environment and all of
+// its inner environments (see NewInnerEnv), which means it can be accessed
+// concurrently when R2Lang scripts spawn goroutines via the "go"/"r2"
+// builtins. mu guards CurrentIterations and CallStack, the two fields that
+// are mutated on every loop iteration / function call.
 type ExecutionLimiter struct {
 	MaxIterations     int64
 	CurrentIterations int64
@@ -26,6 +32,7 @@ type ExecutionLimiter struct {
 	Enabled           bool
 	Context           context.Context
 	Cancel            context.CancelFunc
+	mu                sync.Mutex
 }
 
 // LoopContext representa el contexto de un bucle específico
@@ -103,6 +110,8 @@ func (el *ExecutionLimiter) CheckIterationLimit() bool {
 	if !el.Enabled {
 		return false
 	}
+	el.mu.Lock()
+	defer el.mu.Unlock()
 	return el.CurrentIterations >= el.MaxIterations
 }
 
@@ -111,7 +120,16 @@ func (el *ExecutionLimiter) CheckRecursionDepth() bool {
 	if !el.Enabled {
 		return false
 	}
+	el.mu.Lock()
+	defer el.mu.Unlock()
 	return len(el.CallStack) >= el.MaxRecursionDepth
+}
+
+// CallDepth retorna de forma segura la profundidad actual de la pila de llamadas
+func (el *ExecutionLimiter) CallDepth() int {
+	el.mu.Lock()
+	defer el.mu.Unlock()
+	return len(el.CallStack)
 }
 
 // CheckTimeLimit verifica si se ha alcanzado el límite de tiempo
@@ -139,26 +157,36 @@ func (el *ExecutionLimiter) CheckContext() bool {
 // IncrementIterations incrementa el contador de iteraciones
 func (el *ExecutionLimiter) IncrementIterations() {
 	if el.Enabled {
+		el.mu.Lock()
 		el.CurrentIterations++
+		el.mu.Unlock()
 	}
 }
 
 // EnterFunction registra la entrada a una función (para recursión)
 func (el *ExecutionLimiter) EnterFunction(functionName string) {
 	if el.Enabled {
+		el.mu.Lock()
 		el.CallStack = append(el.CallStack, functionName)
+		el.mu.Unlock()
 	}
 }
 
 // ExitFunction registra la salida de una función
 func (el *ExecutionLimiter) ExitFunction() {
-	if el.Enabled && len(el.CallStack) > 0 {
-		el.CallStack = el.CallStack[:len(el.CallStack)-1]
+	if el.Enabled {
+		el.mu.Lock()
+		if len(el.CallStack) > 0 {
+			el.CallStack = el.CallStack[:len(el.CallStack)-1]
+		}
+		el.mu.Unlock()
 	}
 }
 
 // Reset reinicia los contadores
 func (el *ExecutionLimiter) Reset() {
+	el.mu.Lock()
+	defer el.mu.Unlock()
 	el.CurrentIterations = 0
 	el.CallStack = el.CallStack[:0]
 	el.StartTime = time.Now()

@@ -3,6 +3,7 @@ package r2core
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // ============================================================
@@ -25,8 +26,12 @@ type StackFrame struct {
 }
 
 // CallStack represents the complete R2Lang call stack
+// Frames can be pushed/popped concurrently when R2Lang scripts spawn
+// goroutines (via the "go"/"r2" builtins) that share the same lexical
+// environment chain and therefore the same *CallStack instance.
 type CallStack struct {
 	Frames []StackFrame
+	mu     sync.Mutex
 }
 
 // Node interface for all AST nodes
@@ -99,15 +104,20 @@ func GetNodePosition(node Node) *PositionInfo {
 
 // FormatStackTrace creates a formatted string representation of the call stack
 func (cs *CallStack) FormatStackTrace() string {
-	if len(cs.Frames) == 0 {
+	cs.mu.Lock()
+	frames := make([]StackFrame, len(cs.Frames))
+	copy(frames, cs.Frames)
+	cs.mu.Unlock()
+
+	if len(frames) == 0 {
 		return ""
 	}
 
 	var sb strings.Builder
 	sb.WriteString("\nR2Lang call stack (most recent call first):\n")
 
-	for i := len(cs.Frames) - 1; i >= 0; i-- {
-		frame := cs.Frames[i]
+	for i := len(frames) - 1; i >= 0; i-- {
+		frame := frames[i]
 		if frame.Position != nil && frame.Position.Filename != "" {
 			sb.WriteString(fmt.Sprintf("    %s:%d:%d in %s()\n",
 				frame.Position.Filename, frame.Position.Line, frame.Position.Col, frame.FunctionName))
@@ -126,18 +136,24 @@ func (cs *CallStack) PushFrame(functionName string, pos *PositionInfo, args []in
 		Position:     pos,
 		Arguments:    args,
 	}
+	cs.mu.Lock()
 	cs.Frames = append(cs.Frames, frame)
+	cs.mu.Unlock()
 }
 
 // PopFrame removes the top frame from the call stack
 func (cs *CallStack) PopFrame() {
+	cs.mu.Lock()
 	if len(cs.Frames) > 0 {
 		cs.Frames = cs.Frames[:len(cs.Frames)-1]
 	}
+	cs.mu.Unlock()
 }
 
 // Clone creates a copy of the call stack
 func (cs *CallStack) Clone() *CallStack {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
 	clone := &CallStack{
 		Frames: make([]StackFrame, len(cs.Frames)),
 	}

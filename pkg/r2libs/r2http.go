@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
@@ -131,7 +132,14 @@ func RegisterHTTP(env *r2core.Environment) {
 
 			// Arrancamos el servidor (bloqueante)
 			fmt.Println("Listening on ", addr)
-			err := http.ListenAndServe(addr, nil)
+			// ReadHeaderTimeout guards against slow-header (Slowloris) style
+			// connections without limiting handlers that legitimately need to
+			// read/write large or slow bodies.
+			srv := &http.Server{
+				Addr:              addr,
+				ReadHeaderTimeout: 15 * time.Second,
+			}
+			err := srv.ListenAndServe()
 			if err != nil {
 				panic(fmt.Sprintf("serve: error in ListenAndServe: %v", err))
 			}

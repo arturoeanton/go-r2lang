@@ -57,14 +57,15 @@ func RegisterString(env *r2core.Environment) {
 			}
 			start := int(startF)
 			length := int(lengthF)
-			if start < 0 || length < 0 || start > len(s) {
+			runes := []rune(s)
+			if start < 0 || length < 0 || start > len(runes) {
 				return "" // o panic, a tu elección
 			}
 			end := start + length
-			if end > len(s) {
-				end = len(s)
+			if end < start || end > len(runes) {
+				end = len(runes)
 			}
-			return s[start:end]
+			return string(runes[start:end])
 		}),
 
 		"indexOf": r2core.BuiltinFunction(func(args ...interface{}) interface{} {

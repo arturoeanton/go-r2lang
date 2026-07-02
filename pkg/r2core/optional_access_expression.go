@@ -87,19 +87,17 @@ func evalArrayAccessOptional(obj []interface{}, member string, env *Environment)
 		return float64(len(obj))
 	case "push":
 		return func(args ...interface{}) interface{} {
-			for _, arg := range args {
-				obj = append(obj, arg)
-			}
-			return float64(len(obj))
+			result := make([]interface{}, len(obj))
+			copy(result, obj)
+			result = append(result, args...)
+			return result
 		}
 	case "pop":
 		return func() interface{} {
 			if len(obj) == 0 {
 				return nil
 			}
-			last := obj[len(obj)-1]
-			obj = obj[:len(obj)-1]
-			return last
+			return obj[len(obj)-1]
 		}
 	case "join":
 		return func(args ...interface{}) interface{} {

@@ -50,6 +50,9 @@ func (ac *ArrayComprehension) generateElements(env *Environment, genIndex int, b
 	// Process current generator
 	generator := ac.Generators[genIndex]
 	iterable := generator.Iterator.Eval(env)
+	if is, ok := iterable.(InterfaceSlice); ok {
+		iterable = []interface{}(is)
+	}
 
 	var results []interface{}
 
@@ -128,6 +131,9 @@ func (oc *ObjectComprehension) generatePairs(env *Environment, genIndex int, bin
 	// Process current generator
 	generator := oc.Generators[genIndex]
 	iterable := generator.Iterator.Eval(env)
+	if is, ok := iterable.(InterfaceSlice); ok {
+		iterable = []interface{}(is)
+	}
 
 	var results []interface{}
 

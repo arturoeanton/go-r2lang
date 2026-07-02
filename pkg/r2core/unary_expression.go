@@ -52,7 +52,6 @@ func (ue *UnaryExpression) Eval(env *Environment) interface{} {
 	default:
 		panic(fmt.Sprintf("Unknown unary operator: %s", ue.Operator))
 	}
-	return nil // This line should never be reached due to panics above
 }
 
 // isTruthy determines the truthiness of a value following JavaScript-like rules

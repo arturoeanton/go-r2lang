@@ -24,7 +24,6 @@ func (gas *GenericAssignStatement) Eval(env *Environment) interface{} {
 		default:
 			panic("Cannot assign to property of non-object type")
 		}
-		return val
 	case *IndexExpression:
 		return assignIndexExpression(left, val, env)
 	default:

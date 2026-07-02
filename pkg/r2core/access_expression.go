@@ -128,7 +128,7 @@ func evalArrayDelete(arr InterfaceSlice) interface{} {
 		for i, v := range arr {
 			flag := false
 			for _, arg := range args {
-				if v == arg {
+				if equals(v, arg) {
 					flag = true
 					break
 				}
@@ -307,7 +307,7 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			}
 
 			for idx, v := range arr {
-				if v == args[0] {
+				if equals(v, args[0]) {
 					if flagAll {
 						out = append(out, idx)
 						continue

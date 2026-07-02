@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
@@ -515,6 +516,9 @@ func RegisterConsole(env *r2core.Environment) {
 			if len(args) > 0 {
 				if s, ok := args[0].(float64); ok {
 					step = int(s) % len(spinChars)
+					if step < 0 {
+						step += len(spinChars)
+					}
 				}
 			}
 
@@ -528,6 +532,7 @@ func RegisterConsole(env *r2core.Environment) {
 
 // Global state for console functionality
 var (
+	consoleStateMu  sync.Mutex
 	consoleTimers   = make(map[string]time.Time)
 	consoleCounters = make(map[string]int)
 )
@@ -589,10 +594,14 @@ func printObjectTable(data map[string]interface{}) {
 }
 
 func setConsoleTimer(label string, startTime time.Time) {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
 	consoleTimers[label] = startTime
 }
 
 func getConsoleTimer(label string) *time.Time {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
 	if startTime, exists := consoleTimers[label]; exists {
 		return &startTime
 	}
@@ -600,15 +609,21 @@ func getConsoleTimer(label string) *time.Time {
 }
 
 func removeConsoleTimer(label string) {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
 	delete(consoleTimers, label)
 }
 
 func incrementConsoleCounter(label string) int {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
 	consoleCounters[label]++
 	return consoleCounters[label]
 }
 
 func resetConsoleCounter(label string) {
+	consoleStateMu.Lock()
+	defer consoleStateMu.Unlock()
 	consoleCounters[label] = 0
 }
 
