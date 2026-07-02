@@ -664,7 +664,7 @@ func createDateObject() map[string]interface{} {
 			return nil
 		}
 		year := int(toFloat(args[1]))
-		month := time.Month(int(toFloat(args[2])))
+		month := time.Month(int(toFloat(args[2])) + 1)
 		day := int(toFloat(args[3]))
 		hour, minute, second := 0, 0, 0
 		if len(args) > 4 {

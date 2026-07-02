@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -126,9 +127,27 @@ func (tr *TestRunner) runSuite(suite *TestSuite) []*TestResult {
 
 	tr.Reporter.OnSuiteStart(suite)
 
-	// Run BeforeAll hook
+	// Run BeforeAll hook. A panic here (e.g. a bug in setup code) must not
+	// crash the whole test run; every test in the suite is reported as
+	// failed instead, same as a normal assertion failure would be.
 	if suite.BeforeAll != nil {
-		suite.BeforeAll()
+		if err := runProtected(suite.BeforeAll); err != nil {
+			for _, test := range suite.Tests {
+				result := &TestResult{
+					TestCase:  test,
+					Suite:     suite,
+					Status:    TestStatusFailed,
+					StartTime: time.Now(),
+					EndTime:   time.Now(),
+					Error:     err,
+					Message:   fmt.Sprintf("beforeAll hook failed: %v", err),
+				}
+				results = append(results, result)
+				tr.Reporter.OnTestComplete(result)
+			}
+			tr.Reporter.OnSuiteComplete(suite, results)
+			return results
+		}
 	}
 
 	for _, test := range suite.Tests {
@@ -150,14 +169,29 @@ func (tr *TestRunner) runSuite(suite *TestSuite) []*TestResult {
 		results = append(results, result)
 	}
 
-	// Run AfterAll hook
+	// Run AfterAll hook. A panic here is logged rather than left to crash
+	// the process, since by this point results have already been recorded.
 	if suite.AfterAll != nil {
-		suite.AfterAll()
+		if err := runProtected(suite.AfterAll); err != nil {
+			fmt.Fprintf(os.Stderr, "afterAll hook failed for suite %q: %v\n", suite.Name, err)
+		}
 	}
 
 	tr.Reporter.OnSuiteComplete(suite, results)
 
 	return results
+}
+
+// runProtected runs fn, converting any panic into an error instead of
+// letting it propagate and crash the whole test run.
+func runProtected(fn func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	fn()
+	return nil
 }
 
 // runTest executes a single test
@@ -171,53 +205,67 @@ func (tr *TestRunner) runTest(test *TestCase, suite *TestSuite) *TestResult {
 
 	tr.Reporter.OnTestStart(test)
 
-	// Run BeforeEach hook
+	// Run BeforeEach hook. A panic here fails the test instead of crashing
+	// the whole run, and skips executing the test body since its
+	// preconditions were never set up.
+	var beforeEachErr error
 	if suite.BeforeEach != nil {
-		suite.BeforeEach()
+		beforeEachErr = runProtected(suite.BeforeEach)
 	}
 
-	// Execute test with timeout
-	done := make(chan bool, 1)
-	var testError error
+	if beforeEachErr != nil {
+		result.Status = TestStatusFailed
+		result.Error = beforeEachErr
+		result.Message = fmt.Sprintf("beforeEach hook failed: %v", beforeEachErr)
+	} else {
+		// Execute test with timeout
+		done := make(chan bool, 1)
+		var testError error
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				testError = fmt.Errorf("test panicked: %v", r)
-			}
-			done <- true
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					testError = fmt.Errorf("test panicked: %v", r)
+				}
+				done <- true
+			}()
+
+			test.Func()
 		}()
 
-		test.Func()
-	}()
-
-	timeout := test.Timeout
-	if timeout == 0 {
-		timeout = tr.Config.DefaultTimeout
-	}
-
-	select {
-	case <-done:
-		if testError != nil {
-			result.Status = TestStatusFailed
-			result.Error = testError
-			result.Message = testError.Error()
-		} else {
-			result.Status = TestStatusPassed
-			result.Message = "Test passed"
+		timeout := test.Timeout
+		if timeout == 0 {
+			timeout = tr.Config.DefaultTimeout
 		}
-	case <-time.After(timeout):
-		result.Status = TestStatusTimeout
-		result.Error = fmt.Errorf("test timed out after %v", timeout)
-		result.Message = fmt.Sprintf("Test timed out after %v", timeout)
+
+		select {
+		case <-done:
+			if testError != nil {
+				result.Status = TestStatusFailed
+				result.Error = testError
+				result.Message = testError.Error()
+			} else {
+				result.Status = TestStatusPassed
+				result.Message = "Test passed"
+			}
+		case <-time.After(timeout):
+			result.Status = TestStatusTimeout
+			result.Error = fmt.Errorf("test timed out after %v", timeout)
+			result.Message = fmt.Sprintf("Test timed out after %v", timeout)
+		}
 	}
 
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
 
-	// Run AfterEach hook
+	// Run AfterEach hook. A panic here is reported as a test failure too,
+	// unless the test already failed for another reason.
 	if suite.AfterEach != nil {
-		suite.AfterEach()
+		if afterEachErr := runProtected(suite.AfterEach); afterEachErr != nil && result.Status != TestStatusFailed {
+			result.Status = TestStatusFailed
+			result.Error = afterEachErr
+			result.Message = fmt.Sprintf("afterEach hook failed: %v", afterEachErr)
+		}
 	}
 
 	tr.Reporter.OnTestComplete(result)

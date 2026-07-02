@@ -47,6 +47,15 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		return evalDSLResultAccess(obj, ae.Member, env)
 	case string:
 		return evalStringAccess(obj, ae.Member)
+	case attrGetter:
+		// r2libs fluent-API objects (PathObject, FileStreamObject,
+		// CommandObject, ...) resolve their own methods/properties instead
+		// of being unpacked into a map or struct field here.
+		attr, found := obj.Getattr(ae.Member)
+		if !found {
+			panic("The object does not have the property: " + ae.Member)
+		}
+		return attr.Eval(env)
 	default:
 		if ae.Position != nil && env.CurrentFile != "" {
 			ae.Position.Filename = env.CurrentFile
@@ -54,6 +63,13 @@ func (ae *AccessExpression) Eval(env *Environment) interface{} {
 		PanicWithStack(ae.Position, fmt.Sprintf("access to property in unsupported type: %T", objVal), env.callStack)
 		return nil
 	}
+}
+
+// attrGetter is implemented by r2libs objects that expose a fluent
+// method/property API (e.g. PathObject, FileStreamObject, CommandObject)
+// without going through map[string]interface{} or *ObjectInstance.
+type attrGetter interface {
+	Getattr(name string) (Node, bool)
 }
 
 func evalMemberAccess(instance *ObjectInstance, member string) interface{} {

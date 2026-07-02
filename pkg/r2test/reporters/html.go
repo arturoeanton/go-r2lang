@@ -116,9 +116,17 @@ func (hr *HTMLReporter) Generate(collector *coverage.CoverageCollector, testResu
 	return nil
 }
 
+// templateFuncs returns the custom functions available to report templates
+// (e.g. "sub", used by the main template to compute uncovered line counts).
+func templateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"sub": func(a, b int) int { return a - b },
+	}
+}
+
 // generateMainReport generates the main HTML report
 func (hr *HTMLReporter) generateMainReport(data *HTMLReportData) error {
-	tmpl := template.Must(template.New("main").Parse(hr.getMainTemplate()))
+	tmpl := template.Must(template.New("main").Funcs(templateFuncs()).Parse(hr.getMainTemplate()))
 
 	outputFile := filepath.Join(hr.OutputDir, "index.html")
 	file, err := os.Create(outputFile)
@@ -132,7 +140,7 @@ func (hr *HTMLReporter) generateMainReport(data *HTMLReportData) error {
 
 // generateFileReport generates an HTML report for a specific file
 func (hr *HTMLReporter) generateFileReport(file *HTMLFileData, globalData *HTMLReportData) error {
-	tmpl := template.Must(template.New("file").Parse(hr.getFileTemplate()))
+	tmpl := template.Must(template.New("file").Funcs(templateFuncs()).Parse(hr.getFileTemplate()))
 
 	// Create file-specific data
 	fileData := struct {

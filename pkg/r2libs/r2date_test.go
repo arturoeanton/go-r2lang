@@ -288,7 +288,7 @@ func TestDateTimezone(t *testing.T) {
 	args := []interface{}{
 		"America/New_York",
 		float64(2024),
-		float64(7),
+		float64(6), // 0-indexed month (JS-style), matching Date.create/setMonth
 		float64(15),
 	}
 	result := timezoneFunc(args...)

@@ -215,6 +215,75 @@ func TestTestRunner_RunTestWithTimeout(t *testing.T) {
 	}
 }
 
+func TestTestRunner_PanickingBeforeEachFailsTestInsteadOfCrashing(t *testing.T) {
+	config := DefaultConfig()
+	runner := NewTestRunner(config)
+
+	testRan := false
+	test := &TestCase{
+		Name: "Test 1",
+		Func: func() {
+			testRan = true
+		},
+	}
+
+	suite := &TestSuite{
+		Name:  "Test Suite",
+		Tests: []*TestCase{test},
+		BeforeEach: func() {
+			panic("boom in beforeEach")
+		},
+	}
+	test.Suite = suite
+
+	runner.AddSuite(suite)
+
+	results, err := runner.Run()
+	if err != nil {
+		t.Fatalf("Run should not return an error even if a hook panics: %v", err)
+	}
+
+	if testRan {
+		t.Error("Test body should not run when beforeEach panics")
+	}
+
+	stats := results.GetStats()
+	if stats.Failed != 1 {
+		t.Errorf("Expected 1 failed test, got %d", stats.Failed)
+	}
+}
+
+func TestTestRunner_PanickingBeforeAllFailsSuiteInsteadOfCrashing(t *testing.T) {
+	config := DefaultConfig()
+	runner := NewTestRunner(config)
+
+	test := &TestCase{
+		Name: "Test 1",
+		Func: func() {},
+	}
+
+	suite := &TestSuite{
+		Name:  "Test Suite",
+		Tests: []*TestCase{test},
+		BeforeAll: func() {
+			panic("boom in beforeAll")
+		},
+	}
+	test.Suite = suite
+
+	runner.AddSuite(suite)
+
+	results, err := runner.Run()
+	if err != nil {
+		t.Fatalf("Run should not return an error even if a hook panics: %v", err)
+	}
+
+	stats := results.GetStats()
+	if stats.Failed != 1 {
+		t.Errorf("Expected 1 failed test when beforeAll panics, got %d failed (%d total)", stats.Failed, stats.Total)
+	}
+}
+
 func TestTestRunner_BeforeEachAfterEach(t *testing.T) {
 	config := DefaultConfig()
 	runner := NewTestRunner(config)
