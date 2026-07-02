@@ -375,3 +375,195 @@ func TestDateUTCMethods(t *testing.T) {
 		t.Errorf("getUTCFullYear() returned %f, expected 2024", year)
 	}
 }
+
+func TestDateIsLeapYear(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	isLeapYearFunc := dateObj["isLeapYear"].(r2core.BuiltinFunction)
+
+	cases := []struct {
+		year     int
+		expected bool
+	}{
+		{2024, true},  // divisible by 4
+		{2023, false}, // not divisible by 4
+		{2000, true},  // divisible by 400
+		{1900, false}, // divisible by 100 but not 400
+	}
+
+	for _, c := range cases {
+		result := isLeapYearFunc(float64(c.year)).(bool)
+		if result != c.expected {
+			t.Errorf("isLeapYear(%d) returned %v, expected %v", c.year, result, c.expected)
+		}
+	}
+}
+
+func TestDateDaysInMonth(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+	daysInMonthFunc := dateObj["daysInMonth"].(r2core.BuiltinFunction)
+
+	cases := []struct {
+		year     int
+		month    int // 0-indexed, JS-style
+		expected float64
+	}{
+		{2024, 1, 29},  // February, leap year
+		{2023, 1, 28},  // February, non-leap year
+		{2024, 0, 31},  // January
+		{2024, 3, 30},  // April
+		{2024, 11, 31}, // December (month/year rollover)
+	}
+
+	for _, c := range cases {
+		result := daysInMonthFunc(float64(c.year), float64(c.month)).(float64)
+		if result != c.expected {
+			t.Errorf("daysInMonth(%d, %d) returned %f, expected %f", c.year, c.month, result, c.expected)
+		}
+	}
+}
+
+func TestDateStartOfDayEndOfDay(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	original := createFunc(float64(2024), float64(6), float64(15), float64(14), float64(30), float64(25)).(*r2core.DateValue)
+
+	startOfDayFunc := dateObj["startOfDay"].(r2core.BuiltinFunction)
+	start := startOfDayFunc(original).(*r2core.DateValue)
+	if start.Time.Hour() != 0 || start.Time.Minute() != 0 || start.Time.Second() != 0 || start.Time.Nanosecond() != 0 {
+		t.Errorf("startOfDay() did not zero the time components, got %v", start.Time)
+	}
+	if start.Time.Year() != 2024 || start.Time.Month() != time.July || start.Time.Day() != 15 {
+		t.Errorf("startOfDay() changed the calendar date, got %v", start.Time)
+	}
+	if original.Time.Hour() != 14 {
+		t.Errorf("startOfDay() mutated the original date, got hour %d", original.Time.Hour())
+	}
+
+	endOfDayFunc := dateObj["endOfDay"].(r2core.BuiltinFunction)
+	end := endOfDayFunc(original).(*r2core.DateValue)
+	if end.Time.Hour() != 23 || end.Time.Minute() != 59 || end.Time.Second() != 59 || end.Time.Nanosecond() != 999000000 {
+		t.Errorf("endOfDay() did not set the time to 23:59:59.999, got %v", end.Time)
+	}
+	if original.Time.Hour() != 14 {
+		t.Errorf("endOfDay() mutated the original date, got hour %d", original.Time.Hour())
+	}
+}
+
+func TestDateStartOfMonthEndOfMonth(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	startOfMonthFunc := dateObj["startOfMonth"].(r2core.BuiltinFunction)
+	endOfMonthFunc := dateObj["endOfMonth"].(r2core.BuiltinFunction)
+
+	cases := []struct {
+		name        string
+		year        int
+		month       int // 0-indexed
+		day         int
+		expectStart int
+		expectEnd   int
+	}{
+		{"mid-year", 2024, 6, 15, 1, 31},
+		{"leap February", 2024, 1, 10, 1, 29},
+		{"December rollover", 2024, 11, 5, 1, 31},
+	}
+
+	for _, c := range cases {
+		date := createFunc(float64(c.year), float64(c.month), float64(c.day)).(*r2core.DateValue)
+
+		start := startOfMonthFunc(date).(*r2core.DateValue)
+		if start.Time.Day() != c.expectStart || start.Time.Hour() != 0 {
+			t.Errorf("%s: startOfMonth() returned %v, expected day %d at midnight", c.name, start.Time, c.expectStart)
+		}
+
+		end := endOfMonthFunc(date).(*r2core.DateValue)
+		if end.Time.Day() != c.expectEnd || end.Time.Hour() != 23 || end.Time.Minute() != 59 {
+			t.Errorf("%s: endOfMonth() returned %v, expected day %d at 23:59:59.999", c.name, end.Time, c.expectEnd)
+		}
+		if end.Time.Month() != date.Time.Month() {
+			t.Errorf("%s: endOfMonth() rolled into a different month: %v", c.name, end.Time)
+		}
+	}
+}
+
+func TestDateIsWeekend(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	isWeekendFunc := dateObj["isWeekend"].(r2core.BuiltinFunction)
+
+	cases := []struct {
+		name     string
+		year     int
+		month    int
+		day      int
+		expected bool
+	}{
+		{"Saturday", 2024, 6, 13, true},
+		{"Sunday", 2024, 6, 14, true},
+		{"Monday", 2024, 6, 15, false},
+	}
+
+	for _, c := range cases {
+		date := createFunc(float64(c.year), float64(c.month), float64(c.day)).(*r2core.DateValue)
+		result := isWeekendFunc(date).(bool)
+		if result != c.expected {
+			t.Errorf("%s: isWeekend() returned %v, expected %v", c.name, result, c.expected)
+		}
+	}
+}
+
+func TestDateClone(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterDate(env)
+	dateModuleObj, _ := env.Get("date")
+	dateModule := dateModuleObj.(map[string]interface{})
+	DateFunc := dateModule["Date"].(r2core.BuiltinFunction)
+	dateObj := DateFunc().(map[string]interface{})
+
+	createFunc := dateObj["create"].(r2core.BuiltinFunction)
+	original := createFunc(float64(2024), float64(6), float64(15)).(*r2core.DateValue)
+
+	cloneFunc := dateObj["clone"].(r2core.BuiltinFunction)
+	cloned := cloneFunc(original).(*r2core.DateValue)
+
+	if cloned == original {
+		t.Error("clone() returned the same pointer instead of a new instance")
+	}
+	if !cloned.Time.Equal(original.Time) {
+		t.Errorf("clone() did not preserve the time value, got %v, expected %v", cloned.Time, original.Time)
+	}
+
+	setFullYearFunc := dateObj["setFullYear"].(r2core.BuiltinFunction)
+	setFullYearFunc(cloned, float64(2030))
+	if original.Time.Year() != 2024 {
+		t.Errorf("mutating the clone affected the original, got year %d", original.Time.Year())
+	}
+}

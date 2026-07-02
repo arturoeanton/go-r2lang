@@ -104,6 +104,17 @@ func createDateObject() map[string]interface{} {
 		return createDateFromArgs(args...)
 	})
 
+	obj["clone"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		return &r2core.DateValue{Time: date.Time}
+	})
+
 	obj["now"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		return float64(time.Now().UnixMilli())
 	})
@@ -183,6 +194,18 @@ func createDateObject() map[string]interface{} {
 			return nil
 		}
 		return float64(date.Time.Weekday())
+	})
+
+	obj["isWeekend"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		weekday := date.Time.Weekday()
+		return weekday == time.Sunday || weekday == time.Saturday
 	})
 
 	obj["getHours"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
@@ -600,6 +623,59 @@ func createDateObject() map[string]interface{} {
 		return &r2core.DateValue{Time: newTime}
 	})
 
+	obj["startOfDay"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		t := date.Time
+		newTime := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+		return &r2core.DateValue{Time: newTime}
+	})
+
+	obj["endOfDay"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		t := date.Time
+		newTime := time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 999000000, t.Location())
+		return &r2core.DateValue{Time: newTime}
+	})
+
+	obj["startOfMonth"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		t := date.Time
+		newTime := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+		return &r2core.DateValue{Time: newTime}
+	})
+
+	obj["endOfMonth"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		date, ok := args[0].(*r2core.DateValue)
+		if !ok {
+			return nil
+		}
+		t := date.Time
+		lastDay := time.Date(t.Year(), t.Month()+1, 0, 0, 0, 0, 0, t.Location()).Day()
+		newTime := time.Date(t.Year(), t.Month(), lastDay, 23, 59, 59, 999000000, t.Location())
+		return &r2core.DateValue{Time: newTime}
+	})
+
 	obj["diff"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 		if len(args) < 2 {
 			return nil
@@ -649,6 +725,24 @@ func createDateObject() map[string]interface{} {
 		}
 		goFormat := r2core.ConvertToGoFormat(format)
 		return date.Time.Format(goFormat)
+	})
+
+	obj["isLeapYear"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 1 {
+			return nil
+		}
+		year := int(toFloat(args[0]))
+		return (year%4 == 0 && year%100 != 0) || year%400 == 0
+	})
+
+	obj["daysInMonth"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+		if len(args) < 2 {
+			return nil
+		}
+		year := int(toFloat(args[0]))
+		month := time.Month(int(toFloat(args[1])) + 1)
+		lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		return float64(lastDay)
 	})
 
 	obj["timezone"] = r2core.BuiltinFunction(func(args ...interface{}) interface{} {
