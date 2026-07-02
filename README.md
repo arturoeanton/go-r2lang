@@ -396,7 +396,7 @@ go run main.go examples/multiline_examples.r2    # Multiline syntax
 
 ### Prerequisites
 
-- **Go**: Version 1.23 or higher.
+- **Go**: Version 1.24.5 or higher (matches the `go` directive in `go.mod`).
 
 ### Installation & "Hello, World!"
 
