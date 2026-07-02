@@ -664,6 +664,33 @@ go test ./pkg/r2libs/    # Built-in library tests
 - **r2std.go**: Standard utilities (122 LOC)
 - Plus 10 additional specialized libraries
 
+### Embedding R2Lang in a Go program
+
+The normal way to use R2Lang is inside a Go program: you embed the
+interpreter, expose your own Go functions/structs to the scripts you run,
+and let R2Lang handle the scripting layer. The `native` module is built for
+this:
+
+```go
+r2libs.RegisterNativeFunc("add", func(a, b int) int { return a + b })
+r2libs.RegisterNativeStruct("Greeter", func() interface{} { return &Greeter{} })
+
+env := r2core.NewEnvironment()
+r2libs.RegisterStd(env)
+r2libs.RegisterGoInterOp(env) // registers the "native" module
+env.Run(r2core.NewParser(script))
+```
+
+```r2
+let sum = native.callFunc("add", 3, 4)
+let g = native.new("Greeter")
+native.setField(g, "Name", "R2Lang")
+std.print(native.callMethod(g, "Hello"))
+```
+
+See [`examples/embedding/`](./examples/embedding/) for a complete,
+runnable host program.
+
 ---
 
 ## 📚 Documentation & Full Course
