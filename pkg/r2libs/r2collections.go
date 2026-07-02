@@ -239,7 +239,232 @@ func RegisterCollections(env *r2core.Environment) {
 			}
 			return false
 		}),
+
+		"indexOf": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("indexOf: se aceptan 2 argumentos (array, valor)")
+			}
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("indexOf: el primer argumento debe ser un array")
+			}
+			val := args[1]
+			for i, v := range arr {
+				if equals(v, val) {
+					return float64(i)
+				}
+			}
+			return float64(-1)
+		}),
+
+		"unique": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 1 {
+				panic("unique: solo se acepta un argumento")
+			}
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("unique: el argumento debe ser un array")
+			}
+			newArr := make([]interface{}, 0, len(arr))
+			for _, v := range arr {
+				found := false
+				for _, u := range newArr {
+					if equals(u, v) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					newArr = append(newArr, v)
+				}
+			}
+			return newArr
+		}),
+
+		"compact": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 1 {
+				panic("compact: solo se acepta un argumento")
+			}
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("compact: el argumento debe ser un array")
+			}
+			newArr := make([]interface{}, 0, len(arr))
+			for _, v := range arr {
+				if v != nil && toBool(v) {
+					newArr = append(newArr, v)
+				}
+			}
+			return newArr
+		}),
+
+		"flatten": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 || len(args) > 2 {
+				panic("flatten: se acepta 1 o 2 argumentos (array, [depth])")
+			}
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("flatten: el primer argumento debe ser un array")
+			}
+			depth := 1
+			if len(args) == 2 {
+				d, ok := args[1].(float64)
+				if !ok {
+					panic("flatten: depth debe ser numérico")
+				}
+				depth = int(d)
+			}
+			return flattenArray(arr, depth)
+		}),
+
+		"chunk": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("chunk: se aceptan 2 argumentos (array, size)")
+			}
+			arr, ok := args[0].([]interface{})
+			if !ok {
+				panic("chunk: el primer argumento debe ser un array")
+			}
+			sizeF, ok := args[1].(float64)
+			if !ok {
+				panic("chunk: size debe ser numérico")
+			}
+			size := int(sizeF)
+			if size <= 0 {
+				panic("chunk: size debe ser mayor que cero")
+			}
+			result := make([]interface{}, 0, (len(arr)+size-1)/size)
+			for i := 0; i < len(arr); i += size {
+				end := i + size
+				if end > len(arr) {
+					end = len(arr)
+				}
+				piece := make([]interface{}, end-i)
+				copy(piece, arr[i:end])
+				result = append(result, piece)
+			}
+			return result
+		}),
+
+		"partition": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("partition: se aceptan 2 argumentos (array, funcion)")
+			}
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("partition: los argumentos deben ser (array, funcion)")
+			}
+			matched := make([]interface{}, 0)
+			rest := make([]interface{}, 0)
+			for _, v := range arr {
+				if toBool(fn.Call(v)) {
+					matched = append(matched, v)
+				} else {
+					rest = append(rest, v)
+				}
+			}
+			return []interface{}{matched, rest}
+		}),
+
+		"zip": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("zip: se aceptan 2 argumentos (array1, array2)")
+			}
+			arr1, ok1 := args[0].([]interface{})
+			arr2, ok2 := args[1].([]interface{})
+			if !ok1 || !ok2 {
+				panic("zip: ambos argumentos deben ser arrays")
+			}
+			n := len(arr1)
+			if len(arr2) < n {
+				n = len(arr2)
+			}
+			result := make([]interface{}, n)
+			for i := 0; i < n; i++ {
+				result[i] = []interface{}{arr1[i], arr2[i]}
+			}
+			return result
+		}),
+
+		"groupBy": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("groupBy: se aceptan 2 argumentos (array, funcion)")
+			}
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("groupBy: los argumentos deben ser (array, funcion)")
+			}
+			groups := make(map[string]interface{})
+			order := make([]string, 0)
+			for _, v := range arr {
+				key := fmt.Sprintf("%v", fn.Call(v))
+				existing, found := groups[key]
+				if !found {
+					order = append(order, key)
+					groups[key] = []interface{}{v}
+					continue
+				}
+				groups[key] = append(existing.([]interface{}), v)
+			}
+			result := make(map[string]interface{}, len(groups))
+			for _, key := range order {
+				result[key] = groups[key]
+			}
+			return result
+		}),
+
+		"sortBy": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("sortBy: se aceptan 2 argumentos (array, funcion)")
+			}
+			arr, ok1 := args[0].([]interface{})
+			fn, ok2 := args[1].(*r2core.UserFunction)
+			if !ok1 || !ok2 {
+				panic("sortBy: los argumentos deben ser (array, funcion)")
+			}
+			type keyedValue struct {
+				key interface{}
+				val interface{}
+			}
+			pairs := make([]keyedValue, len(arr))
+			for i, v := range arr {
+				pairs[i] = keyedValue{key: fn.Call(v), val: v}
+			}
+			sort.SliceStable(pairs, func(i, j int) bool {
+				ki, kj := pairs[i].key, pairs[j].key
+				if fi, ok := ki.(float64); ok {
+					if fj, ok := kj.(float64); ok {
+						return fi < fj
+					}
+				}
+				return fmt.Sprintf("%v", ki) < fmt.Sprintf("%v", kj)
+			})
+			newArr := make([]interface{}, len(pairs))
+			for i, p := range pairs {
+				newArr[i] = p.val
+			}
+			return newArr
+		}),
 	}
 
 	RegisterModule(env, "collections", functions)
+}
+
+func flattenArray(arr []interface{}, depth int) []interface{} {
+	if depth <= 0 {
+		result := make([]interface{}, len(arr))
+		copy(result, arr)
+		return result
+	}
+	result := make([]interface{}, 0, len(arr))
+	for _, v := range arr {
+		if inner, ok := v.([]interface{}); ok {
+			result = append(result, flattenArray(inner, depth-1)...)
+		} else {
+			result = append(result, v)
+		}
+	}
+	return result
 }

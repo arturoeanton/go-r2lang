@@ -170,3 +170,169 @@ func TestCollectionsFunctions(t *testing.T) {
 		})
 	}
 }
+
+func TestCollectionsExtendedFunctions(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterCollections(env)
+
+	collectionsModuleObj, ok := env.Get("collections")
+	if !ok {
+		t.Fatal("collections module not found")
+	}
+	collectionsModule := collectionsModuleObj.(map[string]interface{})
+
+	indexOfFunc := collectionsModule["indexOf"].(r2core.BuiltinFunction)
+	uniqueFunc := collectionsModule["unique"].(r2core.BuiltinFunction)
+	compactFunc := collectionsModule["compact"].(r2core.BuiltinFunction)
+	flattenFunc := collectionsModule["flatten"].(r2core.BuiltinFunction)
+	chunkFunc := collectionsModule["chunk"].(r2core.BuiltinFunction)
+	partitionFunc := collectionsModule["partition"].(r2core.BuiltinFunction)
+	zipFunc := collectionsModule["zip"].(r2core.BuiltinFunction)
+	groupByFunc := collectionsModule["groupBy"].(r2core.BuiltinFunction)
+	sortByFunc := collectionsModule["sortBy"].(r2core.BuiltinFunction)
+
+	// isEven(x) { return x % 2 == 0 }
+	isEvenCode := "func isEven(x) { return x % 2 == 0 }"
+	isEvenParser := r2core.NewParser(isEvenCode)
+	isEvenParser.ParseProgram().Eval(env)
+	isEvenVal, ok := env.Get("isEven")
+	if !ok {
+		t.Fatal("isEven function not found in environment")
+	}
+	isEvenUserFunc := isEvenVal.(*r2core.UserFunction)
+
+	// negate(x) { return -x } used as a sort key extractor
+	negateCode := "func negate(x) { return -x }"
+	negateParser := r2core.NewParser(negateCode)
+	negateParser.ParseProgram().Eval(env)
+	negateVal, ok := env.Get("negate")
+	if !ok {
+		t.Fatal("negate function not found in environment")
+	}
+	negateUserFunc := negateVal.(*r2core.UserFunction)
+
+	t.Run("indexOf found", func(t *testing.T) {
+		result := indexOfFunc([]interface{}{10.0, 20.0, 30.0}, 20.0)
+		if result != 1.0 {
+			t.Errorf("expected 1, got %v", result)
+		}
+	})
+
+	t.Run("indexOf not found", func(t *testing.T) {
+		result := indexOfFunc([]interface{}{10.0, 20.0, 30.0}, 99.0)
+		if result != -1.0 {
+			t.Errorf("expected -1, got %v", result)
+		}
+	})
+
+	t.Run("unique removes duplicates preserving order", func(t *testing.T) {
+		result := uniqueFunc([]interface{}{1.0, 2.0, 1.0, 3.0, 2.0}).([]interface{})
+		expected := []interface{}{1.0, 2.0, 3.0}
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+		for i := range expected {
+			if result[i] != expected[i] {
+				t.Errorf("expected %v at %d, got %v", expected[i], i, result[i])
+			}
+		}
+	})
+
+	t.Run("compact removes nil and falsy", func(t *testing.T) {
+		result := compactFunc([]interface{}{1.0, nil, 0.0, "a", false, "", 2.0}).([]interface{})
+		expected := []interface{}{1.0, "a", 2.0}
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+		for i := range expected {
+			if result[i] != expected[i] {
+				t.Errorf("expected %v at %d, got %v", expected[i], i, result[i])
+			}
+		}
+	})
+
+	t.Run("flatten default depth 1", func(t *testing.T) {
+		nested := []interface{}{1.0, []interface{}{2.0, 3.0}, []interface{}{4.0, []interface{}{5.0}}}
+		result := flattenFunc(nested).([]interface{})
+		expected := []interface{}{1.0, 2.0, 3.0, 4.0, []interface{}{5.0}}
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+	})
+
+	t.Run("flatten depth 2 flattens fully", func(t *testing.T) {
+		nested := []interface{}{1.0, []interface{}{2.0, []interface{}{3.0}}}
+		result := flattenFunc(nested, 2.0).([]interface{})
+		expected := []interface{}{1.0, 2.0, 3.0}
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+		for i := range expected {
+			if result[i] != expected[i] {
+				t.Errorf("expected %v at %d, got %v", expected[i], i, result[i])
+			}
+		}
+	})
+
+	t.Run("chunk splits into groups", func(t *testing.T) {
+		result := chunkFunc([]interface{}{1.0, 2.0, 3.0, 4.0, 5.0}, 2.0).([]interface{})
+		if len(result) != 3 {
+			t.Fatalf("expected 3 chunks, got %d", len(result))
+		}
+		last := result[2].([]interface{})
+		if len(last) != 1 || last[0] != 5.0 {
+			t.Errorf("expected last chunk to be [5], got %v", last)
+		}
+	})
+
+	t.Run("chunk size zero panics", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic for size 0")
+			}
+		}()
+		chunkFunc([]interface{}{1.0}, 0.0)
+	})
+
+	t.Run("partition splits matching and non-matching", func(t *testing.T) {
+		result := partitionFunc([]interface{}{1.0, 2.0, 3.0, 4.0}, isEvenUserFunc).([]interface{})
+		if len(result) != 2 {
+			t.Fatalf("expected 2 groups, got %d", len(result))
+		}
+		matched := result[0].([]interface{})
+		rest := result[1].([]interface{})
+		if len(matched) != 2 || len(rest) != 2 {
+			t.Errorf("expected 2/2 split, got %d/%d", len(matched), len(rest))
+		}
+	})
+
+	t.Run("zip pairs elements up to shortest length", func(t *testing.T) {
+		result := zipFunc([]interface{}{1.0, 2.0, 3.0}, []interface{}{"a", "b"}).([]interface{})
+		if len(result) != 2 {
+			t.Fatalf("expected 2 pairs, got %d", len(result))
+		}
+		pair0 := result[0].([]interface{})
+		if pair0[0] != 1.0 || pair0[1] != "a" {
+			t.Errorf("expected [1, a], got %v", pair0)
+		}
+	})
+
+	t.Run("groupBy groups by key function", func(t *testing.T) {
+		result := groupByFunc([]interface{}{1.0, 2.0, 3.0, 4.0}, isEvenUserFunc).(map[string]interface{})
+		evens := result["true"].([]interface{})
+		odds := result["false"].([]interface{})
+		if len(evens) != 2 || len(odds) != 2 {
+			t.Errorf("expected 2/2 split, got %d/%d", len(evens), len(odds))
+		}
+	})
+
+	t.Run("sortBy sorts ascending by key", func(t *testing.T) {
+		result := sortByFunc([]interface{}{1.0, 3.0, 2.0}, negateUserFunc).([]interface{})
+		expected := []interface{}{3.0, 2.0, 1.0}
+		for i := range expected {
+			if result[i] != expected[i] {
+				t.Errorf("expected %v at %d, got %v", expected[i], i, result[i])
+			}
+		}
+	})
+}

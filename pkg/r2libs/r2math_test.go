@@ -100,6 +100,104 @@ func TestMathFunctions(t *testing.T) {
 	}
 }
 
+func TestMathExtendedFunctions(t *testing.T) {
+	env := r2core.NewEnvironment()
+	RegisterMath(env)
+
+	mathModuleObj, ok := env.Get("math")
+	if !ok {
+		t.Fatal("math module not found")
+	}
+	mathModule := mathModuleObj.(map[string]interface{})
+
+	roundToFunc := mathModule["roundTo"].(r2core.BuiltinFunction)
+	isPrimeFunc := mathModule["isPrime"].(r2core.BuiltinFunction)
+	isEvenFunc := mathModule["isEven"].(r2core.BuiltinFunction)
+	isOddFunc := mathModule["isOdd"].(r2core.BuiltinFunction)
+	nthRootFunc := mathModule["nthRoot"].(r2core.BuiltinFunction)
+
+	t.Run("roundTo rounds to given decimals", func(t *testing.T) {
+		result := roundToFunc(3.14159, 2.0)
+		if result != 3.14 {
+			t.Errorf("expected 3.14, got %v", result)
+		}
+	})
+
+	t.Run("roundTo zero decimals behaves like round", func(t *testing.T) {
+		result := roundToFunc(3.6, 0.0)
+		if result != 4.0 {
+			t.Errorf("expected 4, got %v", result)
+		}
+	})
+
+	primeTests := []struct {
+		n        float64
+		expected bool
+	}{
+		{2, true},
+		{17, true},
+		{1, false},
+		{0, false},
+		{-7, false},
+		{15, false},
+	}
+	for _, pt := range primeTests {
+		t.Run("isPrime", func(t *testing.T) {
+			result := isPrimeFunc(pt.n)
+			if result != pt.expected {
+				t.Errorf("isPrime(%v): expected %v, got %v", pt.n, pt.expected, result)
+			}
+		})
+	}
+
+	t.Run("isEven true", func(t *testing.T) {
+		if isEvenFunc(4.0) != true {
+			t.Errorf("expected true")
+		}
+	})
+
+	t.Run("isEven false", func(t *testing.T) {
+		if isEvenFunc(3.0) != false {
+			t.Errorf("expected false")
+		}
+	})
+
+	t.Run("isOdd true", func(t *testing.T) {
+		if isOddFunc(3.0) != true {
+			t.Errorf("expected true")
+		}
+	})
+
+	t.Run("isOdd false", func(t *testing.T) {
+		if isOddFunc(4.0) != false {
+			t.Errorf("expected false")
+		}
+	})
+
+	t.Run("nthRoot basic", func(t *testing.T) {
+		result := nthRootFunc(27.0, 3.0).(float64)
+		if math.Abs(result-3.0) > 1e-9 {
+			t.Errorf("expected 3, got %v", result)
+		}
+	})
+
+	t.Run("nthRoot negative odd root", func(t *testing.T) {
+		result := nthRootFunc(-8.0, 3.0).(float64)
+		if math.Abs(result-(-2.0)) > 1e-9 {
+			t.Errorf("expected -2, got %v", result)
+		}
+	})
+
+	t.Run("nthRoot negative even root panics", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		nthRootFunc(-4.0, 2.0)
+	})
+}
+
 func TestMathConstants(t *testing.T) {
 	env := r2core.NewEnvironment()
 	RegisterMath(env)

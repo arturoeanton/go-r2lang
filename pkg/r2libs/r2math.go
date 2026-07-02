@@ -626,6 +626,62 @@ func RegisterMath(env *r2core.Environment) {
 			return float64(lcm(a, b))
 		}),
 
+		"roundTo": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("roundTo needs (number, decimals)")
+			}
+			x := toFloat(args[0])
+			decimals := int(toFloat(args[1]))
+			if decimals < 0 {
+				panic("roundTo: decimals must be non-negative")
+			}
+			factor := math.Pow(10, float64(decimals))
+			return math.Round(x*factor) / factor
+		}),
+
+		"isPrime": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("isPrime needs (number)")
+			}
+			n := int(toFloat(args[0]))
+			return isPrime(n)
+		}),
+
+		"isEven": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("isEven needs (number)")
+			}
+			n := int(toFloat(args[0]))
+			return n%2 == 0
+		}),
+
+		"isOdd": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("isOdd needs (number)")
+			}
+			n := int(toFloat(args[0]))
+			return n%2 != 0
+		}),
+
+		"nthRoot": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("nthRoot needs (x, n)")
+			}
+			x := toFloat(args[0])
+			n := toFloat(args[1])
+			if n == 0 {
+				MathError("nthRoot", "n cannot be zero", n)
+			}
+			if x < 0 {
+				intN := int(n)
+				if n != float64(intN) || intN%2 == 0 {
+					MathError("nthRoot", "cannot calculate even root of negative number", x)
+				}
+				return -math.Pow(-x, 1/n)
+			}
+			return math.Pow(x, 1/n)
+		}),
+
 		// Linear interpolation
 		"lerp": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
 			if len(args) < 3 {
@@ -1259,6 +1315,24 @@ func gcd(a, b int) int {
 		return a
 	}
 	return gcd(b, a%b)
+}
+
+func isPrime(n int) bool {
+	if n < 2 {
+		return false
+	}
+	if n < 4 {
+		return true
+	}
+	if n%2 == 0 {
+		return false
+	}
+	for i := 3; i*i <= n; i += 2 {
+		if n%i == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func lcm(a, b int) int {

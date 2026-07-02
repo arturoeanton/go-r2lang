@@ -181,6 +181,145 @@ func RegisterString(env *r2core.Environment) {
 			// length en caracteres (runas), no bytes
 			return float64(utf8.RuneCountInString(s))
 		}),
+
+		"contains": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("contains necesita (str, sub)")
+			}
+			s, okS := args[0].(string)
+			sub, okSub := args[1].(string)
+			if !(okS && okSub) {
+				panic("contains: argumentos deben ser strings")
+			}
+			return strings.Contains(s, sub)
+		}),
+
+		"repeat": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 2 {
+				panic("repeat necesita (str, count)")
+			}
+			s, okS := args[0].(string)
+			countF, okC := args[1].(float64)
+			if !(okS && okC) {
+				panic("repeat: (str, count) => str string y count numérico")
+			}
+			count := int(countF)
+			if count < 0 {
+				panic("repeat: count no puede ser negativo")
+			}
+			return strings.Repeat(s, count)
+		}),
+
+		"padStart": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 3 {
+				panic("padStart necesita (str, targetLength, padStr)")
+			}
+			s, okS := args[0].(string)
+			targetF, okT := args[1].(float64)
+			pad, okP := args[2].(string)
+			if !(okS && okT && okP) {
+				panic("padStart: (str, targetLength, padStr) => str y padStr strings, targetLength numérico")
+			}
+			target := int(targetF)
+			runes := utf8.RuneCountInString(s)
+			if target <= runes || pad == "" {
+				return s
+			}
+			padRunes := []rune(pad)
+			needed := target - runes
+			fill := make([]rune, needed)
+			for i := 0; i < needed; i++ {
+				fill[i] = padRunes[i%len(padRunes)]
+			}
+			return string(fill) + s
+		}),
+
+		"padEnd": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 3 {
+				panic("padEnd necesita (str, targetLength, padStr)")
+			}
+			s, okS := args[0].(string)
+			targetF, okT := args[1].(float64)
+			pad, okP := args[2].(string)
+			if !(okS && okT && okP) {
+				panic("padEnd: (str, targetLength, padStr) => str y padStr strings, targetLength numérico")
+			}
+			target := int(targetF)
+			runes := utf8.RuneCountInString(s)
+			if target <= runes || pad == "" {
+				return s
+			}
+			padRunes := []rune(pad)
+			needed := target - runes
+			fill := make([]rune, needed)
+			for i := 0; i < needed; i++ {
+				fill[i] = padRunes[i%len(padRunes)]
+			}
+			return s + string(fill)
+		}),
+
+		"trimStart": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("trimStart necesita (str)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("trimStart: argumento debe ser string")
+			}
+			return strings.TrimLeft(s, " \t\n\r")
+		}),
+
+		"trimEnd": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("trimEnd necesita (str)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("trimEnd: argumento debe ser string")
+			}
+			return strings.TrimRight(s, " \t\n\r")
+		}),
+
+		"capitalize": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("capitalize necesita (str)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("capitalize: argumento debe ser string")
+			}
+			runes := []rune(s)
+			if len(runes) == 0 {
+				return s
+			}
+			return strings.ToUpper(string(runes[0])) + string(runes[1:])
+		}),
+
+		"isBlank": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("isBlank necesita (str)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("isBlank: argumento debe ser string")
+			}
+			return strings.TrimSpace(s) == ""
+		}),
+
+		"reverse": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("reverse necesita (str)")
+			}
+			s, ok := args[0].(string)
+			if !ok {
+				panic("reverse: argumento debe ser string")
+			}
+			runes := []rune(s)
+			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+				runes[i], runes[j] = runes[j], runes[i]
+			}
+			return string(runes)
+		}),
 	}
 
 	RegisterModule(env, "string", functions)
