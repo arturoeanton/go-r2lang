@@ -1,7 +1,10 @@
 package assertions
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 func TestAssert_Equals(t *testing.T) {
@@ -350,4 +353,55 @@ func TestCompareNumbers(t *testing.T) {
 			t.Errorf("compareNumbers(%v, %v) = %v, expected %v", test.a, test.b, result, test.expected)
 		}
 	}
+}
+
+// TestAssert_EqualsAcceptsInterfaceSlice guards against a bug where
+// Equals/NotEquals compared raw reflect.DeepEqual(actual, expected)
+// without normalizing r2core.InterfaceSlice (the array type R2Lang's
+// .map()/.filter()/.sort()/etc return) against a plain []interface{}
+// array literal — two otherwise-identical arrays were reported unequal
+// purely because of their different (but structurally equivalent) Go
+// types, which would have silently broken assert.equals() for any test
+// comparing a chained-method array result against a literal.
+func TestAssert_EqualsAcceptsInterfaceSlice(t *testing.T) {
+	assert := NewAssert("test")
+
+	// Must not panic: same contents, different underlying array type.
+	assert.Equals(r2core.InterfaceSlice{1.0, 2.0, 3.0}, []interface{}{1.0, 2.0, 3.0})
+
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected NotEquals to panic for genuinely different InterfaceSlice contents")
+			}
+		}()
+		assert.NotEquals(r2core.InterfaceSlice{1.0, 2.0, 3.0}, []interface{}{1.0, 2.0, 3.0})
+	}()
+}
+
+// TestAssert_FailureMessageDoesNotLeakFunctionPointer guards against a
+// real bug found via a live test run: assert.greater(arr.length, 0) (a
+// common R2Lang mistake — array .length is a method, "arr.length" without
+// "()" evaluates to the method itself, not a number) used to produce a
+// failure message containing a raw, meaningless Go pointer address like
+// "Expected 0x104d6a820 to be greater than 0" instead of something a
+// developer could actually act on.
+func TestAssert_FailureMessageDoesNotLeakFunctionPointer(t *testing.T) {
+	assert := NewAssert("test")
+	fnValue := func() {}
+
+	defer func() {
+		r := recover()
+		ae, ok := r.(*AssertionError)
+		if !ok {
+			t.Fatalf("expected *AssertionError, got %T: %v", r, r)
+		}
+		if strings.Contains(ae.Message, "0x") {
+			t.Errorf("expected failure message to not leak a raw pointer, got: %s", ae.Message)
+		}
+		if !strings.Contains(ae.Message, "<function>") {
+			t.Errorf("expected failure message to contain the <function> placeholder, got: %s", ae.Message)
+		}
+	}()
+	assert.Greater(fnValue, 0)
 }

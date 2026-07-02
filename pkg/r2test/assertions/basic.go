@@ -4,7 +4,43 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
+
+// normalizeForComparison converts r2core.InterfaceSlice (the array type
+// returned by R2Lang's .map()/.filter()/.sort()/etc, as opposed to a plain
+// []interface{} array literal) to []interface{}. Without this,
+// reflect.DeepEqual(actual, expected) in Equals/NotEquals below considers
+// an InterfaceSlice and an otherwise-identical []interface{} unequal purely
+// because they're different named Go types — the same "array
+// representation gap" bug class found repeatedly elsewhere in this
+// codebase, here it would have silently failed assert.equals() for any
+// test comparing a chained-method array result against a literal.
+func normalizeForComparison(value interface{}) interface{} {
+	if is, ok := value.(r2core.InterfaceSlice); ok {
+		return []interface{}(is)
+	}
+	return value
+}
+
+// safeFormat substitutes a stable "<function>" placeholder for any Go func
+// value before it's embedded in a %v-formatted failure message. Without
+// this, an R2Lang mistake as simple as `assert.greater(arr.length, 0)`
+// (array .length is a method — arr.length without "()" evaluates to the
+// method itself, not a number) would report a raw, meaningless Go pointer
+// address like "Expected 0x104d6a820 to be greater than 0" instead of a
+// message that helps diagnose the actual mistake — the same pointer-leak
+// bug class fixed in std.print/toString elsewhere in this codebase.
+func safeFormat(value interface{}) interface{} {
+	if value == nil {
+		return value
+	}
+	if reflect.TypeOf(value).Kind() == reflect.Func {
+		return "<function>"
+	}
+	return value
+}
 
 // Assert provides basic assertion functionality
 type Assert struct {
@@ -43,9 +79,9 @@ func (a *Assert) fail(message string, expected, actual interface{}) {
 
 // Equals asserts that two values are equal
 func (a *Assert) Equals(actual, expected interface{}) {
-	if !reflect.DeepEqual(actual, expected) {
+	if !reflect.DeepEqual(normalizeForComparison(actual), normalizeForComparison(expected)) {
 		a.fail(
-			fmt.Sprintf("Expected %v to equal %v", actual, expected),
+			fmt.Sprintf("Expected %v to equal %v", safeFormat(actual), safeFormat(expected)),
 			expected,
 			actual,
 		)
@@ -54,9 +90,9 @@ func (a *Assert) Equals(actual, expected interface{}) {
 
 // NotEquals asserts that two values are not equal
 func (a *Assert) NotEquals(actual, expected interface{}) {
-	if reflect.DeepEqual(actual, expected) {
+	if reflect.DeepEqual(normalizeForComparison(actual), normalizeForComparison(expected)) {
 		a.fail(
-			fmt.Sprintf("Expected %v to not equal %v", actual, expected),
+			fmt.Sprintf("Expected %v to not equal %v", safeFormat(actual), safeFormat(expected)),
 			expected,
 			actual,
 		)
@@ -67,7 +103,7 @@ func (a *Assert) NotEquals(actual, expected interface{}) {
 func (a *Assert) True(actual interface{}) {
 	if !isTruthy(actual) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be true", actual),
+			fmt.Sprintf("Expected %v to be true", safeFormat(actual)),
 			true,
 			actual,
 		)
@@ -78,7 +114,7 @@ func (a *Assert) True(actual interface{}) {
 func (a *Assert) False(actual interface{}) {
 	if isTruthy(actual) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be false", actual),
+			fmt.Sprintf("Expected %v to be false", safeFormat(actual)),
 			false,
 			actual,
 		)
@@ -89,7 +125,7 @@ func (a *Assert) False(actual interface{}) {
 func (a *Assert) Nil(actual interface{}) {
 	if actual != nil {
 		a.fail(
-			fmt.Sprintf("Expected %v to be nil", actual),
+			fmt.Sprintf("Expected %v to be nil", safeFormat(actual)),
 			nil,
 			actual,
 		)
@@ -133,8 +169,8 @@ func (a *Assert) NotContains(haystack, needle string) {
 func (a *Assert) Greater(actual, expected interface{}) {
 	if !isGreater(actual, expected) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be greater than %v", actual, expected),
-			fmt.Sprintf("> %v", expected),
+			fmt.Sprintf("Expected %v to be greater than %v", safeFormat(actual), safeFormat(expected)),
+			fmt.Sprintf("> %v", safeFormat(expected)),
 			actual,
 		)
 	}
@@ -144,8 +180,8 @@ func (a *Assert) Greater(actual, expected interface{}) {
 func (a *Assert) GreaterOrEqual(actual, expected interface{}) {
 	if !isGreaterOrEqual(actual, expected) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be greater than or equal to %v", actual, expected),
-			fmt.Sprintf(">= %v", expected),
+			fmt.Sprintf("Expected %v to be greater than or equal to %v", safeFormat(actual), safeFormat(expected)),
+			fmt.Sprintf(">= %v", safeFormat(expected)),
 			actual,
 		)
 	}
@@ -155,8 +191,8 @@ func (a *Assert) GreaterOrEqual(actual, expected interface{}) {
 func (a *Assert) Less(actual, expected interface{}) {
 	if !isLess(actual, expected) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be less than %v", actual, expected),
-			fmt.Sprintf("< %v", expected),
+			fmt.Sprintf("Expected %v to be less than %v", safeFormat(actual), safeFormat(expected)),
+			fmt.Sprintf("< %v", safeFormat(expected)),
 			actual,
 		)
 	}
@@ -166,8 +202,8 @@ func (a *Assert) Less(actual, expected interface{}) {
 func (a *Assert) LessOrEqual(actual, expected interface{}) {
 	if !isLessOrEqual(actual, expected) {
 		a.fail(
-			fmt.Sprintf("Expected %v to be less than or equal to %v", actual, expected),
-			fmt.Sprintf("<= %v", expected),
+			fmt.Sprintf("Expected %v to be less than or equal to %v", safeFormat(actual), safeFormat(expected)),
+			fmt.Sprintf("<= %v", safeFormat(expected)),
 			actual,
 		)
 	}
@@ -256,6 +292,8 @@ func isTruthy(value interface{}) bool {
 		return v != ""
 	case []interface{}:
 		return len(v) > 0
+	case r2core.InterfaceSlice:
+		return len(v) > 0
 	case map[string]interface{}:
 		return len(v) > 0
 	default:
@@ -282,6 +320,8 @@ func getLength(collection interface{}) int {
 	case string:
 		return len(v)
 	case []interface{}:
+		return len(v)
+	case r2core.InterfaceSlice:
 		return len(v)
 	case map[string]interface{}:
 		return len(v)

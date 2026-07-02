@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/arturoeanton/go-r2lang/pkg/r2core"
 )
 
 // TestDiscovery handles finding and loading test files
@@ -111,94 +113,50 @@ func (td *TestDiscovery) shouldIgnoreFile(filePath string) bool {
 	return false
 }
 
-// ParseTestFile parses a test file and extracts test suites
-// This will be implemented to integrate with R2Lang parser
-func (td *TestDiscovery) ParseTestFile(filePath string) (*TestSuite, error) {
-	// TODO: Integrate with R2Lang parser to parse test files
-	// For now, return a placeholder implementation
-
+// ParseTestFile parses a test file by actually running it through the
+// R2Lang interpreter (see r2bridge.go): the file's top-level describe()
+// calls execute for real, and each one's it()/beforeEach()/etc. calls
+// build a real TestSuite/TestCase whose Func actually invokes the R2Lang
+// test body — not a static regex-extracted stub. A single file commonly
+// contains multiple describe() blocks (see examples/testing/*.r2), so this
+// returns every suite built while evaluating the file, not just one.
+//
+// Note: this executes describe()'s own callback bodies immediately (to
+// collect their it()/hook calls), matching this framework's existing
+// Go-level Describe()/It() semantics — but it() bodies themselves are NOT
+// run here, only registered; they run later via TestRunner.
+func (td *TestDiscovery) ParseTestFile(filePath string) ([]*TestSuite, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read test file %s: %w", filePath, err)
 	}
 
-	suite := &TestSuite{
-		Name:        extractSuiteName(filePath),
-		Description: fmt.Sprintf("Test suite from %s", filePath),
-		Tests:       make([]*TestCase, 0),
-		Tags:        make([]string, 0),
+	ctx := &r2BridgeContext{}
+	env := newR2Environment(ctx)
+
+	if err := runTestFileProgram(env, filePath, string(content)); err != nil {
+		return nil, fmt.Errorf("failed to parse/run test file %s: %w", filePath, err)
 	}
 
-	// Basic parsing - this will be replaced with proper R2Lang integration
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		line = strings.TrimSpace(line)
-
-		// Look for describe() function calls
-		if strings.Contains(line, "describe(") {
-			// Extract suite information
-			// This is a simplified implementation
-			if name := extractQuotedString(line); name != "" {
-				suite.Description = name
-			}
-		}
-
-		// Look for it() function calls
-		if strings.Contains(line, "it(") {
-			// Extract test case information
-			if name := extractQuotedString(line); name != "" {
-				test := &TestCase{
-					Name:        name,
-					Description: name,
-					Tags:        make([]string, 0),
-					Suite:       suite,
-					// Func will be set when integrating with R2Lang interpreter
-					Func: func() {
-						// Placeholder - will execute R2Lang code
-						fmt.Printf("Executing test: %s (line %d)\n", name, i+1)
-					},
-				}
-				suite.Tests = append(suite.Tests, test)
-			}
-		}
-	}
-
-	return suite, nil
+	return ctx.suites, nil
 }
 
-// extractSuiteName extracts a suite name from file path
-func extractSuiteName(filePath string) string {
-	fileName := filepath.Base(filePath)
-	// Remove .r2 extension
-	if strings.HasSuffix(fileName, ".r2") {
-		fileName = fileName[:len(fileName)-3]
-	}
-
-	// Convert underscores and dashes to spaces and title case
-	name := strings.ReplaceAll(fileName, "_", " ")
-	name = strings.ReplaceAll(name, "-", " ")
-
-	return strings.Title(name)
-}
-
-// extractQuotedString extracts a string from quotes (basic implementation)
-func extractQuotedString(line string) string {
-	// Look for content between quotes
-	start := strings.Index(line, "\"")
-	if start == -1 {
-		start = strings.Index(line, "'")
-	}
-	if start == -1 {
-		return ""
-	}
-
-	quote := line[start]
-	end := strings.Index(line[start+1:], string(quote))
-	if end == -1 {
-		return ""
-	}
-
-	return line[start+1 : start+1+end]
+// runTestFileProgram parses and evaluates code as an R2Lang program in env,
+// converting any panic (parser error, or a describe()/it() registration
+// call failing outside a test body) into a Go error instead of letting it
+// propagate — a malformed test FILE should be reported as a discovery
+// error, distinct from an individual test's body panicking (which
+// TestRunner already handles per-test via its own recover()).
+func runTestFileProgram(env *r2core.Environment, filePath, code string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	parser := r2core.NewParserWithFile(code, filePath)
+	program := parser.ParseProgram()
+	program.Eval(env)
+	return nil
 }
 
 // LoadTestSuites discovers and loads all test suites
@@ -211,13 +169,15 @@ func (td *TestDiscovery) LoadTestSuites() ([]*TestSuite, error) {
 	var suites []*TestSuite
 
 	for _, filePath := range testFiles {
-		suite, err := td.ParseTestFile(filePath)
+		fileSuites, err := td.ParseTestFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse test file %s: %w", filePath, err)
 		}
 
-		if len(suite.Tests) > 0 { // Only add suites that have tests
-			suites = append(suites, suite)
+		for _, suite := range fileSuites {
+			if len(suite.Tests) > 0 { // Only add suites that have tests
+				suites = append(suites, suite)
+			}
 		}
 	}
 

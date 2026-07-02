@@ -54,7 +54,7 @@ describe("Array Operations", func() {
     it("should detect non-empty arrays", func() {
         let data = [1, 2, 3];
         assert.notEmpty(data);
-        assert.greater(data.length, 0);
+        assert.greater(data.length(), 0);
     });
 });
 

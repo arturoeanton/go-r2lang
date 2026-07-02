@@ -129,7 +129,10 @@ describe("Edge Cases", func() {
         let special = "Hello 🌍 World! @#$%^&*()";
         assert.contains(special, "🌍");
         assert.contains(special, "@#$");
-        assert.hasLength(special, 23);
+        // 27 bytes: R2Lang string length is byte length (matches str.length),
+        // not a Unicode rune count — the emoji is 4 bytes, not 1. Use the
+        // unicode module (e.g. unicode.ulen) for rune-safe length.
+        assert.hasLength(special, 27);
     });
 });
 
