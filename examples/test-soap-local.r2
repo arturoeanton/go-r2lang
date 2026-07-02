@@ -8,34 +8,34 @@ std.print("");
 std.print("1. Verificando funciones SOAP disponibles...");
 
 // Estas funciones deben existir sin error
-let envelope1 = soapEnvelope("http://tempuri.org/", "TestMethod", "<param>value</param>");
-std.print("   ✅ soapEnvelope() - FUNCIONA");
+let envelope1 = soap.envelope("http://tempuri.org/", "TestMethod", "<param>value</param>");
+std.print("   ✅ soap.envelope() - FUNCIONA");
 
-std.print("   ✅ soapClient() - FUNCIONA (requiere WSDL válido)");
-std.print("   ✅ soapRequest() - FUNCIONA (requiere endpoint válido)");
+std.print("   ✅ soap.client() - FUNCIONA (requiere WSDL válido)");
+std.print("   ✅ soap.request() - FUNCIONA (requiere endpoint válido)");
 std.print("");
 
 // Test 2: Verificar generación de envelope
 std.print("2. Probando generación de SOAP envelope...");
-let testEnvelope = soapEnvelope("http://example.com/service/", "GetUserInfo", "<userId>12345</userId>");
+let testEnvelope = soap.envelope("http://example.com/service/", "GetUserInfo", "<userId>12345</userId>");
 
 // Verificar que el envelope se generó
-if (len(testEnvelope) > 50) {
-    std.print("   ✅ Envelope generado correctamente (longitud:", len(testEnvelope), "caracteres)");
+if (std.len(testEnvelope) > 50) {
+    std.print("   ✅ Envelope generado correctamente (longitud:", std.len(testEnvelope), "caracteres)");
 } else {
     std.print("   ❌ Error en generación de envelope");
 }
 
 // Verificar contenido básico usando indexOf  
-if (indexOf(testEnvelope, "soap:Envelope") != -1) {
+if (string.indexOf(testEnvelope, "soap:Envelope") != -1) {
     std.print("   ✅ Contiene estructura SOAP");
 }
 
-if (indexOf(testEnvelope, "GetUserInfo") != -1) {
+if (string.indexOf(testEnvelope, "GetUserInfo") != -1) {
     std.print("   ✅ Método incluido en envelope");
 }
 
-if (indexOf(testEnvelope, "userId") != -1) {
+if (string.indexOf(testEnvelope, "userId") != -1) {
     std.print("   ✅ Parámetros incluidos en envelope");
 }
 std.print("");
@@ -54,11 +54,11 @@ std.print("");
 std.print("4. Probando manejo de errores...");
 try {
     // Esto debe fallar por URL inválida
-    let client = soapClient("http://servicio-inexistente.local/wsdl");
+    let client = soap.client("http://servicio-inexistente.local/wsdl");
     std.print("   ❌ ERROR: Debería haber fallado");
 } catch (error) {
     std.print("   ✅ Manejo de errores funciona correctamente");
-    std.print("   Error capturado (esperado):", typeOf(error));
+    std.print("   Error capturado (esperado):", std.typeOf(error));
 }
 std.print("");
 

@@ -1,28 +1,28 @@
 // pruebaHTTP.r2
 
 func main() {
-    // 1) GET simple
-    let texto = request.get("https://httpbin.org/get");
-    std.print("Texto de GET =>", texto);
+    // 1) GET simple (request.get returns a response map with .text/.json/.status_code/etc.)
+    let resp = request.get("https://httpbin.org/get");
+    std.print("Texto de GET =>", resp.text);
 
-    // 2) parse JSON
-    let jresp = json.parse(texto);
+    // 2) parse JSON (json.parse needs the raw body text, not the response map)
+    let jresp = json.parse(resp.text);
     std.print("parseJSON =>", jresp);
 
-    // 3) GET JSON directo
-    let jauto = request.getJSON("https://httpbin.org/json");
+    // 3) GET JSON directo (response map already exposes the parsed body as .json)
+    let jauto = request.get("https://httpbin.org/json").json;
     std.print("httpGetJSON =>", jauto);
 
     // 4) POST con body "Hola"
-    let postResp = request.post("https://httpbin.org/post", "Hola desde R2");
-    std.print("POST resp =>", postResp);
+    let postResp = request.post("https://httpbin.org/post", {"data": "Hola desde R2"});
+    std.print("POST resp =>", postResp.text);
 
     // 5) POST JSON
     let data = {};
     data["nombre"] = "Alice";
     data["edad"] = 30;
-    let postJsonResp = request.postJSON("https://httpbin.org/post", data);
-    std.print("httpPostJSON =>", postJsonResp);
+    let postJsonResp = request.post("https://httpbin.org/post", {"json": data});
+    std.print("httpPostJSON =>", postJsonResp.json);
 
     // 6) Manejo de XML (didáctico)
     let xmlString = "<root><person name='Bob'><age>25</age></person></root>";

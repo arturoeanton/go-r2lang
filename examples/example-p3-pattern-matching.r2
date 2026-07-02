@@ -108,7 +108,7 @@ let responses = [
     {status: 418, data: nil}  // I'm a teapot!
 ]
 
-for (let i = 0; i < responses.length; i++) {
+for (let i = 0; i < responses.length(); i++) {
     let response = responses[i]
     std.print("Status " + response.status + ":", handleHttpResponse(response))
 }
@@ -119,7 +119,7 @@ func analyzeRequest(req) {
     return match req {
         case {method: "GET", url: path} => "Obteniendo: " + path
         case {method: "POST", body: {name, email}} => "Creando usuario: " + name + " (" + email + ")"
-        case {method: "PUT", url: path, body: data} if path.startsWith("/users/") => "Actualizando usuario en " + path
+        case {method: "PUT", url: path, body: data} if string.startsWith(path, "/users/") => "Actualizando usuario en " + path
         case {method: m} => "Método no soportado: " + m
         case _ => "Solicitud inválida"
     }
@@ -133,7 +133,7 @@ let requests = [
     {invalid: "request"}
 ]
 
-for (let i = 0; i < requests.length; i++) {
+for (let i = 0; i < requests.length(); i++) {
     let req = requests[i]
     std.print("Request " + (i + 1) + ":", analyzeRequest(req))
 }

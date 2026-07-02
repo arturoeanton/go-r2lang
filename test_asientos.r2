@@ -10,23 +10,23 @@ let asiento1 = {
     movimientos: []
 }
 
-// Agregar movimientos con push
-asiento1.movimientos.push({
+// Agregar movimientos con push (push no muta in-place: hay que reasignar)
+asiento1.movimientos = asiento1.movimientos.push({
     cuenta: "1001",
     descripcion: "Caja",
     tipo: "DEBE",
     monto: 100
 })
 
-asiento1.movimientos.push({
-    cuenta: "4001", 
+asiento1.movimientos = asiento1.movimientos.push({
+    cuenta: "4001",
     descripcion: "Ventas",
     tipo: "HABER",
     monto: 100
 })
 
 // Agregar asiento al array
-asientos.push(asiento1)
+asientos = asientos.push(asiento1)
 
 console.log("Asientos creados: " + std.len(asientos))
 console.log("Movimientos en asiento 1: " + std.len(asientos[0].movimientos))

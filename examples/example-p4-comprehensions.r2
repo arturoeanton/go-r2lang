@@ -33,7 +33,7 @@ let matrix = []
 // Simulación de comprensión anidada: [[i+j for j in range(3)] for i in range(3)]
 for (let i = 1; i <= 3; i++) {
     let row = [i + j for j in [1, 2, 3]]
-    matrix.push(row)
+    matrix = matrix.push(row)
 }
 std.print("Matriz 3x3:", matrix)
 
@@ -110,9 +110,9 @@ std.print("\n⚖️  10. Antes vs Después de Comprehensions:")
 // ANTES - Código imperativo verboso
 std.print("❌ ANTES (imperativo):")
 let evenSquaresBefore = []
-for (let i = 0; i < numbers.length; i++) {
+for (let i = 0; i < numbers.length(); i++) {
     if (numbers[i] % 2 == 0) {
-        evenSquaresBefore.push(numbers[i] * numbers[i])
+        evenSquaresBefore = evenSquaresBefore.push(numbers[i] * numbers[i])
     }
 }
 std.print("  Cuadrados pares:", evenSquaresBefore)
