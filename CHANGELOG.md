@@ -16,6 +16,15 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.28] - CommandPolicy opt-in sandboxing
+### Added
+- `r2libs.SetCommandPolicy(policy)`: opt-in restrictions for
+  `os.Command`/`execCmd`/`runProcess`/`execWithTimeout`/`execWithEnv` for
+  embedders running untrusted scripts. `AllowedCommands` restricts the
+  non-shell `os.Command(...).run()` path by executable name;
+  `DisableShell` blocks the `sh -c`-based builtins entirely. Default
+  behavior (unrestricted) is unchanged unless a host program opts in.
+
 ## [0.1.27] - native.* embedding guide
 ### Added
 - `examples/embedding/`: a runnable Go host program demonstrating
@@ -253,7 +262,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.28...HEAD
+[0.1.28]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.27...v0.1.28
 [0.1.27]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.25_ci-sweep-r2test-fixes...v0.1.26
 [0.1.25]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.24_remove-dead-bytecode...v0.1.25_ci-sweep-r2test-fixes
