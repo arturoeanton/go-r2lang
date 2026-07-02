@@ -56,11 +56,8 @@ const (
 	CASE     = "case"
 
 	// DSL tokens
-	DSL       = "dsl"
-	USE       = "use"
-	SYNTAX    = "syntax"
-	SEMANTICS = "semantics"
-	KEYWORDS  = "keywords"
+	DSL = "dsl"
+	USE = "use"
 
 	// Testing framework tokens - will be replaced with new system
 	TOKEN_BREAK     = "BREAK"
@@ -68,12 +65,9 @@ const (
 	TOKEN_TRUE      = "TRUE"
 	TOKEN_FALSE     = "FALSE"
 	TOKEN_NIL       = "NIL"
-	TOKEN_DSL       = "DSL"
-	TOKEN_USE       = "USE"
-	TOKEN_SYNTAX    = "SYNTAX"
-	TOKEN_SEMANTICS = "SEMANTICS"
-	TOKEN_KEYWORDS  = "KEYWORDS"
-	TOKEN_ELLIPSIS  = "ELLIPSIS" // Para operador spread ...
+	TOKEN_DSL      = "DSL"
+	TOKEN_USE      = "USE"
+	TOKEN_ELLIPSIS = "ELLIPSIS" // Para operador spread ...
 
 	// P3 and P4 tokens
 	TOKEN_OPTIONAL_CHAIN  = "OPTIONAL_CHAIN"  // ?.
@@ -250,7 +244,10 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 		for pos > 0 && l.input[pos] == ' ' {
 			pos--
 		}
-		if (l.input[pos] == '(' || l.input[pos] == ',' || l.input[pos] == '[' || l.input[pos] == '=') &&
+		// pos < 0 means the sign is the very first character of the input,
+		// which is equivalent to being preceded by an "open" context.
+		precededByOpenContext := pos < 0 || l.input[pos] == '(' || l.input[pos] == ',' || l.input[pos] == '[' || l.input[pos] == '='
+		if precededByOpenContext &&
 			(l.pos+1 < l.length && isDigit(l.input[l.pos+1])) {
 			return l.parseNumberOrSign(), true
 		}
@@ -273,8 +270,7 @@ func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
 	}
 
 	if ch == '=' {
-		nextch := l.input[l.pos+1]
-		if nextch == '>' {
+		if l.pos+1 < l.length && l.input[l.pos+1] == '>' {
 			l.currentToken = Token{Type: TOKEN_ARROW, Value: "=>", Line: l.line, Pos: l.pos, Col: l.col}
 			l.pos += 2
 
@@ -526,15 +522,6 @@ func (l *Lexer) parseIdentifierToken(ch byte) (Token, bool) {
 			return l.currentToken, true
 		case strings.ToLower(USE):
 			l.currentToken = Token{Type: TOKEN_USE, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case strings.ToLower(SYNTAX):
-			l.currentToken = Token{Type: TOKEN_SYNTAX, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case strings.ToLower(SEMANTICS):
-			l.currentToken = Token{Type: TOKEN_SEMANTICS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
-			return l.currentToken, true
-		case strings.ToLower(KEYWORDS):
-			l.currentToken = Token{Type: TOKEN_KEYWORDS, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}
 			return l.currentToken, true
 		case strings.ToLower(MATCH):
 			l.currentToken = Token{Type: TOKEN_MATCH, Value: literal, Line: l.line, Pos: l.pos, Col: l.col}

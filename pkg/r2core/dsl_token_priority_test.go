@@ -21,20 +21,19 @@ func TestDSLTokenPriority(t *testing.T) {
 	}
 
 	// Test tokenization
-	parser := NewDSLParser(grammar)
-	err = parser.Tokenize("select")
+	tokens, err := grammar.DebugTokens("select")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
 
 	// Should match SELECT (keyword) not IDENTIFIER (generic)
-	if len(parser.Tokens) != 1 {
-		t.Fatalf("Expected 1 token, got %d", len(parser.Tokens))
+	if len(tokens) != 1 {
+		t.Fatalf("Expected 1 token, got %d", len(tokens))
 	}
 
-	token := parser.Tokens[0]
-	if token.Type != "SELECT" {
-		t.Errorf("Expected token type 'SELECT', got '%s'", token.Type)
+	token := tokens[0]
+	if token.TokenType != "SELECT" {
+		t.Errorf("Expected token type 'SELECT', got '%s'", token.TokenType)
 	}
 
 	if token.Value != "select" {
@@ -55,8 +54,7 @@ func TestDSLTokenPriorityMultiple(t *testing.T) {
 	grammar.AddKeywordToken("WHERE", "where")
 
 	// Test complex query
-	parser := NewDSLParser(grammar)
-	err := parser.Tokenize("select name from users where age")
+	tokens, err := grammar.DebugTokens("select name from users where age")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
@@ -73,16 +71,16 @@ func TestDSLTokenPriorityMultiple(t *testing.T) {
 		{"IDENTIFIER", "age"},
 	}
 
-	if len(parser.Tokens) != len(expected) {
-		t.Fatalf("Expected %d tokens, got %d", len(expected), len(parser.Tokens))
+	if len(tokens) != len(expected) {
+		t.Fatalf("Expected %d tokens, got %d", len(expected), len(tokens))
 	}
 
 	for i, exp := range expected {
-		if parser.Tokens[i].Type != exp.Type {
-			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, parser.Tokens[i].Type)
+		if tokens[i].TokenType != exp.Type {
+			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, tokens[i].TokenType)
 		}
-		if parser.Tokens[i].Value != exp.Value {
-			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, parser.Tokens[i].Value)
+		if tokens[i].Value != exp.Value {
+			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, tokens[i].Value)
 		}
 	}
 }
@@ -127,20 +125,19 @@ func TestDSLTokenPriorityLongestMatch(t *testing.T) {
 	grammar.AddKeywordToken("ORDER", "order")
 	grammar.AddKeywordToken("ORDER_BY", "order by")
 
-	parser := NewDSLParser(grammar)
-	err := parser.Tokenize("order by")
+	tokens, err := grammar.DebugTokens("order by")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
 
 	// Should match ORDER_BY (longer) not ORDER
-	if len(parser.Tokens) != 1 {
-		t.Fatalf("Expected 1 token, got %d", len(parser.Tokens))
+	if len(tokens) != 1 {
+		t.Fatalf("Expected 1 token, got %d", len(tokens))
 	}
 
-	token := parser.Tokens[0]
-	if token.Type != "ORDER_BY" {
-		t.Errorf("Expected token type 'ORDER_BY', got '%s'", token.Type)
+	token := tokens[0]
+	if token.TokenType != "ORDER_BY" {
+		t.Errorf("Expected token type 'ORDER_BY', got '%s'", token.TokenType)
 	}
 
 	if token.Value != "order by" {
@@ -157,19 +154,18 @@ func TestDSLTokenCaseInsensitive(t *testing.T) {
 	testCases := []string{"select", "SELECT", "Select", "sElEcT"}
 
 	for _, testCase := range testCases {
-		parser := NewDSLParser(grammar)
-		err := parser.Tokenize(testCase)
+		tokens, err := grammar.DebugTokens(testCase)
 		if err != nil {
 			t.Fatalf("Tokenization failed for '%s': %v", testCase, err)
 		}
 
-		if len(parser.Tokens) != 1 {
-			t.Fatalf("Expected 1 token for '%s', got %d", testCase, len(parser.Tokens))
+		if len(tokens) != 1 {
+			t.Fatalf("Expected 1 token for '%s', got %d", testCase, len(tokens))
 		}
 
-		token := parser.Tokens[0]
-		if token.Type != "SELECT" {
-			t.Errorf("Case '%s': expected token type 'SELECT', got '%s'", testCase, token.Type)
+		token := tokens[0]
+		if token.TokenType != "SELECT" {
+			t.Errorf("Case '%s': expected token type 'SELECT', got '%s'", testCase, token.TokenType)
 		}
 	}
 }
@@ -182,8 +178,7 @@ func TestDSLTokenWithNumbers(t *testing.T) {
 	grammar.AddKeywordToken("TOP", "top")
 	grammar.AddToken("IDENTIFIER", "[a-zA-Z]+")
 
-	parser := NewDSLParser(grammar)
-	err := parser.Tokenize("top 10 users")
+	tokens, err := grammar.DebugTokens("top 10 users")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
@@ -197,16 +192,16 @@ func TestDSLTokenWithNumbers(t *testing.T) {
 		{"IDENTIFIER", "users"},
 	}
 
-	if len(parser.Tokens) != len(expected) {
-		t.Fatalf("Expected %d tokens, got %d", len(expected), len(parser.Tokens))
+	if len(tokens) != len(expected) {
+		t.Fatalf("Expected %d tokens, got %d", len(expected), len(tokens))
 	}
 
 	for i, exp := range expected {
-		if parser.Tokens[i].Type != exp.Type {
-			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, parser.Tokens[i].Type)
+		if tokens[i].TokenType != exp.Type {
+			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, tokens[i].TokenType)
 		}
-		if parser.Tokens[i].Value != exp.Value {
-			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, parser.Tokens[i].Value)
+		if tokens[i].Value != exp.Value {
+			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, tokens[i].Value)
 		}
 	}
 }
@@ -228,8 +223,7 @@ func TestDSLComplexTokenPriority(t *testing.T) {
 	grammar.AddKeywordToken("BY", "by")
 
 	// Test complex query
-	parser := NewDSLParser(grammar)
-	err := parser.Tokenize("select user_id from users where age > 25 group by department")
+	tokens, err := grammar.DebugTokens("select user_id from users where age > 25 group by department")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
@@ -251,16 +245,16 @@ func TestDSLComplexTokenPriority(t *testing.T) {
 		{"IDENTIFIER", "department"},
 	}
 
-	if len(parser.Tokens) != len(expected) {
-		t.Fatalf("Expected %d tokens, got %d", len(expected), len(parser.Tokens))
+	if len(tokens) != len(expected) {
+		t.Fatalf("Expected %d tokens, got %d", len(expected), len(tokens))
 	}
 
 	for i, exp := range expected {
-		if parser.Tokens[i].Type != exp.Type {
-			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, parser.Tokens[i].Type)
+		if tokens[i].TokenType != exp.Type {
+			t.Errorf("Token %d: expected type '%s', got '%s'", i, exp.Type, tokens[i].TokenType)
 		}
-		if parser.Tokens[i].Value != exp.Value {
-			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, parser.Tokens[i].Value)
+		if tokens[i].Value != exp.Value {
+			t.Errorf("Token %d: expected value '%s', got '%s'", i, exp.Value, tokens[i].Value)
 		}
 	}
 }

@@ -119,10 +119,11 @@ func (dsl *DSLDefinition) extractRule(call *CallExpression) {
 	if len(call.Args) >= 2 {
 		if nameStr, ok := call.Args[0].(*StringLiteral); ok {
 			if alternatives, ok := call.Args[1].(*ArrayLiteral); ok {
-				var altStrings []string
+				var symbols []string
 				for _, alt := range alternatives.Elements {
 					if altStr, ok := alt.(*StringLiteral); ok {
-						altStrings = append(altStrings, strings.Trim(altStr.Value, "\"'"))
+						trimmed := strings.Trim(altStr.Value, "\"'")
+						symbols = append(symbols, strings.Fields(trimmed)...)
 					}
 				}
 				action := ""
@@ -132,10 +133,7 @@ func (dsl *DSLDefinition) extractRule(call *CallExpression) {
 					}
 				}
 				ruleName := strings.Trim(nameStr.Value, "\"'")
-
-				// Join the alternatives into a single sequence
-				sequence := strings.Join(altStrings, " ")
-				dsl.Grammar.AddRule(ruleName, []string{sequence}, action)
+				dsl.Grammar.AddRule(ruleName, symbols, action)
 			}
 		}
 	}
@@ -257,31 +255,30 @@ func (dsl *DSLDefinition) evaluateDSLCode(code string, env *Environment) interfa
 	// Store the execution environment for actions to use
 	dsl.currentExecutionEnv = env
 
-	// Create parser for this DSL - always create a new one to ensure clean state
-	parser := NewDSLParserWithContext(dsl.Grammar, dsl)
+	// Actions run as R2Lang function bodies against currentExecutionEnv, so
+	// the context map is threaded through the environment; pass it to go-dsl
+	// as well so it's also reachable via GetContext() from action code.
+	var context map[string]interface{}
+	if ctxVal, exists := env.Get("context"); exists {
+		if ctxMap, ok := ctxVal.(map[string]interface{}); ok {
+			context = ctxMap
+		}
+	}
 
-	// Parse the DSL code
-	ast, err := parser.Parse(code)
+	result, err := dsl.Grammar.Use(code, context)
 	if err != nil {
 		return fmt.Errorf("DSL parsing error: %v", err)
 	}
 
-	// Extract the final result from the AST
-	var finalResult interface{}
-	if retVal, ok := ast.(*ReturnValue); ok {
-		finalResult = retVal.Value
-	} else if retVal, ok := ast.(ReturnValue); ok {
-		finalResult = retVal.Value
-	} else {
-		finalResult = ast
+	// Unwrap a ReturnValue-wrapped output, e.g. from an action whose R2Lang
+	// function body ends in an explicit `return`.
+	if retVal, ok := result.Output.(*ReturnValue); ok {
+		result.Output = retVal.Value
+	} else if retVal, ok := result.Output.(ReturnValue); ok {
+		result.Output = retVal.Value
 	}
 
-	// Return the parsed AST with the final result
-	return &DSLResult{
-		AST:    ast,
-		Code:   code,
-		Output: finalResult,
-	}
+	return result
 }
 
 func (dsl *DSLDefinition) callDSLFunction(fn *FunctionDeclaration, args []interface{}, env *Environment) interface{} {

@@ -100,7 +100,9 @@ func TestDSLParameterPassing(t *testing.T) {
 		if grammar, exists := dslMap["grammar"]; exists {
 			if dslGrammar, ok := grammar.(*DSLGrammar); ok {
 				// Test that grammar has the expected rules
-				if _, exists := dslGrammar.Rules["operation"]; !exists {
+				debug := dslGrammar.engine.Debug()
+				rules := debug["rules"].(map[string]interface{})
+				if _, exists := rules["operation"]; !exists {
 					t.Fatal("DSL should have 'operation' rule")
 				}
 			} else {
@@ -129,28 +131,26 @@ func TestDSLTokenization(t *testing.T) {
 		t.Fatalf("Failed to add PLUS token: %v", err)
 	}
 
-	// Create parser and test tokenization
-	parser := NewDSLParser(grammar)
-	err = parser.Tokenize("123 + 456")
+	// Tokenize and check tokens
+	tokens, err := grammar.DebugTokens("123 + 456")
 	if err != nil {
 		t.Fatalf("Tokenization failed: %v", err)
 	}
 
-	// Check tokens
-	if len(parser.Tokens) != 3 {
-		t.Fatalf("Expected 3 tokens, got %d", len(parser.Tokens))
+	if len(tokens) != 3 {
+		t.Fatalf("Expected 3 tokens, got %d", len(tokens))
 	}
 
-	if parser.Tokens[0].Type != "NUMBER" || parser.Tokens[0].Value != "123" {
-		t.Errorf("Expected first token to be NUMBER '123', got %s '%s'", parser.Tokens[0].Type, parser.Tokens[0].Value)
+	if tokens[0].TokenType != "NUMBER" || tokens[0].Value != "123" {
+		t.Errorf("Expected first token to be NUMBER '123', got %s '%s'", tokens[0].TokenType, tokens[0].Value)
 	}
 
-	if parser.Tokens[1].Type != "PLUS" || parser.Tokens[1].Value != "+" {
-		t.Errorf("Expected second token to be PLUS '+', got %s '%s'", parser.Tokens[1].Type, parser.Tokens[1].Value)
+	if tokens[1].TokenType != "PLUS" || tokens[1].Value != "+" {
+		t.Errorf("Expected second token to be PLUS '+', got %s '%s'", tokens[1].TokenType, tokens[1].Value)
 	}
 
-	if parser.Tokens[2].Type != "NUMBER" || parser.Tokens[2].Value != "456" {
-		t.Errorf("Expected third token to be NUMBER '456', got %s '%s'", parser.Tokens[2].Type, parser.Tokens[2].Value)
+	if tokens[2].TokenType != "NUMBER" || tokens[2].Value != "456" {
+		t.Errorf("Expected third token to be NUMBER '456', got %s '%s'", tokens[2].TokenType, tokens[2].Value)
 	}
 }
 
@@ -167,26 +167,29 @@ func TestDSLRuleSequenceParsing(t *testing.T) {
 	grammar.AddRule("sequence", []string{"A B C"}, "action")
 
 	// Check that the rule was added correctly
-	rule, exists := grammar.Rules["sequence"]
+	debug := grammar.engine.Debug()
+	rules := debug["rules"].(map[string]interface{})
+	ruleInfo, exists := rules["sequence"]
 	if !exists {
 		t.Fatal("Rule 'sequence' not found")
 	}
 
-	if len(rule.Alternatives) != 1 {
-		t.Fatalf("Expected 1 alternative, got %d", len(rule.Alternatives))
+	alternatives := ruleInfo.([]map[string]interface{})
+	if len(alternatives) != 1 {
+		t.Fatalf("Expected 1 alternative, got %d", len(alternatives))
 	}
 
-	alt := rule.Alternatives[0]
-	if len(alt.Sequence) != 3 {
-		t.Fatalf("Expected sequence of 3 elements, got %d", len(alt.Sequence))
+	seq := alternatives[0]["sequence"].([]string)
+	if len(seq) != 3 {
+		t.Fatalf("Expected sequence of 3 elements, got %d", len(seq))
 	}
 
-	if alt.Sequence[0] != "A" || alt.Sequence[1] != "B" || alt.Sequence[2] != "C" {
-		t.Errorf("Expected sequence [A B C], got %v", alt.Sequence)
+	if seq[0] != "A" || seq[1] != "B" || seq[2] != "C" {
+		t.Errorf("Expected sequence [A B C], got %v", seq)
 	}
 
-	if alt.Action != "action" {
-		t.Errorf("Expected action 'action', got '%s'", alt.Action)
+	if action := alternatives[0]["action"].(string); action != "action" {
+		t.Errorf("Expected action 'action', got '%s'", action)
 	}
 }
 
@@ -203,31 +206,34 @@ func TestDSLMultipleRuleAlternatives(t *testing.T) {
 	grammar.AddRule("choice", []string{"Y"}, "action2")
 
 	// Check that the rule has both alternatives
-	rule, exists := grammar.Rules["choice"]
+	debug := grammar.engine.Debug()
+	rules := debug["rules"].(map[string]interface{})
+	ruleInfo, exists := rules["choice"]
 	if !exists {
 		t.Fatal("Rule 'choice' not found")
 	}
 
-	if len(rule.Alternatives) != 2 {
-		t.Fatalf("Expected 2 alternatives, got %d", len(rule.Alternatives))
+	alternatives := ruleInfo.([]map[string]interface{})
+	if len(alternatives) != 2 {
+		t.Fatalf("Expected 2 alternatives, got %d", len(alternatives))
 	}
 
 	// Check first alternative
-	alt1 := rule.Alternatives[0]
-	if len(alt1.Sequence) != 1 || alt1.Sequence[0] != "X" {
-		t.Errorf("Expected first alternative to be [X], got %v", alt1.Sequence)
+	seq1 := alternatives[0]["sequence"].([]string)
+	if len(seq1) != 1 || seq1[0] != "X" {
+		t.Errorf("Expected first alternative to be [X], got %v", seq1)
 	}
-	if alt1.Action != "action1" {
-		t.Errorf("Expected first alternative action to be 'action1', got '%s'", alt1.Action)
+	if action1 := alternatives[0]["action"].(string); action1 != "action1" {
+		t.Errorf("Expected first alternative action to be 'action1', got '%s'", action1)
 	}
 
 	// Check second alternative
-	alt2 := rule.Alternatives[1]
-	if len(alt2.Sequence) != 1 || alt2.Sequence[0] != "Y" {
-		t.Errorf("Expected second alternative to be [Y], got %v", alt2.Sequence)
+	seq2 := alternatives[1]["sequence"].([]string)
+	if len(seq2) != 1 || seq2[0] != "Y" {
+		t.Errorf("Expected second alternative to be [Y], got %v", seq2)
 	}
-	if alt2.Action != "action2" {
-		t.Errorf("Expected second alternative action to be 'action2', got '%s'", alt2.Action)
+	if action2 := alternatives[1]["action"].(string); action2 != "action2" {
+		t.Errorf("Expected second alternative action to be 'action2', got '%s'", action2)
 	}
 }
 
@@ -247,20 +253,18 @@ func TestDSLRegexTokens(t *testing.T) {
 		t.Error("Invalid regex should cause error")
 	}
 
-	// Test that valid token works
-	token, exists := grammar.Tokens["VALID"]
-	if !exists {
-		t.Error("VALID token should exist")
+	// Test that the valid token actually matches at the start of input
+	tokens, err := grammar.DebugTokens("123")
+	if err != nil {
+		t.Fatalf("Tokenization of '123' should succeed: %v", err)
+	}
+	if len(tokens) != 1 || tokens[0].TokenType != "VALID" || tokens[0].Value != "123" {
+		t.Errorf("Expected a single VALID token '123', got %v", tokens)
 	}
 
-	if token.Regex == nil {
-		t.Error("Token should have compiled regex")
-	}
-
-	// Test regex matching
-	matches := token.Regex.FindStringIndex("123abc")
-	if matches == nil || matches[0] != 0 || matches[1] != 3 {
-		t.Errorf("Regex should match '123' at beginning, got %v", matches)
+	// Non-numeric input has nothing to match against
+	if _, err := grammar.DebugTokens("abc"); err == nil {
+		t.Error("Tokenizing non-numeric input should fail with only a VALID=[0-9]+ token defined")
 	}
 }
 
@@ -269,10 +273,8 @@ func TestDSLErrorHandling(t *testing.T) {
 	grammar := NewDSLGrammar()
 	grammar.AddToken("A", "a")
 
-	parser := NewDSLParser(grammar)
-
 	// Test parsing with invalid character
-	err := parser.Tokenize("ax")
+	_, err := grammar.DebugTokens("ax")
 	if err == nil {
 		t.Error("Should get error for invalid character")
 	}
