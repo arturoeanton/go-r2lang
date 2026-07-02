@@ -213,13 +213,13 @@ func evalArrayFilter(arr InterfaceSlice, env *Environment) interface{} {
 
 			flag := false
 			if bf, ok := args[0].(BuiltinFunction); ok {
-				flag = bf(v).(bool)
+				flag = toBool(bf(v))
 			}
 			if uf, ok := args[0].(*UserFunction); ok {
-				flag = uf.Call(v).(bool)
+				flag = toBool(uf.Call(v))
 			}
 			if fl, ok := args[0].(*FunctionLiteral); ok {
-				flag = fl.Eval(env).(*UserFunction).Call(v).(bool)
+				flag = toBool(fl.Eval(env).(*UserFunction).Call(v))
 			}
 
 			if flag {
@@ -256,7 +256,7 @@ func evalArraySort(arr InterfaceSlice, env *Environment) interface{} {
 		if uf, ok := args[0].(*UserFunction); ok {
 
 			sort.Slice(result, func(i, j int) bool {
-				return uf.Call(result[i], result[j]).(bool)
+				return toBool(uf.Call(result[i], result[j]))
 			})
 
 			return result
@@ -279,7 +279,7 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			if bf, ok := args[0].(BuiltinFunction); ok {
 				isFx = true
 				for idx, v := range arr {
-					if bf(v).(bool) {
+					if toBool(bf(v)) {
 						if flagAll {
 							out = append(out, float64(idx))
 							continue
@@ -292,7 +292,7 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			if uf, ok := args[0].(*UserFunction); ok {
 				isFx = true
 				for idx, v := range arr {
-					if uf.Call(v).(bool) {
+					if toBool(uf.Call(v)) {
 						if flagAll {
 							out = append(out, float64(idx))
 							continue
@@ -305,7 +305,7 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			if fl, ok := args[0].(*FunctionLiteral); ok {
 				isFx = true
 				for idx, v := range arr {
-					if fl.Eval(env).(*UserFunction).Call(v).(bool) {
+					if toBool(fl.Eval(env).(*UserFunction).Call(v)) {
 						if flagAll {
 							out = append(out, float64(idx))
 							continue
@@ -342,13 +342,13 @@ func evalArrayFind(arr InterfaceSlice, member string, env *Environment) interfac
 			for idx, v := range arr {
 				flag := false
 				if bf, ok := args[0].(BuiltinFunction); ok {
-					flag = bf(v, elem).(bool)
+					flag = toBool(bf(v, elem))
 				}
 				if uf, ok := args[0].(*UserFunction); ok {
-					flag = uf.Call(v, elem).(bool)
+					flag = toBool(uf.Call(v, elem))
 				}
 				if fl, ok := args[0].(*FunctionLiteral); ok {
-					flag = fl.Eval(env).(*UserFunction).Call(v, elem).(bool)
+					flag = toBool(fl.Eval(env).(*UserFunction).Call(v, elem))
 				}
 				if flag {
 					if flagAll {
