@@ -17,7 +17,7 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2test/reporters"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 type Config struct {
 	// Test Discovery
@@ -87,6 +87,18 @@ func defaultConfig() *Config {
 }
 
 func main() {
+	// A panic anywhere in test discovery/execution/reporting (e.g. a bug in
+	// a report generator) is reported as a clean error instead of a raw Go
+	// stack trace, matching cmd/r2 and cmd/r2lang's behavior. Individual
+	// test panics are already recovered inside the runner, so this is a
+	// last-resort net for bugs in the CLI/framework itself.
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintln(os.Stderr, "Error:", r)
+			os.Exit(1)
+		}
+	}()
+
 	var (
 		// Basic flags
 		helpFlag    = flag.Bool("help", false, "Show help information")

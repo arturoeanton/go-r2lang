@@ -8,10 +8,11 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
-	// Add error handling for R2Lang panics
+	// Add error handling for R2Lang panics. Any panic reaching here is
+	// reported as a clean error instead of a raw Go stack trace.
 	defer func() {
 		if r := recover(); r != nil {
 			errorStr := fmt.Sprintf("%v", r)
@@ -25,11 +26,10 @@ func main() {
 					}
 					fmt.Fprintln(os.Stderr, line)
 				}
-				os.Exit(1)
 			} else {
-				// For other errors, show full panic
-				panic(r)
+				fmt.Fprintln(os.Stderr, "Error:", errorStr)
 			}
+			os.Exit(1)
 		}
 	}()
 

@@ -3,13 +3,25 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2repl"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
+	// r2repl.Repl already recovers panics per-command so a bad script line
+	// doesn't kill the session. This is a last-resort net for anything
+	// that panics outside that loop (e.g. environment setup), so it is
+	// reported as a clean error instead of a raw Go stack trace.
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintln(os.Stderr, "Error:", r)
+			os.Exit(1)
+		}
+	}()
+
 	var (
 		helpFlag    = flag.Bool("help", false, "Show help information")
 		versionFlag = flag.Bool("version", false, "Show version information")

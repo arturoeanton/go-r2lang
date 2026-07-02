@@ -10,7 +10,7 @@ import (
 	"github.com/arturoeanton/go-r2lang/pkg/r2lang"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
 	// A panic anywhere in the interpreter (a bug in a user script, e.g. a
