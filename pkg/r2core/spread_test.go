@@ -261,6 +261,34 @@ func TestSpreadValue_HelperFunctions(t *testing.T) {
 	})
 }
 
+// TestExpandSpreadInObject_Standalone exercises ExpandSpreadInObject
+// directly. This helper isn't wired into MapLiteral.Eval (which does its
+// own spread expansion with the caller's Environment), but it's an
+// exported function, so it must not crash. Before the fix it called
+// pair.Key.Eval(nil) and did a raw `.(string)` type assertion, which
+// would nil-pointer-dereference for any key node that touches env.Get
+// and panic uncatchably-ugly for a non-string computed key.
+func TestExpandSpreadInObject_Standalone(t *testing.T) {
+	pairs := []MapPair{
+		{Key: &StringLiteral{Value: "a"}, Value: &NumberLiteral{Value: 1}},
+		{
+			Key: &StringLiteral{Value: "..."},
+			Value: &SpreadExpression{Value: &MapLiteral{Pairs: []MapPair{
+				{Key: &StringLiteral{Value: "b"}, Value: &NumberLiteral{Value: 2}},
+			}}},
+		},
+	}
+
+	result := ExpandSpreadInObject(pairs)
+
+	if result["a"] != float64(1) {
+		t.Errorf("expected a=1, got %v", result["a"])
+	}
+	if result["b"] != float64(2) {
+		t.Errorf("expected b=2 (spread-expanded), got %v", result["b"])
+	}
+}
+
 func TestSpreadExpression_ErrorCases(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -47,9 +47,19 @@ func (ac *ArrayComprehension) generateElements(env *Environment, genIndex int, b
 		return []interface{}{result}
 	}
 
-	// Process current generator
+	// Process current generator. Its iterator expression may reference
+	// variables bound by *earlier* generators (e.g. "for row in matrix for
+	// y in row"), so it must be evaluated against an environment that
+	// already has those bindings applied, not the raw outer env.
 	generator := ac.Generators[genIndex]
-	iterable := generator.Iterator.Eval(env)
+	genEnv := env
+	if len(bindings) > 0 {
+		genEnv = NewInnerEnv(env)
+		for name, val := range bindings {
+			genEnv.Set(name, val)
+		}
+	}
+	iterable := generator.Iterator.Eval(genEnv)
 	if is, ok := iterable.(InterfaceSlice); ok {
 		iterable = []interface{}(is)
 	}
@@ -73,12 +83,17 @@ func (ac *ArrayComprehension) generateElements(env *Environment, genIndex int, b
 			results = append(results, subResults...)
 		}
 	case map[string]interface{}:
-		for _, value := range iter {
+		// Match ForStatement's for-in semantics (for_statement.go), which
+		// binds the loop variable to the map KEY, not the value (with
+		// "$k"/"$v" available as explicit key/value shortcuts). Binding to
+		// the value here, as this used to do, made "[k for k in someMap]"
+		// silently return values instead of keys.
+		for key := range iter {
 			newBindings := make(map[string]interface{})
 			for k, v := range bindings {
 				newBindings[k] = v
 			}
-			newBindings[generator.Variable] = value
+			newBindings[generator.Variable] = key
 
 			subResults := ac.generateElements(env, genIndex+1, newBindings)
 			results = append(results, subResults...)
@@ -128,9 +143,19 @@ func (oc *ObjectComprehension) generatePairs(env *Environment, genIndex int, bin
 		return []interface{}{[]interface{}{key, value}}
 	}
 
-	// Process current generator
+	// Process current generator. As with ArrayComprehension, the iterator
+	// expression may reference variables bound by earlier generators, so
+	// evaluate it against an environment that already carries those
+	// bindings rather than the raw outer env.
 	generator := oc.Generators[genIndex]
-	iterable := generator.Iterator.Eval(env)
+	genEnv := env
+	if len(bindings) > 0 {
+		genEnv = NewInnerEnv(env)
+		for name, val := range bindings {
+			genEnv.Set(name, val)
+		}
+	}
+	iterable := generator.Iterator.Eval(genEnv)
 	if is, ok := iterable.(InterfaceSlice); ok {
 		iterable = []interface{}(is)
 	}
@@ -151,12 +176,14 @@ func (oc *ObjectComprehension) generatePairs(env *Environment, genIndex int, bin
 			results = append(results, subResults...)
 		}
 	case map[string]interface{}:
-		for _, value := range iter {
+		// See the matching comment in ArrayComprehension.generateElements:
+		// bind to the map key, consistent with ForStatement's for-in.
+		for key := range iter {
 			newBindings := make(map[string]interface{})
 			for k, v := range bindings {
 				newBindings[k] = v
 			}
-			newBindings[generator.Variable] = value
+			newBindings[generator.Variable] = key
 
 			subResults := oc.generatePairs(env, genIndex+1, newBindings)
 			results = append(results, subResults...)

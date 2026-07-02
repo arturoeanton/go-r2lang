@@ -53,9 +53,20 @@ func (od *ObjectDestructuring) Eval(env *Environment) interface{} {
 	// Evaluar la expresión del lado derecho
 	value := od.Value.Eval(env)
 
-	// Convertir a map
-	obj, ok := value.(map[string]interface{})
-	if !ok {
+	// Convertir a map. Los módulos importados con alias (import "x" as m)
+	// se representan como map[string]*Variable (ver import_statement.go /
+	// AccessExpression.evalVariableMapAccess), no como map[string]interface{},
+	// así que hay que soportar ambas representaciones.
+	var obj map[string]interface{}
+	switch v := value.(type) {
+	case map[string]interface{}:
+		obj = v
+	case map[string]*Variable:
+		obj = make(map[string]interface{}, len(v))
+		for k, variable := range v {
+			obj[k] = variable.Value
+		}
+	default:
 		panic("ObjectDestructuring: right side must be an object")
 	}
 

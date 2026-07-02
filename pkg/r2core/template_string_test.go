@@ -1,6 +1,7 @@
 package r2core
 
 import (
+	"math"
 	"testing"
 )
 
@@ -297,6 +298,79 @@ func TestTemplateString_ErrorCases(t *testing.T) {
 
 			env := NewEnvironment()
 			program.Eval(env)
+		})
+	}
+}
+
+// TestTemplateString_FormatSpecifierEdgeCases exercises formatValue's
+// printf-style, currency, percentage and comma-grouping code paths with
+// inputs that previously produced wrong or garbled output (bugs found
+// during adversarial review of template_string.go):
+//   - printf verbs that require an integer/string type (%d, %x, %X, %s)
+//     were fed the raw float64 R2Lang number, which Go's fmt package
+//     doesn't coerce, so it silently emitted noise like "%!d(float64=5)"
+//     or formatted the float's bit pattern for %x instead of an integer.
+//   - malformed/negative precision (e.g. ":$.-2f") produced garbled output
+//     like "$%!-(float64=3)2f" instead of falling back sanely.
+//   - the "," (comma grouping) specifier used %g internally, which
+//     switches to scientific notation for large non-integer numbers and
+//     for Inf, corrupting the comma-grouped result (e.g. "+,Inf" or
+//     "-1.234567891e+06" instead of "-1,234,567.891").
+func TestTemplateString_FormatSpecifierEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"printf decimal verb on float64", "let x = 255.0; `${x:d}`", "255"},
+		{"printf lowercase hex verb on float64", "let x = 255.0; `${x:x}`", "ff"},
+		{"printf uppercase hex verb on float64", "let x = 255.0; `${x:X}`", "FF"},
+		{"printf string verb on float64", "let x = 255.0; `${x:s}`", "255"},
+		{"printf %g verb still works with raw float", "let x = 255.0; `${x:g}`", "255"},
+		{"negative precision falls back to default precision", "let x = 3.14159; `${x:$.-2f}`", "$3.14"},
+		{"comma grouping on large non-integer number", "let x = -1234567.891; `${x:,}`", "-1,234,567.891"},
+		{"comma grouping on ordinary large integer", "let x = 1234567.0; `${x:,}`", "1,234,567"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewParser(tt.input)
+			program := parser.ParseProgram()
+			env := NewEnvironment()
+
+			result := program.Eval(env)
+			resultStr, ok := result.(string)
+			if !ok {
+				t.Fatalf("expected string result, got %T: %v", result, result)
+			}
+			if resultStr != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, resultStr)
+			}
+		})
+	}
+}
+
+// TestFormatNumberWithCommas_SpecialValues locks down addCommas/
+// formatNumberWithCommas behavior for +Inf/-Inf/NaN: these must be
+// returned unmodified rather than having commas spliced into their
+// letters (previously "+Inf" became "+,Inf").
+func TestFormatNumberWithCommas_SpecialValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    float64
+		expected string
+	}{
+		{"positive infinity", math.Inf(1), "+Inf"},
+		{"negative infinity", math.Inf(-1), "-Inf"},
+		{"NaN", math.NaN(), "NaN"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatNumberWithCommas(tt.value, ",")
+			if got != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
 		})
 	}
 }

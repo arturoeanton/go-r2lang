@@ -91,8 +91,20 @@ type ObjectPattern struct {
 }
 
 func (op *ObjectPattern) MatchValue(value interface{}, env *Environment) (bool, map[string]interface{}) {
-	obj, ok := value.(map[string]interface{})
-	if !ok {
+	// Los módulos importados con alias (import "x" as m) se representan
+	// como map[string]*Variable, no como map[string]interface{}; sin este
+	// caso, hacer match contra un módulo importado fallaba silenciosamente
+	// (nunca matcheaba) en lugar de comparar sus campos.
+	var obj map[string]interface{}
+	switch v := value.(type) {
+	case map[string]interface{}:
+		obj = v
+	case map[string]*Variable:
+		obj = make(map[string]interface{}, len(v))
+		for k, variable := range v {
+			obj[k] = variable.Value
+		}
+	default:
 		return false, nil
 	}
 

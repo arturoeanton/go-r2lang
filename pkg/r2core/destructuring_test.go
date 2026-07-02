@@ -171,6 +171,37 @@ func TestObjectDestructuring_Basic(t *testing.T) {
 	}
 }
 
+// TestObjectDestructuring_VariableMap covers destructuring a
+// map[string]*Variable, the representation used for `import "x" as alias`
+// (see import_statement.go / AccessExpression.evalVariableMapAccess).
+// Before the fix, ObjectDestructuring only recognized map[string]interface{}
+// and panicked with "right side must be an object" for any destructured
+// import alias, e.g. `import "mod.r2" as m; let {add, sub} = m`.
+func TestObjectDestructuring_VariableMap(t *testing.T) {
+	env := NewEnvironment()
+	moduleObj := map[string]*Variable{
+		"add": {Value: float64(1)},
+		"sub": {Value: float64(2)},
+	}
+	env.Set("m", moduleObj)
+
+	destructure := &ObjectDestructuring{
+		Names: []string{"add", "sub", "missing"},
+		Value: &Identifier{Name: "m"},
+	}
+	destructure.Eval(env)
+
+	if v, _ := env.Get("add"); v != float64(1) {
+		t.Errorf("expected add=1, got %v", v)
+	}
+	if v, _ := env.Get("sub"); v != float64(2) {
+		t.Errorf("expected sub=2, got %v", v)
+	}
+	if v, _ := env.Get("missing"); v != nil {
+		t.Errorf("expected missing=nil, got %v", v)
+	}
+}
+
 func TestDestructuring_ErrorHandling(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -57,27 +57,40 @@ func ExpandSpreadInArray(elements []interface{}) []interface{} {
 }
 
 // ExpandSpreadInObject expande valores spread en un objeto
+//
+// Nota: la evaluación real de map/object literals con spread la hace
+// MapLiteral.Eval (map_literal.go), que evalúa cada pair.Value con el
+// Environment correcto antes de llamar a IsSpreadValue. Esta función se
+// conserva como utilidad standalone; evalúa clave/valor con un Environment
+// propio (no nil) y usa toString (coerción segura, sin panics de Go por
+// aserciones de tipo) para obtener la clave, igual que MapLiteral.Eval.
 func ExpandSpreadInObject(pairs []MapPair) map[string]interface{} {
 	result := make(map[string]interface{})
+	env := NewEnvironment()
 
 	for _, pair := range pairs {
-		if sv, isSpread := IsSpreadValue(pair.Value); isSpread {
+		val := pair.Value.Eval(env)
+		if sv, isSpread := IsSpreadValue(val); isSpread {
 			// Expandir el valor spread
-			switch val := sv.Value.(type) {
+			switch obj := sv.Value.(type) {
 			case map[string]interface{}:
 				// Expandir todas las propiedades del objeto
-				for k, v := range val {
+				for k, v := range obj {
 					result[k] = v
+				}
+			case map[string]*Variable:
+				for k, v := range obj {
+					result[k] = v.Value
 				}
 			default:
 				// Si no es un objeto, lo tratamos como una propiedad normal
-				keyStr := pair.Key.Eval(nil).(string)
-				result[keyStr] = val
+				keyStr := toString(pair.Key.Eval(env))
+				result[keyStr] = obj
 			}
 		} else {
 			// Evaluar la clave y el valor normalmente
-			keyStr := pair.Key.Eval(nil).(string)
-			result[keyStr] = pair.Value
+			keyStr := toString(pair.Key.Eval(env))
+			result[keyStr] = val
 		}
 	}
 

@@ -59,11 +59,11 @@ const (
 	USE = "use"
 
 	// Testing framework tokens - will be replaced with new system
-	TOKEN_BREAK     = "BREAK"
-	TOKEN_CONTINUE  = "CONTINUE"
-	TOKEN_TRUE      = "TRUE"
-	TOKEN_FALSE     = "FALSE"
-	TOKEN_NIL       = "NIL"
+	TOKEN_BREAK    = "BREAK"
+	TOKEN_CONTINUE = "CONTINUE"
+	TOKEN_TRUE     = "TRUE"
+	TOKEN_FALSE    = "FALSE"
+	TOKEN_NIL      = "NIL"
 	TOKEN_DSL      = "DSL"
 	TOKEN_USE      = "USE"
 	TOKEN_ELLIPSIS = "ELLIPSIS" // Para operador spread ...

@@ -38,13 +38,21 @@ func setupGoInterOpEnv(t *testing.T) *r2core.Environment {
 
 func getBuiltin(t *testing.T, env *r2core.Environment, name string) r2core.BuiltinFunction {
 	t.Helper()
-	v, ok := env.Get(name)
+	moduleVal, ok := env.Get("native")
 	if !ok {
-		t.Fatalf("builtin %q not registered", name)
+		t.Fatalf("module \"native\" not registered")
+	}
+	module, ok := moduleVal.(map[string]interface{})
+	if !ok {
+		t.Fatalf("\"native\" is not a module map")
+	}
+	v, ok := module[name]
+	if !ok {
+		t.Fatalf("builtin %q not registered under native", name)
 	}
 	fn, ok := v.(r2core.BuiltinFunction)
 	if !ok {
-		t.Fatalf("%q is not a BuiltinFunction", name)
+		t.Fatalf("native.%q is not a BuiltinFunction", name)
 	}
 	return fn
 }
@@ -57,14 +65,14 @@ func getBuiltin(t *testing.T, env *r2core.Environment, name string) r2core.Built
 // R2Lang scripts where every number literal is a float64.
 func TestGoSetField_FloatToIntConversion(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	goNew := getBuiltin(t, env, "goNew")
-	goSetField := getBuiltin(t, env, "goSetField")
-	goGetField := getBuiltin(t, env, "goGetField")
+	nativeNew := getBuiltin(t, env, "new")
+	nativeSetField := getBuiltin(t, env, "setField")
+	nativeGetField := getBuiltin(t, env, "getField")
 
-	obj := goNew("testGoStruct")
-	goSetField(obj, "Count", float64(42))
+	obj := nativeNew("testGoStruct")
+	nativeSetField(obj, "Count", float64(42))
 
-	got := goGetField(obj, "Count")
+	got := nativeGetField(obj, "Count")
 	if got != 42 {
 		t.Fatalf("expected Count=42 (int), got %v (%T)", got, got)
 	}
@@ -76,10 +84,10 @@ func TestGoSetField_FloatToIntConversion(t *testing.T) {
 // a normal recoverable panic (not a process crash).
 func TestGoSetField_IncompatibleType(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	goNew := getBuiltin(t, env, "goNew")
-	goSetField := getBuiltin(t, env, "goSetField")
+	nativeNew := getBuiltin(t, env, "new")
+	nativeSetField := getBuiltin(t, env, "setField")
 
-	obj := goNew("testGoStruct")
+	obj := nativeNew("testGoStruct")
 
 	defer func() {
 		r := recover()
@@ -90,31 +98,31 @@ func TestGoSetField_IncompatibleType(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected string panic message, got %T: %v", r, r)
 		}
-		if !strings.Contains(msg, "goSetField") {
-			t.Fatalf("expected panic message to mention goSetField, got: %s", msg)
+		if !strings.Contains(msg, "native.setField") {
+			t.Fatalf("expected panic message to mention native.setField, got: %s", msg)
 		}
 	}()
 
 	// Name is a string field; a struct value (the testGoStruct pointer
 	// itself) is not assignable nor convertible to string.
-	goSetField(obj, "Name", obj)
+	nativeSetField(obj, "Name", obj)
 }
 
 // TestGoSetField_NilValue ensures assigning nil produces a clean panic
 // rather than a raw reflect panic from fieldVal.Set(reflect.ValueOf(nil)).
 func TestGoSetField_NilValue(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	goNew := getBuiltin(t, env, "goNew")
-	goSetField := getBuiltin(t, env, "goSetField")
+	nativeNew := getBuiltin(t, env, "new")
+	nativeSetField := getBuiltin(t, env, "setField")
 
-	obj := goNew("testGoStruct")
+	obj := nativeNew("testGoStruct")
 
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatal("expected panic when assigning nil, got none")
 		}
 	}()
-	goSetField(obj, "Name", nil)
+	nativeSetField(obj, "Name", nil)
 }
 
 // TestCallGoFunc_NilArgument confirms that passing nil as an argument to a
@@ -123,9 +131,9 @@ func TestGoSetField_NilValue(t *testing.T) {
 // translated to the zero value of the expected parameter type.
 func TestCallGoFunc_NilArgument(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	callGoFunc := getBuiltin(t, env, "callGoFunc")
+	nativeCallFunc := getBuiltin(t, env, "callFunc")
 
-	result := callGoFunc("testNilable", nil)
+	result := nativeCallFunc("testNilable", nil)
 	if result != "nil" {
 		t.Fatalf("expected 'nil', got %v", result)
 	}
@@ -135,9 +143,9 @@ func TestCallGoFunc_NilArgument(t *testing.T) {
 // after introducing buildCallArgs.
 func TestCallGoFunc_Basic(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	callGoFunc := getBuiltin(t, env, "callGoFunc")
+	nativeCallFunc := getBuiltin(t, env, "callFunc")
 
-	result := callGoFunc("testAdd", 2, 3)
+	result := nativeCallFunc("testAdd", 2, 3)
 	if result != 5 {
 		t.Fatalf("expected 5, got %v", result)
 	}
@@ -147,15 +155,55 @@ func TestCallGoFunc_Basic(t *testing.T) {
 // buildCallArgs helper.
 func TestGoCallMethod_Basic(t *testing.T) {
 	env := setupGoInterOpEnv(t)
-	goNew := getBuiltin(t, env, "goNew")
-	goSetField := getBuiltin(t, env, "goSetField")
-	goCallMethod := getBuiltin(t, env, "goCallMethod")
+	nativeNew := getBuiltin(t, env, "new")
+	nativeSetField := getBuiltin(t, env, "setField")
+	nativeCallMethod := getBuiltin(t, env, "callMethod")
 
-	obj := goNew("testGoStruct")
-	goSetField(obj, "Name", "hello")
+	obj := nativeNew("testGoStruct")
+	nativeSetField(obj, "Name", "hello")
 
-	result := goCallMethod(obj, "Greet", "!")
+	result := nativeCallMethod(obj, "Greet", "!")
 	if result != "hello!" {
 		t.Fatalf("expected 'hello!', got %v", result)
 	}
+}
+
+// TestCallGoFunc_Float64ArgsToIntParams confirms that calling a registered
+// Go function whose parameters are int (or any other numeric kind) with the
+// float64 arguments R2Lang scripts always produce no longer panics with the
+// opaque "reflect: Call using float64 as type int" message. Found via a real
+// embedding repro (a host Go program registering `func Add(a, b int) int`
+// and calling native.callFunc("add", 3, 4) from an R2Lang script), not just
+// TestCallGoFunc_Basic, which calls the builtin directly with Go int
+// literals and therefore never exercised this path.
+func TestCallGoFunc_Float64ArgsToIntParams(t *testing.T) {
+	env := setupGoInterOpEnv(t)
+	nativeCallFunc := getBuiltin(t, env, "callFunc")
+
+	result := nativeCallFunc("testAdd", float64(2), float64(3))
+	if result != 5 {
+		t.Fatalf("expected 5, got %v (%T)", result, result)
+	}
+}
+
+// TestGoSetField_NumericToStringNotSilentlyConverted guards against the
+// broader reflect.Type.ConvertibleTo/Convert behavior, which treats an int
+// as a Unicode code point when converting to string (e.g. float64(65) would
+// silently become "A"). Assigning a numeric value to a string field must
+// fail with a clear panic instead of silently producing a nonsensical
+// string.
+func TestGoSetField_NumericToStringNotSilentlyConverted(t *testing.T) {
+	env := setupGoInterOpEnv(t)
+	nativeNew := getBuiltin(t, env, "new")
+	nativeSetField := getBuiltin(t, env, "setField")
+
+	obj := nativeNew("testGoStruct")
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic when assigning a float64 to a string field, got none")
+		}
+	}()
+	nativeSetField(obj, "Name", float64(65))
 }

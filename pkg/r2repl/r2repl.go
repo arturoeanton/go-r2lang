@@ -168,6 +168,8 @@ func createR2Environment() *r2core.Environment {
 	r2libs.RegisterJWT(env)
 	r2libs.RegisterConsole(env)
 	r2libs.RegisterWeb(env)
+	r2libs.RegisterGoInterOp(env)
+	r2libs.RegisterGraph(env)
 	return env
 }
 

@@ -144,7 +144,7 @@ func formatCurrency(value interface{}, format string) string {
 		parts := strings.Split(format, ".")
 		if len(parts) > 1 {
 			precStr := strings.TrimRight(parts[1], "f")
-			if p, err := strconv.Atoi(precStr); err == nil {
+			if p, err := strconv.Atoi(precStr); err == nil && p >= 0 {
 				precision = p
 			}
 		}
@@ -170,7 +170,7 @@ func formatFloat(value interface{}, format string) string {
 		parts := strings.Split(format, ".")
 		if len(parts) > 1 {
 			precStr := strings.TrimRight(parts[1], "f")
-			if p, err := strconv.Atoi(precStr); err == nil {
+			if p, err := strconv.Atoi(precStr); err == nil && p >= 0 {
 				precision = p
 			}
 		}
@@ -189,7 +189,7 @@ func formatPercentage(value interface{}, format string) string {
 		parts := strings.Split(format, ".")
 		if len(parts) > 1 {
 			precStr := strings.TrimRight(parts[1], "%")
-			if p, err := strconv.Atoi(precStr); err == nil {
+			if p, err := strconv.Atoi(precStr); err == nil && p >= 0 {
 				precision = p
 			}
 		}
@@ -200,18 +200,34 @@ func formatPercentage(value interface{}, format string) string {
 
 // formatNumberWithCommas adds commas to large numbers
 func formatNumberWithCommas(value interface{}, format string) string {
-	str := toStringOptimized(value)
-	if num := toFloat(value); num == float64(int64(num)) {
+	num := toFloat(value)
+
+	var str string
+	if num == float64(int64(num)) {
 		str = fmt.Sprintf("%.0f", num)
+	} else {
+		// Use a fixed-point (non-exponential) representation with the
+		// minimal digits needed. toStringOptimized/%g switches to
+		// scientific notation (e.g. "1.234567891e+06") once a value has
+		// enough significant digits, which addCommas cannot group; %f
+		// via strconv.FormatFloat never uses exponential notation.
+		str = strconv.FormatFloat(num, 'f', -1, 64)
 	}
 	return addCommas(str)
 }
 
-// addCommas adds commas to a number string
+// addCommas adds thousands-separator commas to the integer part of a
+// formatted number string. Values that aren't purely numeric (e.g. the
+// "NaN"/"+Inf"/"-Inf" strings produced by special float values) are
+// returned unchanged instead of having commas spliced into their letters.
 func addCommas(s string) string {
-	// Handle negative numbers
-	negative := strings.HasPrefix(s, "-")
-	if negative {
+	// Handle sign
+	sign := ""
+	if strings.HasPrefix(s, "-") {
+		sign = "-"
+		s = s[1:]
+	} else if strings.HasPrefix(s, "+") {
+		sign = "+"
 		s = s[1:]
 	}
 
@@ -219,8 +235,8 @@ func addCommas(s string) string {
 	parts := strings.Split(s, ".")
 	intPart := parts[0]
 
-	// Add commas to integer part
-	if len(intPart) > 3 {
+	// Only group into thousands when the integer part is actually numeric
+	if len(intPart) > 3 && isAllDigits(intPart) {
 		var result strings.Builder
 		for i, digit := range intPart {
 			if i > 0 && (len(intPart)-i)%3 == 0 {
@@ -236,11 +252,20 @@ func addCommas(s string) string {
 		result += "." + parts[1]
 	}
 
-	if negative {
-		result = "-" + result
-	}
+	return sign + result
+}
 
-	return result
+// isAllDigits reports whether s consists entirely of ASCII digits.
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // formatDate formats a date value
@@ -291,12 +316,29 @@ func convertDateFormat(format string) string {
 }
 
 // formatPrintf uses printf-style formatting
-func formatPrintf(value interface{}, format string) string {
+func formatPrintf(value interface{}, format string) (result string) {
 	defer func() {
 		if r := recover(); r != nil {
 			// If printf formatting fails, fallback to string conversion
+			result = toStringOptimized(value)
 		}
 	}()
+
+	// R2Lang numbers are always float64, but Go's fmt package requires an
+	// integer type for %d/%x/%X/%o/%b/%c and a string for %s/%q. Passing a
+	// raw float64 to those verbs doesn't panic; it silently produces a
+	// useless placeholder like "%!d(float64=5)" or formats the verb against
+	// the float's bit pattern (e.g. %x on 255.0 yields the hex float
+	// "0x1.fep+07" instead of "ff"). Convert to the type the verb expects
+	// first so numeric values format the way callers actually intend.
+	if num, isFloat := value.(float64); isFloat && format != "" {
+		switch format[len(format)-1] {
+		case 'd', 'x', 'X', 'o', 'b', 'c':
+			return fmt.Sprintf("%"+format, int64(num))
+		case 's', 'q':
+			return fmt.Sprintf("%"+format, toStringOptimized(value))
+		}
+	}
 
 	return fmt.Sprintf("%"+format, value)
 }
