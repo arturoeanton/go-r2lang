@@ -249,17 +249,18 @@ func webListenForApp(app *WebApp, port string) {
 	}
 	app.mu.RUnlock()
 
-	// Setup routes
-	for method, routes := range routesCopy {
-		for path, handler := range routes {
-			mux.HandleFunc(path, createHTTPHandler(app, method, path, handler))
-		}
-	}
-
-	// Setup static files
+	// Setup static files first so their specific prefixes take priority over
+	// the catch-all route dispatcher registered below.
 	for prefix, dir := range staticCopy {
 		mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
 	}
+
+	// Routes (including ":param" patterns) are matched by a single dispatcher
+	// instead of being registered individually on the mux: http.ServeMux
+	// treats ":id" as a literal path segment (no wildcard support), and it
+	// panics if two methods register the same literal pattern (e.g. GET
+	// "/users" and POST "/users").
+	mux.HandleFunc("/", createRouteDispatcher(app, routesCopy))
 
 	fmt.Printf("🚀 Web server listening on %s\n", port)
 	srv := &http.Server{
@@ -272,82 +273,116 @@ func webListenForApp(app *WebApp, port string) {
 	}
 }
 
-func createHTTPHandler(app *WebApp, expectedMethod, pattern string, handler *r2core.UserFunction) http.HandlerFunc {
+// createRouteDispatcher returns a single handler that matches an incoming
+// request against every registered route (across all methods) since
+// http.ServeMux cannot host ":param" patterns or per-method routes that
+// share the same literal path.
+func createRouteDispatcher(app *WebApp, routesCopy map[string]map[string]*r2core.UserFunction) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != expectedMethod {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
+		if routes, ok := routesCopy[r.Method]; ok {
+			if handler, params, matched := matchRouteSet(routes, r.URL.Path); matched {
+				serveRoute(app, handler, params, w, r)
+				return
+			}
 		}
 
-		// Create context
-		ctx := createContext(app, w, r)
-
-		// Extract path parameters
-		pathParams := extractPathParams(pattern, r.URL.Path)
-		for k, v := range pathParams {
-			ctx.Params[k] = v
+		// The path matches a route registered under a different method:
+		// report 405 instead of a plain 404.
+		for method, routes := range routesCopy {
+			if method == r.Method {
+				continue
+			}
+			if _, _, matched := matchRouteSet(routes, r.URL.Path); matched {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
 		}
 
-		// Convert context to R2Lang object
-		contextObj := map[string]interface{}{
-			"params":  ctx.Params,
-			"query":   ctx.Query,
-			"body":    ctx.Body,
-			"headers": ctx.Headers,
-			"method":  ctx.Method,
-			"path":    ctx.Path,
-			"json": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-				if ctx.JSON != nil {
-					return ctx.JSON
-				}
-				var data interface{}
-				json.Unmarshal([]byte(ctx.Body), &data)
-				return data
-			}),
-			"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-				if len(args) < 1 {
-					panic("web: ctx.send() requires (content)")
-				}
-				return handleResponse(w, r, args[0])
-			}),
-			"status": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-				if len(args) < 1 {
-					panic("web: ctx.status() requires (code)")
-				}
-				code, ok := args[0].(float64)
-				if !ok {
-					panic(fmt.Sprintf("web: ctx.status() expected number for argument 1, got %T", args[0]))
-				}
-				return map[string]interface{}{
-					"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-						if len(args) < 1 {
-							panic("web: ctx.status().send() requires (content)")
-						}
-						w.WriteHeader(int(code))
-						return handleResponse(w, r, args[0])
-					}),
-				}
-			}),
-			"redirect": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
-				if len(args) < 1 {
-					panic("web: ctx.redirect() requires (url)")
-				}
-				urlStr, ok := args[0].(string)
-				if !ok {
-					panic(fmt.Sprintf("web: ctx.redirect() expected string for argument 1, got %T", args[0]))
-				}
-				http.Redirect(w, r, urlStr, http.StatusFound)
-				return nil
-			}),
-		}
+		http.NotFound(w, r)
+	}
+}
 
-		// Call handler with context
-		result := handler.Call(contextObj)
-
-		// Handle result if not already sent
-		if result != nil {
-			handleResponse(w, r, result)
+// matchRouteSet finds the handler registered for path within routes, trying
+// an exact match before falling back to ":param" pattern matching.
+func matchRouteSet(routes map[string]*r2core.UserFunction, path string) (*r2core.UserFunction, map[string]string, bool) {
+	if handler, ok := routes[path]; ok {
+		return handler, nil, true
+	}
+	for pattern, handler := range routes {
+		if params, ok := matchWebPattern(pattern, path); ok {
+			return handler, params, true
 		}
+	}
+	return nil, nil, false
+}
+
+func serveRoute(app *WebApp, handler *r2core.UserFunction, pathParams map[string]string, w http.ResponseWriter, r *http.Request) {
+	// Create context
+	ctx := createContext(app, w, r)
+
+	for k, v := range pathParams {
+		ctx.Params[k] = v
+	}
+
+	// Convert context to R2Lang object
+	contextObj := map[string]interface{}{
+		"params":  stringMapToInterfaceMap(ctx.Params),
+		"query":   stringMapToInterfaceMap(ctx.Query),
+		"body":    ctx.Body,
+		"headers": stringMapToInterfaceMap(ctx.Headers),
+		"method":  ctx.Method,
+		"path":    ctx.Path,
+		"json": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if ctx.JSON != nil {
+				return ctx.JSON
+			}
+			var data interface{}
+			json.Unmarshal([]byte(ctx.Body), &data)
+			return data
+		}),
+		"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: ctx.send() requires (content)")
+			}
+			return handleResponse(w, r, args[0])
+		}),
+		"status": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: ctx.status() requires (code)")
+			}
+			code, ok := args[0].(float64)
+			if !ok {
+				panic(fmt.Sprintf("web: ctx.status() expected number for argument 1, got %T", args[0]))
+			}
+			return map[string]interface{}{
+				"send": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+					if len(args) < 1 {
+						panic("web: ctx.status().send() requires (content)")
+					}
+					w.WriteHeader(int(code))
+					return handleResponse(w, r, args[0])
+				}),
+			}
+		}),
+		"redirect": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) < 1 {
+				panic("web: ctx.redirect() requires (url)")
+			}
+			urlStr, ok := args[0].(string)
+			if !ok {
+				panic(fmt.Sprintf("web: ctx.redirect() expected string for argument 1, got %T", args[0]))
+			}
+			http.Redirect(w, r, urlStr, http.StatusFound)
+			return nil
+		}),
+	}
+
+	// Call handler with context
+	result := handler.Call(contextObj)
+
+	// Handle result if not already sent
+	if result != nil {
+		handleResponse(w, r, result)
 	}
 }
 
@@ -438,23 +473,37 @@ func handleResponse(w http.ResponseWriter, r *http.Request, content interface{})
 	return nil
 }
 
-func extractPathParams(pattern, path string) map[string]string {
-	params := make(map[string]string)
+// matchWebPattern matches a route pattern (e.g. "/users/:id") against a
+// request path, requiring every non-":name" segment to match literally.
+func matchWebPattern(pattern, path string) (map[string]string, bool) {
 	patternParts := strings.Split(pattern, "/")
 	pathParts := strings.Split(path, "/")
 
 	if len(patternParts) != len(pathParts) {
-		return params
+		return nil, false
 	}
 
+	params := make(map[string]string)
 	for i, part := range patternParts {
 		if strings.HasPrefix(part, ":") {
 			paramName := strings.TrimPrefix(part, ":")
 			params[paramName] = pathParts[i]
+			continue
+		}
+		if part != pathParts[i] {
+			return nil, false
 		}
 	}
 
-	return params
+	return params, true
+}
+
+func stringMapToInterfaceMap(m map[string]string) map[string]interface{} {
+	out := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 
 func parseFormData(body string) map[string]string {
