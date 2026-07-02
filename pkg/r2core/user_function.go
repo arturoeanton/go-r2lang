@@ -21,7 +21,10 @@ func (uf *UserFunction) NativeCall(currentEnv *Environment, args ...interface{})
 	if newEnv == nil {
 		newEnv = NewInnerEnv(uf.Env)
 	} else {
-		newEnv = currentEnv
+		// currentEnv is only passed here for super calls; a fresh scope keeps
+		// parameter bindings and the self/super rebinding below from leaking
+		// back into the caller's environment.
+		newEnv = NewInnerEnv(currentEnv)
 	}
 
 	// Add function to R2Lang call stack for error tracing
