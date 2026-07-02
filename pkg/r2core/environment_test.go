@@ -2,6 +2,7 @@ package r2core
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
 
@@ -424,4 +425,68 @@ func BenchmarkEnvironment_Get_NonExistent(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		current.Get("nonexistent")
 	}
+}
+
+// TestEnvironment_ConcurrentImportBookkeeping reproduces a data race found in
+// the "imported"/"importStack" bookkeeping: unlike Environment.store, these
+// fields were left unguarded when concurrency safety was added elsewhere in
+// Environment, even though NewInnerEnv shares the same "imported" map (and
+// the same importStack backing array) across every environment descending
+// from a common root. Since R2Lang's "go"/"r2" builtins can run "import"
+// concurrently from goroutines that share a closure environment, concurrent
+// IsImportCycle/PushImport/PopImport/IsImported/MarkImported calls raced on
+// both the map and the slice. Run with -race to catch a regression.
+func TestEnvironment_ConcurrentImportBookkeeping(t *testing.T) {
+	root := NewEnvironment()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			child := NewInnerEnv(root)
+			path := fmt.Sprintf("mod%d.r2", n)
+			if child.IsImportCycle(path) {
+				return
+			}
+			child.PushImport(path)
+			defer child.PopImport()
+			if !child.IsImported(path) {
+				child.MarkImported(path)
+			}
+			_ = child.GetImportChain()
+		}(i)
+	}
+	wg.Wait()
+}
+
+// TestEnvironment_ConcurrentModuleStoreSnapshot reproduces a related data
+// race: ImportStatement.Eval used to read moduleEnv.store directly (bypassing
+// storeMu) to build the exported symbol table, which could race against a
+// goroutine spawned from inside the imported module mutating the same store.
+func TestEnvironment_ConcurrentModuleStoreSnapshot(t *testing.T) {
+	moduleEnv := NewEnvironment()
+	moduleEnv.Set("x", 1)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 200; i++ {
+			moduleEnv.Update("x", i)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 200; i++ {
+			moduleEnv.storeMu.RLock()
+			symbols := make(map[string]*Variable, len(moduleEnv.store))
+			for k, v := range moduleEnv.store {
+				symbols[k] = v
+			}
+			moduleEnv.storeMu.RUnlock()
+			_ = symbols
+		}
+	}()
+	wg.Wait()
 }

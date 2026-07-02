@@ -24,8 +24,9 @@ type Environment struct {
 	storeMu     sync.RWMutex
 	outer       *Environment
 	imported    map[string]bool
-	importStack []string   // Track import chain for cyclic detection
-	callStack   *CallStack // Track R2Lang function call stack
+	importStack []string    // Track import chain for cyclic detection
+	importedMu  *sync.Mutex // Guards imported/importStack: shared (by pointer) across all inner environments derived from a common root, since "import" can run concurrently inside goroutines spawned via "go"/"r2"
+	callStack   *CallStack  // Track R2Lang function call stack
 	Dir         string
 	CurrenFx    string
 	currenFxMu  sync.Mutex // Guards CurrenFx: mutated by UserFunction.Call, which can run concurrently across goroutines sharing the same closure Environment
@@ -48,6 +49,7 @@ func NewEnvironment() *Environment {
 		outer:       nil,
 		imported:    make(map[string]bool),
 		importStack: make([]string, 0),
+		importedMu:  &sync.Mutex{},
 		callStack:   &CallStack{Frames: make([]StackFrame, 0)},
 		lookupCache: make(map[string]interface{}),
 		limiter:     NewExecutionLimiter(),
@@ -61,6 +63,7 @@ func NewInnerEnv(outer *Environment) *Environment {
 		outer:       outer,
 		imported:    outer.imported,    // Share imported map to prevent duplicates
 		importStack: outer.importStack, // Share import stack for cyclic detection
+		importedMu:  outer.importedMu,  // Share the mutex guarding imported/importStack
 		callStack:   outer.callStack,   // Share call stack for debugging
 		Dir:         outer.Dir,
 		CurrentFile: outer.CurrentFile,
@@ -304,6 +307,8 @@ func (e *Environment) ExecuteWithTimeout(node Node, timeout time.Duration) inter
 
 // IsImportCycle checks if adding the given file would create a circular import
 func (e *Environment) IsImportCycle(filePath string) bool {
+	e.importedMu.Lock()
+	defer e.importedMu.Unlock()
 	for _, importedFile := range e.importStack {
 		if importedFile == filePath {
 			return true
@@ -314,19 +319,39 @@ func (e *Environment) IsImportCycle(filePath string) bool {
 
 // PushImport adds a file to the import stack
 func (e *Environment) PushImport(filePath string) {
+	e.importedMu.Lock()
 	e.importStack = append(e.importStack, filePath)
+	e.importedMu.Unlock()
 }
 
 // PopImport removes the last file from the import stack
 func (e *Environment) PopImport() {
+	e.importedMu.Lock()
 	if len(e.importStack) > 0 {
 		e.importStack = e.importStack[:len(e.importStack)-1]
 	}
+	e.importedMu.Unlock()
 }
 
 // GetImportChain returns the current import chain for error reporting
 func (e *Environment) GetImportChain() []string {
+	e.importedMu.Lock()
+	defer e.importedMu.Unlock()
 	chain := make([]string, len(e.importStack))
 	copy(chain, e.importStack)
 	return chain
+}
+
+// IsImported reports, thread-safely, whether filePath has already been imported
+func (e *Environment) IsImported(filePath string) bool {
+	e.importedMu.Lock()
+	defer e.importedMu.Unlock()
+	return e.imported[filePath]
+}
+
+// MarkImported records filePath as imported, thread-safely
+func (e *Environment) MarkImported(filePath string) {
+	e.importedMu.Lock()
+	e.imported[filePath] = true
+	e.importedMu.Unlock()
 }

@@ -33,7 +33,7 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 	}
 
 	// Verificar si ya fue importado
-	if env.imported[filePath] {
+	if env.IsImported(filePath) {
 		return nil // Ya importado, no hacer nada
 	}
 
@@ -42,7 +42,7 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 	defer env.PopImport()
 
 	// Marcar como importado
-	env.imported[filePath] = true
+	env.MarkImported(filePath)
 
 	// Leer el contenido del archivo
 	content, err := os.ReadFile(filePath)
@@ -72,8 +72,15 @@ func (is *ImportStatement) Eval(env *Environment) interface{} {
 	// Evaluar en el entorno del módulo
 	importedProgram.Eval(moduleEnv)
 
-	// Obtener los símbolos del módulo importado
-	symbols := moduleEnv.store
+	// Obtener los símbolos del módulo importado (copia bajo lock: el módulo
+	// importado puede haber lanzado goroutines via "go"/"r2" que todavía
+	// mutan moduleEnv.store de forma concurrente)
+	moduleEnv.storeMu.RLock()
+	symbols := make(map[string]*Variable, len(moduleEnv.store))
+	for k, v := range moduleEnv.store {
+		symbols[k] = v
+	}
+	moduleEnv.storeMu.RUnlock()
 
 	// Si hay un alias, asignar los símbolos bajo ese alias
 	if is.Alias != "" {
