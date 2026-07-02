@@ -16,6 +16,11 @@ record and are not renamed.
 
 ## [Unreleased]
 
+## [0.1.26] - CHANGELOG and release process
+### Added
+- `CHANGELOG.md` (this file) and `RELEASING.md`, documenting the release
+  history and formalizing semver going forward.
+
 ## [0.1.25] - CI hardening, example sweep, r2test fixes
 ### Fixed
 - `pkg/r2test` mocking: `Times(0)`/`AtMost(0)` expectations were a silent
@@ -242,7 +247,8 @@ record and are not renamed.
 ## [0.0.1] - Initial tag
 - First tagged version of the project.
 
-[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.25_ci-sweep-r2test-fixes...HEAD
+[Unreleased]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.26...HEAD
+[0.1.26]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.25_ci-sweep-r2test-fixes...v0.1.26
 [0.1.25]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.24_remove-dead-bytecode...v0.1.25_ci-sweep-r2test-fixes
 [0.1.24]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.23_native-graph-comprehensions...v0.1.24_remove-dead-bytecode
 [0.1.23]: https://github.com/arturoeanton/go-r2lang/compare/v0.1.22_content-type-detection...v0.1.23_native-graph-comprehensions
