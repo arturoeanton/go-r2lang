@@ -51,17 +51,24 @@ func DetectContentType(input string) ContentType {
 			return JSONType
 		}
 	case '<':
-		// Posible XML o HTML
-		if strings.HasPrefix(trimmed, "<!DOCTYPE html") || strings.HasPrefix(strings.ToLower(trimmed), "<html") {
-			if isHTML(trimmed) {
-				return HTMLType
-			}
-		}
-		if isHTML(trimmed) {
+		// Posible XML o HTML. Una página HTML real trae una señal
+		// estructural inequívoca (DOCTYPE, <html>, <head> o <body>); sin esa
+		// señal, isHTML() sólo detecta si ALGUNA de sus patrones (incluyendo
+		// nombres de tag tan genéricos como "<a" o "<p") aparece en
+		// cualquier parte del documento, lo cual da falsos positivos
+		// constantes contra XML de datos legítimo (p. ej.
+		// "<order><a>123</a></order>" se marcaba como text/html sólo por el
+		// tag <a>, un nombre de elemento XML perfectamente válido). Por eso
+		// una señal débil sólo gana si el documento ni siquiera es XML bien
+		// formado.
+		if hasStrongHTMLSignal(trimmed) {
 			return HTMLType
 		}
 		if isXML(trimmed) {
 			return XMLType
+		}
+		if isHTML(trimmed) {
+			return HTMLType
 		}
 
 	}
@@ -95,6 +102,26 @@ func isJSON(input string) bool {
 func isXML(input string) bool {
 	var x interface{}
 	return xml.Unmarshal([]byte(input), &x) == nil
+}
+
+// hasStrongHTMLSignal reporta si input trae una marca estructural
+// inequívoca de documento HTML (DOCTYPE o el tag raíz <html>/<head>/<body>),
+// a diferencia de isHTML() que también dispara con nombres de tag genéricos
+// que son igual de válidos como elementos XML.
+func hasStrongHTMLSignal(input string) bool {
+	strongPatterns := []string{
+		`(?i)^<!DOCTYPE\s+html`,
+		`(?i)^<html\b`,
+		`(?i)^<head\b`,
+		`(?i)^<body\b`,
+	}
+	for _, pattern := range strongPatterns {
+		matched, err := regexp.MatchString(pattern, input)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 // isHTML intenta determinar si una cadena es HTML utilizando expresiones regulares.
