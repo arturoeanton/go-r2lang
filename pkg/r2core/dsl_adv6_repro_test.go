@@ -228,6 +228,18 @@ func TestDSLInvalidLiteralSurfacesError(t *testing.T) {
 // entirely, so it never registered with the ExecutionLimiter).
 func TestDSLActionInfiniteRecursionIsCaught(t *testing.T) {
 	env := NewEnvironment()
+	// Use a much smaller recursion-depth ceiling than the default (1000)
+	// so this test's own runtime is bounded by an iteration COUNT rather
+	// than wall-clock time. Each recursive .use() call here re-runs a full
+	// DSL parse+evaluate cycle, which is real work (~2ms/level locally) —
+	// waiting to hit the default 1000-level limit took ~2s on this
+	// machine, and reliably exceeded a 5s wall-clock ceiling on slower/
+	// shared CI hardware, making the test flake there despite the actual
+	// recursion-limiting mechanism working correctly. A smaller depth
+	// limit makes the test fast and deterministic regardless of hardware.
+	limiter := NewExecutionLimiter()
+	limiter.MaxRecursionDepth = 50
+	env.SetLimiter(limiter)
 	dslCode := `
 	dsl Loopy {
 		token("WORD", "[a-zA-Z]+")
@@ -261,7 +273,7 @@ func TestDSLActionInfiniteRecursionIsCaught(t *testing.T) {
 		if !strings.Contains(msg, "recursion") && !strings.Contains(msg, "Loop infinito") {
 			t.Errorf("expected a recursion-limit error, got: %s", msg)
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("infinite recursion through a DSL action was not caught within 5s (hung instead of hitting the recursion limit)")
+	case <-time.After(20 * time.Second):
+		t.Fatal("infinite recursion through a DSL action was not caught within 20s (hung instead of hitting the recursion limit)")
 	}
 }
