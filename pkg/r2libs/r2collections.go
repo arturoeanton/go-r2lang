@@ -2,6 +2,7 @@ package r2libs
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/arturoeanton/go-r2lang/pkg/r2core"
@@ -450,9 +451,88 @@ func RegisterCollections(env *r2core.Environment) {
 			}
 			return newArr
 		}),
+		"deepEqual": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 2 {
+				panic("deepEqual: se aceptan 2 argumentos (a, b)")
+			}
+			return deepEqualValues(args[0], args[1], make(map[[2]uintptr]bool))
+		}),
+
+		"deepClone": r2core.BuiltinFunction(func(args ...interface{}) interface{} {
+			if len(args) != 1 {
+				panic("deepClone: solo se acepta un argumento")
+			}
+			return deepCopy(args[0])
+		}),
 	}
 
 	RegisterModule(env, "collections", functions)
+}
+
+func toGenericSlice(v interface{}) ([]interface{}, bool) {
+	switch s := v.(type) {
+	case []interface{}:
+		return s, true
+	case r2core.InterfaceSlice:
+		return []interface{}(s), true
+	}
+	return nil, false
+}
+
+// deepEqualValues compares two R2Lang values structurally. seen tracks the
+// active ancestor chain of (a, b) pointer pairs currently being compared, so
+// that R2Lang arrays/maps made self-referential via index assignment (e.g.
+// a[0] = a) cannot recurse forever and crash the process with an
+// unrecoverable Go stack overflow, the same bug class fixed in
+// collections.flatten. Revisiting the same pair mid-chain means both sides
+// cycle in lockstep, so that branch is treated as equal.
+func deepEqualValues(a, b interface{}, seen map[[2]uintptr]bool) bool {
+	if aMap, ok := a.(map[string]interface{}); ok {
+		bMap, ok := b.(map[string]interface{})
+		if !ok || len(aMap) != len(bMap) {
+			return false
+		}
+		if len(aMap) == 0 {
+			return true
+		}
+		key := [2]uintptr{reflect.ValueOf(aMap).Pointer(), reflect.ValueOf(bMap).Pointer()}
+		if seen[key] {
+			return true
+		}
+		seen[key] = true
+		defer delete(seen, key)
+		for k, av := range aMap {
+			bv, ok := bMap[k]
+			if !ok || !deepEqualValues(av, bv, seen) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if aArr, ok := toGenericSlice(a); ok {
+		bArr, ok := toGenericSlice(b)
+		if !ok || len(aArr) != len(bArr) {
+			return false
+		}
+		if len(aArr) == 0 {
+			return true
+		}
+		key := [2]uintptr{reflect.ValueOf(aArr).Pointer(), reflect.ValueOf(bArr).Pointer()}
+		if seen[key] {
+			return true
+		}
+		seen[key] = true
+		defer delete(seen, key)
+		for i := range aArr {
+			if !deepEqualValues(aArr[i], bArr[i], seen) {
+				return false
+			}
+		}
+		return true
+	}
+
+	return equals(a, b)
 }
 
 // maxFlattenDepth bounds recursion in flattenArray so that a deeply nested

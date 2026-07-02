@@ -45,6 +45,7 @@ func RunCode(filename string) {
 	r2libs.RegisterConcurrency(env)
 	r2libs.RegisterSync(env)
 	r2libs.RegisterCollections(env)
+	r2libs.RegisterValidate(env)
 	r2libs.RegisterUnicode(env)
 	r2libs.RegisterDate(env)
 	r2libs.RegisterDB(env)
