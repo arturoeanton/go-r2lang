@@ -77,20 +77,26 @@ r2libs.RegisterJSON(env)    // JSON operations
 - Enhanced else-if: `if (x) { } else if (y) { } else { }`
 
 ### Built-in Function Access
-All r2libs functions are available globally without import:
+All r2libs modules are auto-registered (no import needed), but their functions
+live under a namespace object matching the module name — there are no bare
+global builtins (e.g. `print(...)` does not exist; use `std.print(...)`):
 ```r2
 // File operations
-writeFile("test.txt", "content")
-let content = readFile("test.txt")
-let exists = exists("test.txt")
+io.writeFile("test.txt", "content")
+let content = io.readFile("test.txt")
+let fileExists = io.exists("test.txt")
 
-// OS operations  
-let cmd = Command("echo hello")
+// OS operations
+let cmd = os.Command("echo hello")
 cmd.run()
 let output = cmd.stdout()
 
 // HTTP operations
 let response = request.get("https://api.example.com")
+
+// Standard library
+std.print("hello", 42)
+std.parseFloat("3.14")
 ```
 
 ### DSL Builder (Unique Feature)
@@ -114,7 +120,7 @@ dsl Calculator {
 ### Adding New Built-in Functions
 1. Add functions to appropriate module in `pkg/r2libs/`
 2. Register module in `pkg/r2lang/r2lang.go`
-3. Functions become globally available in R2Lang scripts
+3. Functions become available under `moduleName.functionName(...)` in R2Lang scripts
 4. Follow the `RegisterModule(env, "moduleName", functions)` pattern
 
 ### Testing Strategy
@@ -140,6 +146,7 @@ if err != nil {
 ## Common Pitfalls
 - Built-in functions use panic for errors, not Go error returns
 - All r2libs modules are auto-imported; no manual import needed
-- Use `print()` for output, not `println()` or `console.log()` (unless using console module)
+- Built-ins are namespaced by module (`std.print`, `io.readFile`, `os.Command`, ...); there are no bare global builtins
 - File paths in examples should be relative to project root
 - DSL definitions require specific token/rule/function structure
+- The `dsl {}` block backend is `github.com/arturoeanton/go-dsl` (`pkg/dslbuilder`); `token()`/`rule()`/`action()`/`func` calls inside a `dsl` block build a `dslbuilder.DSL` under the hood (see `pkg/r2core/dsl_grammar.go`)

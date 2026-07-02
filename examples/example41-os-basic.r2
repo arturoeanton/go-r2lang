@@ -40,7 +40,7 @@ func main() {
     let i = 0;
     while (i < 5 && i < std.len(envKeys)) {
         let key = envKeys[i];
-        std.print("    " + key + " = " + string.substr(allEnvs[key], 0, 50) + "...");
+        std.print("    " + key + " = " + string.substring(allEnvs[key], 0, 50) + "...");
         i = i + 1;
     }
 

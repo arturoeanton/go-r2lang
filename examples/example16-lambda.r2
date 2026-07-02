@@ -12,11 +12,11 @@ func main() {
     };
 
     let r = add(10, 20);
-    print("Resultado =>", r);
+    std.print("Resultado =>", r);
 
     // Otro ejemplo: función sin args
     let greet = func() {
-        print("Hola desde función anónima!");
+        std.print("Hola desde función anónima!");
     };
     greet();
 
@@ -26,7 +26,7 @@ func main() {
         return x + base; // 'base' está en el env
     };
     let res2 = addBase(50);
-    print("res2 =>", res2); // 150
+    std.print("res2 =>", res2); // 150
 
 
         // 1) Función anónima
@@ -34,11 +34,11 @@ func main() {
             return a + b;
         };
         let r = suma(10, 20);
-        print("suma(10,20) =>", r);
+        std.print("suma(10,20) =>", r);
 
         // 2) Otra anónima sin args
         let saluda = func() {
-            print("Hola sin args");
+            std.print("Hola sin args");
         };
         saluda();
 
@@ -46,9 +46,9 @@ func main() {
         let eq1 = (2 == 2);
         let eq2 = (2 == 2.0);
         let eq3 = (2.0 == 3.0);
-        print("2 == 2 =>", eq1);
-        print("2 == 2.0 =>", eq2);
-        print("2.0 == 3.0 =>", eq3);
+        std.print("2 == 2 =>", eq1);
+        std.print("2 == 2.0 =>", eq2);
+        std.print("2.0 == 3.0 =>", eq3);
 
 
            a = [1,2,3,4,5];

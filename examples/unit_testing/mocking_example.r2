@@ -57,7 +57,7 @@ let UserService = {
             id: generateId(),
             name: userData.name,
             email: userData.email,
-            createdAt: new Date()
+            createdAt: date.Date()
         };
         
         let userId = DatabaseService.saveUser(user);
@@ -316,19 +316,19 @@ test.describe("Test Isolation", func() {
 });
 
 // Run the tests
-print("Running Mocking and Fixtures Tests...");
+std.print("Running Mocking and Fixtures Tests...");
 let results = test.runTests();
 
-print("\n=== TEST RESULTS ===");
-print("Total tests:", results.total);
-print("Passed:", results.passed);
-print("Failed:", results.failed);
-print("Skipped:", results.skipped);
+std.print("\n=== TEST RESULTS ===");
+std.print("Total tests:", results.total);
+std.print("Passed:", results.passed);
+std.print("Failed:", results.failed);
+std.print("Skipped:", results.skipped);
 
 if (results.failed > 0) {
-    print("\nFailed tests:");
+    std.print("\nFailed tests:");
     for (let i = 0; i < len(results.failures); i++) {
         let failure = results.failures[i];
-        print("  -", failure.test + ":", failure.message);
+        std.print("  -", failure.test + ":", failure.message);
     }
 }

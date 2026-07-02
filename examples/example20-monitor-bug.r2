@@ -1,13 +1,13 @@
 // Función para simular una tarea que toma tiempo
 func task(id, duration) {
-    print("Task", id, "iniciada, duración:", duration, "segundos")
+    std.print("Task", id, "iniciada, duración:", duration, "segundos")
     sleep(duration)
-    print("Task", id, "completada")
+    std.print("Task", id, "completada")
 }
 
 // Función principal
 func main() {
-    print("Inicio del programa principal")
+    std.print("Inicio del programa principal")
 
     // Crear un semáforo con 2 permisos
     let sem = semaphore(2)
@@ -23,7 +23,7 @@ func main() {
             lock(mon)    // Adquirir lock del monitor
 
             // Sección crítica: imprimir el inicio de la tarea
-            print("Monitor: Task", id, "está ejecutándose")
+            std.print("Monitor: Task", id, "está ejecutándose")
 
             // Liberar el lock del monitor
             unlock(mon)
@@ -33,11 +33,11 @@ func main() {
 
             // Adquirir lock nuevamente para modificar estado
             lock(mon)
-            print("Monitor: Task", id, "ha terminado")
+            std.print("Monitor: Task", id, "ha terminado")
             unlock(mon)
 
             release(sem) // Liberar permiso del semáforo
         },id)
     }
-    print("Fin del programa principal")
+    std.print("Fin del programa principal")
 }

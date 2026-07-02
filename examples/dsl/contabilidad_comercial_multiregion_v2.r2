@@ -23,7 +23,7 @@ dsl ComprobantesVentaDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.0875;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -60,7 +60,7 @@ dsl ComprobantesVentaDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.20;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -97,7 +97,7 @@ dsl ComprobantesVentaDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.21;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -150,7 +150,7 @@ dsl ComprobantesCompraDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.0875;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -188,7 +188,7 @@ dsl ComprobantesCompraDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.20;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -226,7 +226,7 @@ dsl ComprobantesCompraDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.21;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;
@@ -264,7 +264,7 @@ dsl ComprobantesCompraDSL {
             ctx.proximoNumeroAsiento = numeroAsiento + 1;
         }
         
-        let importeNum = parseFloat(importe);
+        let importeNum = std.parseFloat(importe);
         let tasaIVA = 0.0875;
         let importeIVA = importeNum * tasaIVA;
         let importeTotal = importeNum + importeIVA;

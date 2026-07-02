@@ -6,13 +6,13 @@ describe("Calculator Class", func() {
     beforeEach(func() {
         // Setup before each test
         calculator = Calculator();
-        print("Setting up calculator for test");
+        std.print("Setting up calculator for test");
     });
     
     afterEach(func() {
         // Cleanup after each test
         calculator = null;
-        print("Cleaning up after test");
+        std.print("Cleaning up after test");
     });
     
     it("should initialize with zero", func() {
@@ -42,12 +42,12 @@ describe("File Operations", func() {
     
     beforeAll(func() {
         // Setup once before all tests
-        print("Creating test environment");
+        std.print("Creating test environment");
     });
     
     afterAll(func() {
         // Cleanup once after all tests
-        print("Cleaning up test environment");
+        std.print("Cleaning up test environment");
     });
     
     it("should create files", func() {

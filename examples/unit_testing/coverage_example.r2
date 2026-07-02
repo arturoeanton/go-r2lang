@@ -155,7 +155,7 @@ test.describe("Coverage Configuration", func() {
         coverage.addExcludeGlob("node_modules/*");
         coverage.addExcludeGlob("coverage/*");
         
-        print("Coverage collection enabled");
+        std.print("Coverage collection enabled");
     });
     
     test.it("should configure coverage settings", func() {
@@ -334,13 +334,13 @@ test.describe("Coverage Reporting", func() {
         test.assert("line percentage").that(stats.linePercentage).isGreaterThanOrEqual(0);
         test.assert("line percentage max").that(stats.linePercentage).isLessThanOrEqual(100);
         
-        print("Coverage Statistics:");
-        print("  Total Files:", stats.totalFiles);
-        print("  Total Lines:", stats.totalLines);
-        print("  Covered Lines:", stats.coveredLines);
-        print("  Line Coverage:", stats.linePercentage.toFixed(2) + "%");
-        print("  Statement Coverage:", stats.statementPercentage.toFixed(2) + "%");
-        print("  Function Coverage:", stats.functionPercentage.toFixed(2) + "%");
+        std.print("Coverage Statistics:");
+        std.print("  Total Files:", stats.totalFiles);
+        std.print("  Total Lines:", stats.totalLines);
+        std.print("  Covered Lines:", stats.coveredLines);
+        std.print("  Line Coverage:", stats.linePercentage.toFixed(2) + "%");
+        std.print("  Statement Coverage:", stats.statementPercentage.toFixed(2) + "%");
+        std.print("  Function Coverage:", stats.functionPercentage.toFixed(2) + "%");
     });
     
     test.it("should check coverage thresholds", func() {
@@ -353,10 +353,10 @@ test.describe("Coverage Reporting", func() {
         test.assert("80% threshold").that(meets80).isBoolean();
         test.assert("95% threshold").that(meets95).isBoolean();
         
-        print("Threshold Results:");
-        print("  Meets 50%:", meets50);
-        print("  Meets 80%:", meets80);
-        print("  Meets 95%:", meets95);
+        std.print("Threshold Results:");
+        std.print("  Meets 50%:", meets50);
+        std.print("  Meets 80%:", meets80);
+        std.print("  Meets 95%:", meets95);
     });
     
     test.it("should identify uncovered lines", func() {
@@ -365,9 +365,9 @@ test.describe("Coverage Reporting", func() {
         test.assert("uncovered lines").that(uncoveredLines).isArray();
         
         if (len(uncoveredLines) > 0) {
-            print("Uncovered lines in math_utils.r2:", uncoveredLines);
+            std.print("Uncovered lines in math_utils.r2:", uncoveredLines);
         } else {
-            print("All lines covered in math_utils.r2");
+            std.print("All lines covered in math_utils.r2");
         }
     });
 });
@@ -377,64 +377,64 @@ test.describe("Report Generation", func() {
     
     test.afterAll(func() {
         // Generate different types of reports
-        print("Generating coverage reports...");
+        std.print("Generating coverage reports...");
         
         // Generate HTML report
         try {
             reporters.generateHTMLReport("./coverage/html", test.getResults());
-            print("✓ HTML report generated in ./coverage/html/");
+            std.print("✓ HTML report generated in ./coverage/html/");
         } catch (e) {
-            print("✗ Failed to generate HTML report:", e);
+            std.print("✗ Failed to generate HTML report:", e);
         }
         
         // Generate JSON report
         try {
             reporters.generateJSONReport("./coverage/coverage.json", test.getResults());
-            print("✓ JSON report generated: ./coverage/coverage.json");
+            std.print("✓ JSON report generated: ./coverage/coverage.json");
         } catch (e) {
-            print("✗ Failed to generate JSON report:", e);
+            std.print("✗ Failed to generate JSON report:", e);
         }
         
         // Generate JUnit XML report
         try {
             reporters.generateJUnitReport("./coverage/junit.xml", test.getResults());
-            print("✓ JUnit report generated: ./coverage/junit.xml");
+            std.print("✓ JUnit report generated: ./coverage/junit.xml");
         } catch (e) {
-            print("✗ Failed to generate JUnit report:", e);
+            std.print("✗ Failed to generate JUnit report:", e);
         }
         
         // Print final coverage summary
         let finalStats = coverage.getStats();
-        print("\n=== FINAL COVERAGE SUMMARY ===");
-        print("Line Coverage:", finalStats.linePercentage.toFixed(2) + "%");
-        print("Statement Coverage:", finalStats.statementPercentage.toFixed(2) + "%");
-        print("Branch Coverage:", finalStats.branchPercentage.toFixed(2) + "%");
-        print("Function Coverage:", finalStats.functionPercentage.toFixed(2) + "%");
+        std.print("\n=== FINAL COVERAGE SUMMARY ===");
+        std.print("Line Coverage:", finalStats.linePercentage.toFixed(2) + "%");
+        std.print("Statement Coverage:", finalStats.statementPercentage.toFixed(2) + "%");
+        std.print("Branch Coverage:", finalStats.branchPercentage.toFixed(2) + "%");
+        std.print("Function Coverage:", finalStats.functionPercentage.toFixed(2) + "%");
         
         if (finalStats.linePercentage >= 80) {
-            print("🎉 Excellent coverage! Target achieved.");
+            std.print("🎉 Excellent coverage! Target achieved.");
         } else if (finalStats.linePercentage >= 60) {
-            print("👍 Good coverage, but room for improvement.");
+            std.print("👍 Good coverage, but room for improvement.");
         } else {
-            print("⚠️  Coverage below recommended threshold.");
+            std.print("⚠️  Coverage below recommended threshold.");
         }
     });
 });
 
 // Run the tests
-print("Running Coverage and Reporting Tests...");
+std.print("Running Coverage and Reporting Tests...");
 let results = test.runTests();
 
-print("\n=== TEST RESULTS ===");
-print("Total tests:", results.total);
-print("Passed:", results.passed);
-print("Failed:", results.failed);
-print("Success rate:", (results.passed / results.total * 100).toFixed(2) + "%");
+std.print("\n=== TEST RESULTS ===");
+std.print("Total tests:", results.total);
+std.print("Passed:", results.passed);
+std.print("Failed:", results.failed);
+std.print("Success rate:", (results.passed / results.total * 100).toFixed(2) + "%");
 
 if (results.failed > 0) {
-    print("\nFailed tests:");
+    std.print("\nFailed tests:");
     for (let i = 0; i < len(results.failures); i++) {
         let failure = results.failures[i];
-        print("  -", failure.test + ":", failure.message);
+        std.print("  -", failure.test + ":", failure.message);
     }
 }

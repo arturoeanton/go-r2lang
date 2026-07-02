@@ -1,11 +1,11 @@
 // Ejemplo de Optional Chaining (Encadenamiento Opcional) ?.
 // Característica P3 - Navegación Segura
 
-print("🔗 R2Lang P3: Optional Chaining Operator ?.")
-print("=" * 50)
+std.print("🔗 R2Lang P3: Optional Chaining Operator ?.")
+std.print("==================================================")
 
 // 1. Acceso seguro a propiedades anidadas
-print("\n📋 1. Acceso Seguro a Propiedades:")
+std.print("\n📋 1. Acceso Seguro a Propiedades:")
 let user = {
     name: "Alice",
     profile: {
@@ -18,26 +18,26 @@ let user = {
 
 // Acceso tradicional (puede fallar)
 let street1 = user.profile.address.street
-print("Calle tradicional:", street1)
+std.print("Calle tradicional:", street1)
 
 // Acceso con optional chaining (seguro)
 let street2 = user?.profile?.address?.street
-print("Calle opcional:", street2)
+std.print("Calle opcional:", street2)
 
 // 2. Navegación segura con objetos nil
-print("\n🚫 2. Navegación con Objetos Nulos:")
+std.print("\n🚫 2. Navegación con Objetos Nulos:")
 let emptyUser = nil
 let safeName = emptyUser?.name
-print("Nombre seguro:", safeName)  // nil en lugar de error
+std.print("Nombre seguro:", safeName)  // nil en lugar de error
 
 // 3. Propiedades inexistentes
-print("\n❓ 3. Propiedades Inexistentes:")
+std.print("\n❓ 3. Propiedades Inexistentes:")
 let userWithoutPhone = {name: "Bob", email: "bob@example.com"}
 let phone = userWithoutPhone?.phone?.number
-print("Teléfono:", phone)  // nil en lugar de error
+std.print("Teléfono:", phone)  // nil en lugar de error
 
 // 4. Combinando con objetos complejos
-print("\n🏢 4. Casos de Uso Reales:")
+std.print("\n🏢 4. Casos de Uso Reales:")
 let apiResponse = {
     status: "success",
     data: {
@@ -54,12 +54,12 @@ let avatar1 = apiResponse?.data?.users?.[0]?.profile?.avatar
 let avatar2 = apiResponse?.data?.users?.[1]?.profile?.avatar
 let avatar3 = apiResponse?.data?.users?.[2]?.profile?.avatar
 
-print("Avatar de Juan:", avatar1)      // "juan.jpg"
-print("Avatar de María:", avatar2)     // nil
-print("Avatar de Carlos:", avatar3)    // nil
+std.print("Avatar de Juan:", avatar1)      // "juan.jpg"
+std.print("Avatar de María:", avatar2)     // nil
+std.print("Avatar de Carlos:", avatar3)    // nil
 
 // 5. Evitando errores comunes
-print("\n⚠️  5. Comparación Sin/Con Optional Chaining:")
+std.print("\n⚠️  5. Comparación Sin/Con Optional Chaining:")
 
 // SIN optional chaining - propenso a errores
 let config = {server: {port: 8080}}
@@ -67,9 +67,9 @@ let config = {server: {port: 8080}}
 
 // CON optional chaining - seguro
 let safeTimeout = config?.server?.timeout?.value
-print("Timeout seguro:", safeTimeout)  // nil en lugar de error
+std.print("Timeout seguro:", safeTimeout)  // nil en lugar de error
 
-print("\n✅ Optional chaining implementado exitosamente!")
-print("   - Navegación segura sin errores")
-print("   - Retorna nil en lugar de panic")
-print("   - Sintaxis familiar para desarrolladores JS/TS")
+std.print("\n✅ Optional chaining implementado exitosamente!")
+std.print("   - Navegación segura sin errores")
+std.print("   - Retorna nil en lugar de panic")
+std.print("   - Sintaxis familiar para desarrolladores JS/TS")

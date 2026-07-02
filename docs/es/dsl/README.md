@@ -1,7 +1,22 @@
 # Documentación DSL de R2Lang
 
 ## Última Actualización
-2025-01-18
+2026-07-02
+
+## Nota de migración (2026-07-02)
+
+El motor interno que parseaba los bloques `dsl { }` (tokenizer y parser
+hand-rolled en `pkg/r2core/dsl_grammar.go`) fue reemplazado por
+[`github.com/arturoeanton/go-dsl`](https://github.com/arturoeanton/go-dsl)
+v1.4.0 (`pkg/dslbuilder`). La sintaxis `.r2` (`token()`, `rule()`, `action()`,
+`func`, `.use(code, context)`, `.AST`/`.Code`/`.Output`) no cambió — es la
+misma API descrita en este manual — pero el backend ahora es una gramática
+PEG con memoización (Packrat), soporte de recursión izquierda y tokenización
+determinística (prioridad > longitud > orden de declaración), lo que
+resuelve las inestabilidades de parsing documentadas en
+[Limitaciones y Mejoras Priorizadas](limitaciones_y_mejoras_priorizadas.md).
+Una diferencia real de comportamiento: `.AST` ahora expone el árbol de
+sintaxis real (`*dslbuilder.Node`) en vez de reusar el valor de `.Output`.
 
 ## Descripción
 
@@ -139,6 +154,12 @@ func main() {
 3. Sigue las [mejores prácticas](manual_dsl_completo.md#mejores-prácticas)
 
 ## Historial de Versiones
+
+### v3.0 (2026-07-02)
+- ✅ Motor de parsing migrado a `github.com/arturoeanton/go-dsl` v1.4.0
+- ✅ Tokenización determinística y parser con memoización (Packrat)
+- ✅ `.AST` ahora expone el árbol de sintaxis real, separado de `.Output`
+- ✅ Misma superficie pública (`token`, `rule`, `action`, `func`, `.use`)
 
 ### v2.0 (2025-01-18)
 - ✅ Fix completo para parámetros múltiples

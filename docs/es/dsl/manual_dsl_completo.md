@@ -1,7 +1,14 @@
 # Manual Completo de DSL en R2Lang
 
 ## Fecha de Actualización
-2025-01-18
+2026-07-02
+
+> **Nota (2026-07-02):** el backend de parsing de `dsl { }` ahora es
+> [`github.com/arturoeanton/go-dsl`](https://github.com/arturoeanton/go-dsl)
+> v1.4.0 en vez del motor interno hand-rolled. La API descrita en este
+> manual (`token`, `rule`, `action`, `func`, `.use()`, `.Output`, `.Code`)
+> no cambió; ver [README.md](README.md#nota-de-migración-2026-07-02) para
+> el detalle de la migración.
 
 ## Tabla de Contenidos
 

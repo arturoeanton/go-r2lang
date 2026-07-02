@@ -2,11 +2,11 @@
 // Incluye: Optional Chaining, Null Coalescing, Pattern Matching, 
 // Comprehensions y Pipeline Operator
 
-print("🚀 R2Lang - Nuevas características P3 y P4")
-print("=" * 50)
+std.print("🚀 R2Lang - Nuevas características P3 y P4")
+std.print("==================================================")
 
 // ===== P3.1: OPTIONAL CHAINING ?. =====
-print("\n🔗 P3.1: Optional Chaining ?.") 
+std.print("\n🔗 P3.1: Optional Chaining ?.") 
 let user = {
     name: "Alice",
     profile: {
@@ -19,19 +19,19 @@ let user = {
 let street = user?.profile?.address?.street
 let missing = user?.profile?.phone?.number
 
-print("Street:", street)    // "Main St"
-print("Missing:", missing)  // nil
+std.print("Street:", street)    // "Main St"
+std.print("Missing:", missing)  // nil
 
 // ===== P3.2: NULL COALESCING ?? =====
-print("\n❓ P3.2: Null Coalescing ??")
+std.print("\n❓ P3.2: Null Coalescing ??")
 let config = nil
 let defaultPort = 8080
 let port = config?.port ?? defaultPort
 
-print("Port:", port)        // 8080
+std.print("Port:", port)        // 8080
 
 // ===== P3.3: PATTERN MATCHING =====
-print("\n🎯 P3.3: Pattern Matching")
+std.print("\n🎯 P3.3: Pattern Matching")
 func processStatus(status) {
     return match status {
         case 200 => "Success"
@@ -41,40 +41,40 @@ func processStatus(status) {
     }
 }
 
-print("Status 200:", processStatus(200))
-print("Status 404:", processStatus(404))
-print("Status 418:", processStatus(418))
+std.print("Status 200:", processStatus(200))
+std.print("Status 404:", processStatus(404))
+std.print("Status 418:", processStatus(418))
 
 // ===== P4.1: ARRAY COMPREHENSIONS =====
-print("\n📦 P4.1: Array Comprehensions")
+std.print("\n📦 P4.1: Array Comprehensions")
 let numbers = [1, 2, 3, 4, 5]
 let squares = [x * x for x in numbers]
 let evenSquares = [x * x for x in numbers if x % 2 == 0]
 
-print("Numbers:", numbers)
-print("Squares:", squares)
-print("Even squares:", evenSquares)
+std.print("Numbers:", numbers)
+std.print("Squares:", squares)
+std.print("Even squares:", evenSquares)
 
 // ===== P4.2: OBJECT COMPREHENSIONS =====
-print("\n🏗️  P4.2: Object Comprehensions")
+std.print("\n🏗️  P4.2: Object Comprehensions")
 let fruits = ["apple", "banana", "cherry"]
 let lengths = {fruit: fruit.length for fruit in fruits}
 
-print("Fruit lengths:", lengths)
+std.print("Fruit lengths:", lengths)
 
 // ===== P4.3: PIPELINE OPERATOR |> =====
-print("\n🚀 P4.3: Pipeline Operator |>")
+std.print("\n🚀 P4.3: Pipeline Operator |>")
 func double(x) { return x * 2 }
 func addTen(x) { return x + 10 }
 
 let result = 5 |> double |> addTen
 let lambdaResult = 10 |> (x => x * 3)
 
-print("5 |> double |> addTen =", result)       // 20
-print("10 |> (x => x * 3) =", lambdaResult)   // 30
+std.print("5 |> double |> addTen =", result)       // 20
+std.print("10 |> (x => x * 3) =", lambdaResult)   // 30
 
 // ===== COMBINACIÓN DE CARACTERÍSTICAS =====
-print("\n🤝 Combinando P3 y P4:")
+std.print("\n🤝 Combinando P3 y P4:")
 
 // Optional chaining + null coalescing + comprehensions
 let data = {
@@ -86,7 +86,7 @@ let data = {
 }
 
 let ages = [user?.age ?? 0 for user in data?.users ?? []]
-print("Ages with defaults:", ages)
+std.print("Ages with defaults:", ages)
 
 // Pattern matching + pipeline
 func categorize(age) {
@@ -103,9 +103,9 @@ func mapCategories(arr) {
 }
 
 let categories = ages |> mapCategories
-print("Categories:", categories)
+std.print("Categories:", categories)
 
-print("\n✅ Todas las características P3 y P4 funcionando!")
-print("   P3: Optional chaining, null coalescing, pattern matching")
-print("   P4: Array/object comprehensions, pipeline operator")
-print("   100% compatible con sintaxis existente")
+std.print("\n✅ Todas las características P3 y P4 funcionando!")
+std.print("   P3: Optional chaining, null coalescing, pattern matching")
+std.print("   P4: Array/object comprehensions, pipeline operator")
+std.print("   100% compatible con sintaxis existente")

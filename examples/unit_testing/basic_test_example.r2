@@ -94,22 +94,22 @@ test.describe("Lifecycle Hooks Example", func() {
     let setupData = null;
     
     test.beforeAll(func() {
-        print("Setting up test suite...");
+        std.print("Setting up test suite...");
         setupData = "initialized";
     });
     
     test.afterAll(func() {
-        print("Cleaning up test suite...");
+        std.print("Cleaning up test suite...");
         setupData = null;
     });
     
     test.beforeEach(func() {
         counter = 0;
-        print("Before each test - counter reset to:", counter);
+        std.print("Before each test - counter reset to:", counter);
     });
     
     test.afterEach(func() {
-        print("After each test - counter is:", counter);
+        std.print("After each test - counter is:", counter);
     });
     
     test.it("should have setup data available", func() {
@@ -195,20 +195,20 @@ test.describe("Type Testing", func() {
 });
 
 // Run the tests
-print("Running Basic Unit Tests for R2Lang...");
+std.print("Running Basic Unit Tests for R2Lang...");
 let results = test.runTests();
 
-print("\n=== TEST RESULTS ===");
-print("Total tests:", results.total);
-print("Passed:", results.passed);
-print("Failed:", results.failed);
-print("Skipped:", results.skipped);
-print("Success rate:", (results.passed / results.total * 100) + "%");
+std.print("\n=== TEST RESULTS ===");
+std.print("Total tests:", results.total);
+std.print("Passed:", results.passed);
+std.print("Failed:", results.failed);
+std.print("Skipped:", results.skipped);
+std.print("Success rate:", (results.passed / results.total * 100) + "%");
 
 if (results.failed > 0) {
-    print("\nFailed tests:");
+    std.print("\nFailed tests:");
     for (let i = 0; i < len(results.failures); i++) {
         let failure = results.failures[i];
-        print("  -", failure.test + ":", failure.message);
+        std.print("  -", failure.test + ":", failure.message);
     }
 }
