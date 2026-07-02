@@ -2,7 +2,6 @@ package r2core
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -1408,11 +1407,13 @@ func (p *Parser) parseObjectDestructuring() Node {
 func (p *Parser) except(msgErr string) {
 
 	msg := fmt.Sprintln("Parser Exception: Line:", p.curTok.Line, ":", p.curTok.Col, "Error:", msgErr)
-	_, err := fmt.Fprint(os.Stderr, msg)
-	if err != nil {
-		panic(msg)
-	}
-	os.Exit(1)
+	// Always panic instead of os.Exit(1): os.Exit bypasses deferred recover()
+	// calls, so callers like the REPL (which recovers per-command to keep the
+	// session alive) or main.go/cmd/r2 (which recover to print a clean error)
+	// never got a chance to handle this — the whole process just died on any
+	// parser error. Panicking lets those callers behave as designed and print
+	// the message themselves; a caller with no recover() still crashes the
+	// process (via Go's default panic handler), same net effect as before.
 	panic(msg)
 
 }

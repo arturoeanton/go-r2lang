@@ -2,7 +2,6 @@ package r2core
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -229,10 +228,10 @@ skipWhitespace:
 		return token
 	}
 
-	fmt.Fprintf(os.Stderr, "Line: %d,Col: %d\n", l.line, l.col)
-	fmt.Fprintf(os.Stderr, "Unexpected character in lexer: %c\n", ch)
-	os.Exit(1)
-	return Token{}
+	// Panic instead of os.Exit(1): os.Exit bypasses deferred recover() calls,
+	// which callers such as the REPL rely on to survive a bad input line
+	// instead of the whole process dying.
+	panic(fmt.Sprintf("Line: %d,Col: %d\nUnexpected character in lexer: %c\n", l.line, l.col, ch))
 }
 
 func (l *Lexer) parseSymbolToken(ch byte) (Token, bool) {
